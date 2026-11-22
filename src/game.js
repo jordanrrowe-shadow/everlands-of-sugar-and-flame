@@ -284,7 +284,7 @@ export class Game {
     if (best) yaw = Math.atan2(best[0], best[1]); if (!src) p.tyaw = p.yaw = yaw; else p.yaw = yaw;
     const m = new THREE.Mesh(GEO.sph, new THREE.MeshBasicMaterial({ color: new THREE.Color(kim ? 0xff7ab0 : 0xffa030).multiplyScalar(2.2) })), sc = kim ? 0.16 : 0.24 + Math.min(0.14, (this.S.sparks || 0) / 200); m.scale.setScalar(sc);
     const bolt = { x: p.x + Math.sin(yaw) * 0.6, y: p.y + 1.25, z: p.z + Math.cos(yaw) * 0.6, yaw, left: range, kim, mesh: m, sc, vy: best ? (ty - (p.y + 1.25)) / (bd / 28) : 0, tr: 0 }; m.position.set(bolt.x, bolt.y, bolt.z); this.scene.add(m); this.bolts.push(bolt);
-    this.sound.sfx('flame'); this.sound.tone(kim ? 900 : 520, 0.25, 'sawtooth', 0.05, kim ? 1400 : 220); (src ? src.model : p.model).userData.once?.('Spell_Simple_Shoot'); if (!src && p.model.userData.armR) p.model.userData.armR.rotation.x = -1.5;
+    this.sound.sfx('flame'); this.sound.tone(kim ? 900 : 520, 0.25, 'sawtooth', 0.05, kim ? 1400 : 220); (src ? src.model : p.model).userData.cast?.(); if (!src && p.model.userData.armR) p.model.userData.armR.rotation.x = -1.5;
     if (!src && this.comp?.id === 'kim' && this.S.ch >= 15) setTimeout(() => { if (this.comp && !this.busy) this.castBolt(this.comp); }, 380);
   }
   flare() { if (!this.fireOK()) return; const p = this.player, kim = p.who === 'kim', r = kim ? 3.5 : 6.5; this.sound.sfx('lit'); this.sound.sfx('roar'); this.shake = 0.3; for (let i = 0; i < 3; i++) this.puff(p.x, p.y + 0.6 + i * 0.5, p.z, kim ? 0xff8ab8 : 0xff8a20, 46, r * 1.6, 2.2, 1.1); for (const b of [...this.breaks]) if (Math.hypot(b.x - p.x, b.z - p.z) < r) this.smash(b); }

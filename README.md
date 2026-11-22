@@ -77,7 +77,7 @@ The four paintings in `public/art` are the authors' own concept art.
 
 All third-party art is CC0 (public domain):
 
-- Quaternius — Medieval Village MegaKit, Stylized Nature MegaKit, Universal Base Characters, Modular Character Outfits (Fantasy), Universal Animation Library.
+- Quaternius — Ultimate Modular Women, Medieval Village MegaKit, Stylized Nature MegaKit, Universal Base Characters, Modular Character Outfits (Fantasy), Universal Animation Library.
 - Poly Haven — ground, plaster, roof-tile and wood textures.
 
 Voices are generated with ElevenLabs; assignments are in `tools/cast-voices.sh`.
