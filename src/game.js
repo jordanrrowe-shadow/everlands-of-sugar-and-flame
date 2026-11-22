@@ -421,7 +421,7 @@ export class Game {
     return { score: -secs, cinders: Math.max(1, 6 - secs / 20), fmt: (v) => -v + ' seconds', text: `Eight rings in ${secs} seconds.` }; }
   poseNpc(n) { // small stagings: the king lies in his bed, the dancers actually dance
     const pose = n.def.pose || (n.id === 'king' && n.def.at === 'king' ? 'lie' : null); if (!pose) return; const m = n.model, t = this.t;
-    if (pose === 'lie') { m.rotation.set(-Math.PI / 2, 0, 0); m.position.set(n.x, n.y + 1.12, n.z - 2.5); if (!n.fx) { n.fx = part(GEO.box, 0xa3182c, 0, 0, 0, 2.6, 0.16, 2.5); n.fx.position.set(n.x, n.y + 1.42, n.z - 3.5); this.scene.add(n.fx); m.userData.bed = n.fx; } return; }
+    if (pose === 'lie') { m.rotation.set(-Math.PI / 2, 0, 0); m.position.set(n.x, n.y + 1.4, n.z - 2.2); if (!n.fx) { n.fx = part(GEO.box, 0xf6ead8, 0, 0, 0, 2.3, 0.16, 1.05); n.fx.add(part(GEO.box, 0xe2b24a, 0, 0.52, -0.42, 1, 0.3, 0.1)); n.fx.position.set(n.x, n.y + 1.56, n.z - 2.75); this.scene.add(n.fx); m.userData.bed = n.fx; } return; }
     if (pose === 'dance') { const ph = (n.x * 3 + n.z) % 6.28, still = this.busy && Math.hypot(this.player.x - n.x, this.player.z - n.z) < 5;
       if (!n.fx) { n.fx = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.035, 6, 28), mat(0xffa030, true)); m.add(n.fx); n.fx.position.y = 1.15; }
       n.fx.rotation.set(1.1 + Math.sin(t * 3 + ph) * 0.5, t * 5 + ph, 0); if (still) return;
@@ -620,7 +620,7 @@ export class Game {
     if (Z?.room) { cx = clamp(cx, Z.x0 - 0.3, Z.x1 + 0.3); cz = clamp(cz, Z.z0 - 0.3, Z.z1 + 0.3); cy = Math.min(cy, Z.ceil - 0.35); }
     else if (!this.riding) { // keep the camera under roofs and on this side of tall walls
       for (const r of W.roofs || []) if (p.x > r[0] && p.x < r[1] && p.z > r[2] && p.z < r[3] && p.y < r[4]) cy = Math.min(cy, r[4] - 0.45);
-      if (W.tall && !Z) { let k = 1; for (let s = 1; s <= 6 && k === 1; s++) { const q = s / 6, x = tx + (cx - tx) * q, z = tz + (cz - tz) * q, y = ty + (cy - ty) * q; for (const c of W.tall) if (y < c[3] && (x - c[0]) ** 2 + (z - c[1]) ** 2 < c[2] * c[2]) { k = Math.max(0.18, (s - 1) / 6); break; } } if (k < 1) { cx = tx + (cx - tx) * k; cz = tz + (cz - tz) * k; cy = ty + (cy - ty) * k + (1 - k) * 1.2; } } }
+      if (W.tall && !Z) { let k = 1; for (let s = 1; s <= 10 && k === 1; s++) { const q = s / 10, x = tx + (cx - tx) * q, z = tz + (cz - tz) * q, y = ty + (cy - ty) * q; for (const c of W.tall) if (y < c[3] && (x - c[0]) ** 2 + (z - c[1]) ** 2 < c[2] * c[2]) { k = Math.max(0.15, (s - 1) / 10); break; } if (k === 1) for (const c of W.tallB || []) if (y < c[4] && x > c[0] && x < c[1] && z > c[2] && z < c[3]) { k = Math.max(0.15, (s - 1) / 10); break; } } if (k < 1) { cx = tx + (cx - tx) * k; cz = tz + (cz - tz) * k; cy = ty + (cy - ty) * k + (1 - k) * 1.2; } } }
     const gh = this.W.height(cx, cz) + 0.6; if (cy < gh && !Z?.room) cy = gh;
     if (this.shake > 0) { this.shake -= dt; cx += (Math.random() - 0.5) * this.shake; cy += (Math.random() - 0.5) * this.shake; }
     const k = this.camSnap > 0 ? 1 : Math.min(1, dt * 10); if (this.camSnap > 0) this.camSnap--; this.cam.position.set(lerp(this.cam.position.x, cx, k), lerp(this.cam.position.y, cy, k), lerp(this.cam.position.z, cz, k)); this.cam.lookAt(tx, ty, tz);
