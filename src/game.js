@@ -118,7 +118,7 @@ export class Game {
     if (name === 'sugar' && !this.grass.sugar) { this.grass.sugar = makeGrass(this.worlds.sugar, 260, 56, 26000, 0x5fbf86, 0xc8f2b8); }
     if (!this.motes[name] && name !== 'sea') this.motes[name] = makeMotes(name === 'ember' ? 0xff8a2a : 0xffe6f2, name === 'ember' ? 1.6 : 0.35, name === 'ember' ? 260 : 160);
     for (const k of ['ember', 'sugar']) { for (const o of [this.grass[k], this.motes[k]]) if (o) { if (k === name) this.scene.add(o); else this.scene.remove(o); } }
-    this.sound.mood = name; this.markPlays();
+    this.sound.mood = name; this.markPlays(); this.markTorches();
   }
   setTime(time) {
     this.S.time = time; const p = (SKY[this.S.world] || SKY.ember)[time] || SKY[this.S.world].day, top = new THREE.Color(p[0]), bot = new THREE.Color(p[1]);
@@ -440,6 +440,14 @@ export class Game {
   async play_rubyfish(s) { const t0 = this.t; await UI.say('', 'Meanwhile, Ruby has the forest to herself. The strawberry lake is full of slow pink fish, and nobody is watching. Skim the eight rings, low over the water and the striped trees.'); this.sound.sfx('roar');
     await this.fly({ solo: 1, rings: s.rings, start: [-40, this.W.height(-40, 138) + 9, 138], land: [s.at[0], s.at[1] + 4] }); const secs = Math.round(this.t - t0);
     return { score: -secs, cinders: Math.max(1, 6 - secs / 20), fmt: (v) => -v + ' seconds', text: `Eight rings in ${secs} seconds, and a chin dripping pink.` }; }
+  // ── torches: after dark, every unlit torch can be lit with Amber's (or Kim's) flame ──
+  nightNow() { return this.S.time === 'night' || this.S.time === 'dusk'; }
+  markTorches() { const W = this.W; if (!W.torches || W.torchGroup) return; W.torchGroup = new THREE.Group(); for (const t of W.torches) { t.m = new THREE.Mesh(GEO.cone, mat(t.pink ? 0xff8ab8 : 0xffa030, true)); t.m.position.set(t.x, t.y + 0.45, t.z); t.m.scale.set(0.3, 0.9, 0.3); t.m.visible = false; const c = new THREE.Mesh(GEO.cone, mat(t.pink ? 0xffd0e4 : 0xffe08a, true)); c.scale.set(0.5, 0.6, 0.5); c.position.y = -0.2; t.m.add(c); W.torchGroup.add(t.m); } W.group.add(W.torchGroup); }
+  nearTorch(r = 4.4) { const p = this.player; let best = null, bd = r; if (!this.nightNow()) return null; for (const t of this.W.torches || []) { if (t.lit) continue; const d = Math.hypot(p.x - t.x, p.z - t.z); if (d < bd) { bd = d; best = t; } } return best; }
+  lightTorch(t) { t.lit = true; this.sound.sfx('lit'); this.puff(t.x, t.y + 0.5, t.z, t.pink ? 0xff8ab8 : 0xffb030, 18, 0.5, 2.2); const all = this.W.torches, n = all.filter((x) => x.lit).length; this.S.sparks = (this.S.sparks || 0) + 1;
+    if (n === all.length) { this.S.sparks += 6; this.sound.sfx('chapter'); UI.tip(`Every torch in ${this.W.name === 'ember' ? 'Emberland' : 'Sugarland'} is burning. The whole night glows. (+6 cinders)`, 8); } else UI.tip(`Torch lit: ${n} of ${all.length}.`, 2.5); }
+  updateTorches(dt) { const W = this.W; if (!W.torches) return; const night = this.nightNow(); if (night && !this.f.tipTorch && this.fireOK() && this.nearTorch(9)) { this.f.tipTorch = 1; UI.tip('An unlit torch. Stand beside it and hold ✦ to light it. There are more along the lanes.', 8); }
+    for (const t of W.torches) { if (!t.m) continue; t.m.visible = t.lit && night; if (t.m.visible) { const s = 1 + Math.sin(this.t * 11 + t.x) * 0.16; t.m.scale.set(0.3, 0.9 * s, 0.3); } } }
   poseNpc(n) { // small stagings: the king lies in his bed, the dancers actually dance
     const pose = n.def.pose || (n.id === 'king' && n.def.at === 'king' ? 'lie' : null); if (!pose) return; const m = n.model, t = this.t;
     if (pose === 'lie') { m.rotation.set(-Math.PI / 2, 0, 0); m.position.set(n.x, n.y + 1.4, n.z - 2.2); if (false) { n.fx = part(GEO.box, 0xf6ead8, 0, 0, 0, 2.3, 0.16, 1.05); n.fx.add(part(GEO.box, 0xe2b24a, 0, 0.52, -0.42, 1, 0.3, 0.1)); n.fx.position.set(n.x, n.y + 1.56, n.z - 2.75); this.scene.add(n.fx); m.userData.bed = n.fx; } return; }
@@ -541,14 +549,14 @@ export class Game {
     // people
     for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < 7 && !this.riding && n.id !== 'warden1' && n.id !== 'warden2') n.tyaw = Math.atan2(p.x - n.x, p.z - n.z); n.yaw += wrap((n.tyaw ?? n.yaw) - n.yaw) * Math.min(1, dt * 5); n.model.rotation.y = n.yaw; this.poseNpc(n); n.model.visible = d < 110; if (d < 55) { n.model.userData.pose = this.busy && d < 6 ? 'talk' : null; animPerson(n.model, dt, !!n.walk); } }
     if (this.comp) this.updateComp(dt);
-    this.updateRuby(dt); this.updateFire(dt); this.updateTira(dt); this.updateHint(dt);
+    this.updateRuby(dt); this.updateFire(dt); this.updateTorches(dt); this.updateTira(dt); this.updateHint(dt);
     for (const t of this.things) if (t.prop) t.prop.rotation.y += dt * (t.def.prop === 'turtle' || t.def.prop === 'cat' ? 0 : 1.2);
     for (const [, m] of this.lits) { const s = 1 + Math.sin(this.t * 9 + m.position.x) * 0.15; m.scale.y = (m.scale.x < 0.5 ? 0.8 : 1.3) * s; }
     for (let i = this.sparks.length - 1; i >= 0; i--) { const m = this.sparks[i], u = m.userData, a = m.geometry.attributes.position; u.age += dt; for (let j = 0; j < a.count; j++) a.setXYZ(j, a.getX(j) + u.vel[j * 3] * dt, a.getY(j) + u.vel[j * 3 + 1] * dt, a.getZ(j) + u.vel[j * 3 + 2] * dt); a.needsUpdate = true; m.material.opacity = 0.9 * (1 - u.age / u.life); if (u.age > u.life) { this.scene.remove(m); this.sparks.splice(i, 1); } }
     if (this.council) { const C = this.council; C.ds.forEach((x) => { x.a += dt * 0.35; x.d.position.set(C.c[0] + Math.sin(x.a) * 44, C.c[1] + Math.sin(x.a * 2) * 3, C.c[2] + Math.cos(x.a) * 44); x.d.rotation.y = x.a + Math.PI / 2; x.d.rotation.z = -0.3; animDragon(x.d, dt, true); }); if (this.ruby.state === 'council') { const r = this.ruby; r.ca = (r.ca ?? 0) + dt * 0.35; r.x = C.c[0] + Math.sin(r.ca) * 44; r.z = C.c[2] + Math.cos(r.ca) * 44; r.y = C.c[1]; r.yaw = r.ca + Math.PI / 2; r.bank = -0.3; r.pitch = 0; } }
     for (const m of this.fxs) { if (m.userData.crown) m.rotation.y += dt * 0.5; else { const s = m.userData.src, C = this.council.c, top = C[1] + 60, hgt = Math.max(1, top - s.y); m.position.set(lerp(s.x, C[0], 0.5), s.y + hgt / 2, lerp(s.z, C[2], 0.5)); m.scale.set(1.2, Math.hypot(hgt, Math.hypot(C[0] - s.x, C[2] - s.z)), 1.2); m.lookAt(C[0], top, C[2]); m.rotateX(Math.PI / 2); } }
     if (this.rail) { this.rail.t = Math.min(1, this.rail.t + dt / this.rail.dur); this.rail.f(this.rail.t); } else this.updateCam(dt);
-    { const k = this.zone?.room ? 0.28 : 1; this.sun.intensity = (this.sunBase ?? 1) * k; this.hemi.intensity = (this.hemiBase ?? 0.5) * (k < 1 ? 0.55 : 1); this.scene.environmentIntensity = k < 1 ? 0.3 : 1; }
+    { const under = !this.zone && !this.riding && (this.W.roofs || []).some((r) => p.x > r[0] && p.x < r[1] && p.z > r[2] && p.z < r[3] && p.y < r[4]), kt = this.zone?.room ? 0.28 : under ? 0.42 : 1, k = (this.kL = lerp(this.kL ?? 1, kt, Math.min(1, dt * 3))); this.sun.intensity = (this.sunBase ?? 1) * k; this.hemi.intensity = (this.hemiBase ?? 0.5) * (0.55 + 0.45 * k); this.scene.environmentIntensity = 0.3 + 0.7 * k; }
     { const fx = this.S.opt.fx !== false, c = this.riding ? this.ruby : p, night = this.S.time === 'night'; this.sun.castShadow = fx && !this.W.sea; this.sun.target.position.set(c.x, c.y, c.z); this.sun.position.set(c.x - 45, c.y + 90, c.z + 36); this.bloom.strength = night ? 0.7 : 0.45; this.bloom.threshold = 1.02; this.bloom.radius = 0.55; }
     this.dome.position.copy(this.cam.position); this.stars.position.copy(this.cam.position); U.time.value = this.t;
     this.clouds.position.set(this.cam.position.x, Math.max(420, this.cam.position.y + 260), this.cam.position.z);
@@ -668,6 +676,7 @@ export class Game {
     const p = this.player, f = this.f, W = this.W; let best = null, bd = 1e9;
     for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z) - 3.3; if (d < 0 && d < bd && n.def.talk && (typeof n.def.talk !== 'function' || n.def.talk(f, this))) { best = n; bd = d; } }
     let flameT = null, anyFlame = false; const cmp = this.comp;
+    if (this.nearTorch() && this.fireOK()) anyFlame = true;
     for (const t of this.things) {
       const d = t.def; let q = d.kimTalk ? (cmp ? [cmp.x, cmp.z] : null) : d.at === 'player' ? [p.x, p.z] : W.P[d.at]; if (!q) continue; const dist = Math.hypot(p.x - q[0], p.z - q[1]);
       if (d.auto) { const inZone = dist < d.auto && (!d.high || p.y > this.H(q[0], q[1]) - 0.8); if (inZone && !this.inside.has(d.id)) { this.inside.add(d.id); if (d.once) f['t_' + d.id] = 1; return this.run(d.script); } if (!inZone) this.inside.delete(d.id); continue; }
@@ -678,7 +687,8 @@ export class Game {
     // flame
     const fireOK = this.fireOK(), tapped = UI.hit('flameTap'), fl = UI.input.flame && (anyFlame || fireOK); this.flame.visible = fl; this.flameLight.intensity = fl ? 30 : 0;
     if (tapped && !UI.input.flame && !this.flameT) this.castBolt();
-    if (fl) { const hx = p.x + Math.sin(p.yaw) * 0.5, hz = p.z + Math.cos(p.yaw) * 0.5, s = 0.16 + Math.sin(this.t * 20) * 0.03 + Math.min(0.22, (this.flameT || 0) * 0.14); this.flame.position.set(hx, p.y + 1.25, hz); this.flame.scale.set(s, s * 1.7, s); this.flame.material.color.set(p.who === 'kim' ? 0xff8ab8 : 0xffc040); this.flameLight.position.copy(this.flame.position); if (p.model.userData.armR) p.model.userData.armR.rotation.x = -1.3; this.flameT = (this.flameT || 0) + dt; if (!this.flameS || this.t - this.flameS > 0.5) { this.flameS = this.t; this.sound.sfx('flame'); } if (flameT && this.flameT > 0.8) { this.flameT = 0; this.flame.visible = false; this.flameLight.intensity = 0; this.sound.sfx('lit'); const q = flameT.def.self ? [p.x, p.z] : W.P[flameT.def.at]; this.puff(q[0], this.H(q[0], q[1]) + 1.8, q[1], p.who === 'kim' ? 0xff8ab8 : 0xffb030, 18, 0.6, 2.5); return this.run(flameT.def.script); } } else if (this.flameT > 0) { const h = this.flameT; this.flameT = 0; if (h < 0.3) this.castBolt(); else if (h > 1.0) this.flare(); }
+    if (fl) { const hx = p.x + Math.sin(p.yaw) * 0.5, hz = p.z + Math.cos(p.yaw) * 0.5, s = 0.16 + Math.sin(this.t * 20) * 0.03 + Math.min(0.22, (this.flameT || 0) * 0.14); this.flame.position.set(hx, p.y + 1.25, hz); this.flame.scale.set(s, s * 1.7, s); this.flame.material.color.set(p.who === 'kim' ? 0xff8ab8 : 0xffc040); this.flameLight.position.copy(this.flame.position); if (p.model.userData.armR) p.model.userData.armR.rotation.x = -1.3; this.flameT = (this.flameT || 0) + dt; if (!this.flameS || this.t - this.flameS > 0.5) { this.flameS = this.t; this.sound.sfx('flame'); } if (!flameT && this.flameT > 0.6) { const tc = this.nearTorch(); if (tc) { this.lightTorch(tc); this.flameT = 0.15; } }
+      if (flameT && this.flameT > 0.8) { this.flameT = 0; this.flame.visible = false; this.flameLight.intensity = 0; this.sound.sfx('lit'); const q = flameT.def.self ? [p.x, p.z] : W.P[flameT.def.at]; this.puff(q[0], this.H(q[0], q[1]) + 1.8, q[1], p.who === 'kim' ? 0xff8ab8 : 0xffb030, 18, 0.6, 2.5); return this.run(flameT.def.script); } } else if (this.flameT > 0) { const h = this.flameT; this.flameT = 0; if (h < 0.3) this.castBolt(); else if (h > 1.0) this.flare(); }
     // whistle
     if (UI.hit('whistle') && this.canWhistle()) { this.sound.sfx('whistle'); const s = this.chapter.whistle?.(f); if (s) return this.run(s); if (this.freeRide()) return this.run([{ ruby: 'arrive', at: 'player' }, { fn: (g) => { g.mount(); g.ruby.pitch = 0.45; UI.tip('Steer with the left thumb. ▽ Land when you are low over open ground.', 6); } }]); }
     // talk / examine
