@@ -29,7 +29,7 @@ const wait = (s) => new Promise((r) => setTimeout(r, s * 1000));
 export class Game {
   constructor(canvas) {
     this.chapters = [...p1, ...p2, ...p3];
-    this.S = this.blank(); this.tmp = {}; this.busy = 0; this.paused = true; this.t = 0; this.worlds = {}; this.npcs = []; this.things = []; this.inside = new Set(); this.lits = new Map(); this.rings = []; this.fxs = []; this.bolts = []; this.breaks = [];
+    this.S = this.blank(); this.mk = makePerson; this.tmp = {}; this.busy = 0; this.paused = true; this.t = 0; this.worlds = {}; this.npcs = []; this.things = []; this.inside = new Set(); this.lits = new Map(); this.rings = []; this.fxs = []; this.bolts = []; this.breaks = [];
     this.sound = new Sound();
     const r = (this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }));
     r.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
