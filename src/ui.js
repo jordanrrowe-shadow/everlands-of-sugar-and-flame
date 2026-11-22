@@ -84,6 +84,7 @@ export function qte(label) { return new Promise((res) => { const q = $('qte'), b
 
 // ───────── HUD ─────────
 export function setGoal(chap, text, pulse) { $('chap').textContent = chap; $('goalText').textContent = text; if (pulse) { const g = $('goal'); g.classList.remove('pulse'); void g.offsetWidth; g.classList.add('pulse'); } }
+export function setTimer(label, v) { const m = $('meter'); show(m, !!label); if (!label) return; m.classList.remove('heat'); $('meterLabel').textContent = label; $('meterFill').style.width = Math.round(Math.max(0, Math.min(1, v)) * 100) + '%'; }
 export function setMeter(type, v) { const m = $('meter'); show(m, !!type); if (!type) return; m.classList.toggle('heat', type === 'heat'); $('meterLabel').textContent = type === 'cold' ? (v < 0.3 ? 'Shivering' : 'Cold') : (v < 0.3 ? 'Far too hot' : 'Too warm'); $('meterFill').style.width = Math.round(v * 100) + '%'; }
 export function setHearts(n, show, hurt) { const h = $('hearts'); showB(h, show); if (!show) return; if (h.children.length !== 3) h.innerHTML = '<i></i><i></i><i></i>'; [...h.children].forEach((e, i) => e.classList.toggle('off', i >= n)); if (hurt) { h.classList.remove('hurt'); void h.offsetWidth; h.classList.add('hurt'); } }
 export function setAct(label) { const b = $('bAct'); show(b, !!label); if (label && b.textContent !== label) b.textContent = label; }

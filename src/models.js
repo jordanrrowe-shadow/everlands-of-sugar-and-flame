@@ -105,6 +105,7 @@ export function makeProp(name) {
   const g = new THREE.Group();
   if (name === 'flask') g.add(part(GEO.cyl, 0x8a5a3a, 0, 0.2, 0, 0.12, 0.3, 0.08), part(GEO.cyl, 0xd9b36a, 0, 0.4, 0, 0.05, 0.1, 0.05));
   else if (name === 'bun') g.add(part(GEO.sph, 0xd9963a, 0, 0.14, 0, 0.18, 0.12, 0.18), part(GEO.sph, 0xf5d68a, 0, 0.2, 0, 0.12, 0.06, 0.12));
+  else if (name === 'picnic') { g.add(part(GEO.box, 0xf7a8c8, 0, 0.02, 0, 2.2, 0.04, 1.7), part(GEO.box, 0xffffff, 0, 0.03, 0, 2.2, 0.04, 0.3), part(GEO.box, 0xffffff, 0, 0.035, 0, 0.3, 0.04, 1.7), part(GEO.cyl, 0xc98a5a, -0.6, 0.2, 0.3, 0.3, 0.4, 0.3), part(GEO.cyl, 0xfff1d6, 0.4, 0.1, -0.3, 0.1, 0.16, 0.1), part(GEO.cyl, 0xfff1d6, 0.7, 0.1, 0.2, 0.1, 0.16, 0.1), part(GEO.sph, 0x4a2814, 0.4, 0.17, -0.3, 0.085, 0.02, 0.085), part(GEO.sph, 0x4a2814, 0.7, 0.17, 0.2, 0.085, 0.02, 0.085), part(GEO.sph, 0xa8d88a, -0.1, 0.07, -0.45, 0.16, 0.05, 0.12)); }
   else if (name === 'purse') g.add(part(GEO.sph, 0x8e1b2c, 0, 0.14, 0, 0.14, 0.14, 0.14), part(GEO.sph, 0xe9b949, 0, 0.3, 0, 0.05, 0.05, 0.05));
   else if (name === 'spyglass') { const m = part(GEO.cyl, 0xc9a04a, 0, 0.12, 0, 0.05, 0.5, 0.05); m.rotation.z = Math.PI / 2; g.add(m); }
   else if (name === 'herbs') g.add(part(GEO.cone, 0x7fc98a, 0, 0.25, 0, 0.25, 0.5, 0.25), part(GEO.sph, 0xbfa0e8, 0, 0.5, 0, 0.1, 0.1, 0.1));

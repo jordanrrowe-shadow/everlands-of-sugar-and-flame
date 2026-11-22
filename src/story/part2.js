@@ -4,6 +4,7 @@ const all = (...fl) => (f) => fl.every((x) => f[x]);
 
 // ───────────────────────── Chapter 6 ─────────────────────────
 const ch6 = {
+  decor: [{ prop: 'picnic', at: 'choc_shore', if: 'c6_lake', dx: 2.2, dz: 1.5 }],
   n: 6, title: 'A Most Unusual Cup of Chocolate', world: 'sugar', time: 'day', spawn: 'market',
   intro: 'The trouble began with an old story.',
   companion: () => 'kim',

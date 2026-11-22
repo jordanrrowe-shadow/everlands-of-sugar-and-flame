@@ -243,7 +243,8 @@ const ch15 = {
       [A, 'She was right. You were found by people who weren’t afraid of a cradle.'], [K, 'She meant me to be an ambassador. I couldn’t even sit up. I must have been dreadful at it.'],
       [A, 'You did very well. You got ashore. It’s more than anyone else managed for a very long time.'], { set: 'c15_letters' }] },
     { id: 'orin', at: 'orin', talk: [[O, 'So you’re the one from over the water. Sit. Eat. No — two. You’ve had a week.']] },
-    { id: 'dancer', at: 'square', if: 'c15_told', talk: [['Flame Dancer', 'A smaller dance this year, Highness. But the hearths still want lighting.']] },
+    { id: 'dancer2', at: 'square_b', if: 'c15_told', pose: 'dance' },
+    { id: 'dancer', at: 'square', if: 'c15_told', pose: 'dance', talk: [['Flame Dancer', 'A smaller dance this year, Highness. But the hearths still want lighting.']] },
   ],
   things: [
     { id: 'drawer', at: 'regent_drawer', label: 'The locked drawer', if: (f) => f.c15_seal && !f.c15_orders, script: [

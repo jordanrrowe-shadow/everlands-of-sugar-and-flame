@@ -8,6 +8,12 @@ import { loadPack, WORLD_PACKS } from './assets.js';
 import { loadPeople } from './people.js';
 import { playCut } from './cut.js';
 import { makeRoom, deckZone } from './rooms.js';
+const PLAYS = {
+  sugar: [{ id: 'stars', at: [95, 43], label: 'Star-hop the Marshmallow Meadows' }, { id: 'turtles', at: [-90, 33], label: 'Turtle round-up' }, { id: 'sled', at: [-5.5, -89], label: 'Sled the Ice Cream Mountain' },
+    { id: 'rings', at: [14, 132], label: 'Ring flight with Ruby', ruby: 1, rings: [[0, 34, 100], [-38, 44, 30], [-60, 52, -40], [0, 66, -96], [42, 62, -70], [86, 44, -62], [108, 48, 10], [40, 36, 90]] }],
+  ember: [{ id: 'lanterns', at: [11, 47], label: 'Lantern dash' },
+    { id: 'rings', at: [-22, 16], label: 'Ring flight with Ruby', ruby: 1, rings: [[-58, 40, -8], [-52, 48, -52], [-34, 56, -78], [0, 64, -112], [34, 56, -78], [52, 50, -58], [58, 42, -6], [0, 34, 34]] }],
+};
 import { spokenLine } from './story/speak.js';
 import { CAST, CODEX } from './story/cast.js';
 import p1 from './story/part1.js'; import p2 from './story/part2.js'; import p3 from './story/part3.js';
@@ -79,7 +85,7 @@ export class Game {
     if (!fresh && this.load()) { this.started = true; this.sound.setOn(this.S.opt.sound); await this.enterWorld(this.S.world, this.S.time); this.lastStep = this.curStep(); const sp = this.S.pos || this.W.P[this.chapter.spawn] || [0, 0]; this.place(sp[0], sp[1]); if (sp[2] !== undefined) this.camYaw = sp[2]; this.refresh(); UI.playUI(true); this.paused = false; this.showGoal(); await UI.fade(false); }
     else { const opt = this.S.opt; this.S = this.blank(); this.S.opt = opt; this.started = true; await this.startChapter(1); }
   }
-  baseline(n) { const f = {}, it = {}; if (n >= 3) it.whistle = 1; if (n === 3) it.spyglass = 1; if (n >= 11 && n <= 14) it.stillbloom = 1; if (n >= 5 && n <= 12) f.coat = 1; if (n >= 13) f.coatOff = 1; if (n >= 8 && n <= 10) f.rideSugar = 1; return [f, it]; }
+  baseline(n) { const f = {}, it = {}; if (n >= 3) it.whistle = 1; if (n === 3) it.spyglass = 1; if (n >= 11 && n <= 14) it.stillbloom = 1; if (n >= 3) f.cape = 1; if (n >= 5 && n <= 12) f.coat = 1; if (n >= 13) f.coatOff = 1; if (n >= 8 && n <= 10) f.rideSugar = 1; return [f, it]; }
   async startChapter(n) {
     this.busy++; this.paused = true; await UI.fade(true); UI.closeDialog();
     const S = this.S, ch = this.chapters[n - 1]; S.ch = n; S.max = Math.max(S.max, n); [S.flags, S.items] = this.baseline(n); S.leads = []; S.vis = {}; S.hp = 3; this.tmp = {}; this.inside.clear(); this.mode = null; this.inv = 0;
@@ -111,7 +117,7 @@ export class Game {
     if (name === 'sugar' && !this.grass.sugar) { this.grass.sugar = makeGrass(this.worlds.sugar, 260, 56, 26000, 0x5fbf86, 0xc8f2b8); }
     if (!this.motes[name] && name !== 'sea') this.motes[name] = makeMotes(name === 'ember' ? 0xff8a2a : 0xffe6f2, name === 'ember' ? 1.6 : 0.35, name === 'ember' ? 260 : 160);
     for (const k of ['ember', 'sugar']) { for (const o of [this.grass[k], this.motes[k]]) if (o) { if (k === name) this.scene.add(o); else this.scene.remove(o); } }
-    this.sound.mood = name;
+    this.sound.mood = name; this.markPlays();
   }
   setTime(time) {
     this.S.time = time; const p = (SKY[this.S.world] || SKY.ember)[time] || SKY[this.S.world].day, top = new THREE.Color(p[0]), bot = new THREE.Color(p[1]);
@@ -133,12 +139,12 @@ export class Game {
   cond(c) { if (c === undefined || c === null) return true; if (typeof c === 'string') return c[0] === '!' ? !this.f[c.slice(1)] : !!this.f[c]; if (Array.isArray(c)) return c.every((x) => this.cond(x)); return !!c(this.f, this); }
   look(id) {
     const f = this.f, L = { ...CAST[id] };
-    if (id === 'amber') { if (f.coat && !f.coatOff) Object.assign(L, { top: 0xfff1d6, skirt: 0xfbe6c2, trim: 0xe9b949, collar: 0xffffff, cape: 0, sleeve: 0xfff1d6 }); if (f.c17_cape || this.S.opt.cape === false) L.cape = 0; }
+    if (id === 'amber') { if (f.coat && !f.coatOff) Object.assign(L, { top: 0xfff1d6, skirt: 0xfbe6c2, trim: 0xe9b949, collar: 0xffffff, cape: 0, sleeve: 0xfff1d6 }); if (!f.cape || f.c17_cape || this.S.opt.cape === false) L.cape = 0; }
     if (id === 'kim') { L.tira = 1; if (f.c17_cape) L.cape = 0xa3182c; }
     return L;
   }
   whoNow() { const a = this.chapter.as; return (typeof a === 'function' ? a(this.f) : a) || 'amber'; }
-  clearNpcs() { for (const n of this.npcs) this.scene.remove(n.model); this.npcs = []; if (this.comp) { this.scene.remove(this.comp.model); this.comp = null; } }
+  clearNpcs() { for (const n of this.npcs) { this.scene.remove(n.model); if (n.fx) this.scene.remove(n.fx); } this.npcs = []; if (this.comp) { this.scene.remove(this.comp.model); this.comp = null; } }
   npc(id) { return this.npcs.find((n) => n.id === id); }
   refresh() {
     const ch = this.chapter, f = this.f, W = this.W, p = this.player;
@@ -148,7 +154,7 @@ export class Game {
     // NPCs
     const defs = (ch.npcsByWorld ? ch.npcsByWorld[W.name] || [] : ch.npcs || []).filter((d) => W.P[d.at] && this.cond(d.if));
     const want = new Map(defs.map((d) => [d.id + '@' + d.at, d]));
-    this.npcs = this.npcs.filter((n) => { const lk = JSON.stringify(this.look(n.id)); if (want.has(n.key) && n.lk === lk) { n.def = want.get(n.key); want.delete(n.key); return true; } this.scene.remove(n.model); return false; });
+    this.npcs = this.npcs.filter((n) => { const lk = JSON.stringify(this.look(n.id)); if (want.has(n.key) && n.lk === lk) { n.def = want.get(n.key); want.delete(n.key); return true; } this.scene.remove(n.model); if (n.fx) this.scene.remove(n.fx); return false; });
     for (const [k, d] of want) { const [x, z] = W.P[d.at], L = this.look(d.id), n = { key: k, id: d.id, def: d, x, z, y: this.H(x, z), yaw: 0, model: makePerson(L), name: L.name, lk: JSON.stringify(L), face(tx, tz) { this.tyaw = Math.atan2(tx - this.x, tz - this.z); } }; n.yaw = n.tyaw = Math.atan2(p.x - x, p.z - z); n.model.position.set(x, n.y, z); this.scene.add(n.model); this.npcs.push(n); }
     // companion
     const cid = !this.riding && typeof ch.companion === 'function' ? ch.companion(f) : null, clk = cid ? JSON.stringify(this.look(cid)) : '';
@@ -159,6 +165,9 @@ export class Game {
     for (const t of this.things) if (t.prop) { this.scene.remove(t.prop); t.prop = null; }
     this.things = (ch.things || []).filter((t) => (t.at === 'player' || W.P[t.at]) && this.cond(t.if) && !(t.once && f['t_' + t.id])).map((t) => ({ def: t, prop: null }));
     for (const t of this.things) if (t.def.prop) { const [x, z] = W.P[t.def.at]; t.prop = makeProp(t.def.prop); t.prop.position.set(x, this.H(x, z) + (t.def.prop === 'turtle' ? -0.1 : ['flask', 'bun', 'purse', 'spyglass'].includes(t.def.prop) ? 0.9 : 0), z); this.scene.add(t.prop); }
+    // decor: things the story has put down stay where they were put
+    for (const d of this.decor || []) this.scene.remove(d); this.decor = [];
+    for (const d of ch.decor || []) if (W.P[d.at] && this.cond(d.if)) { const [x, z] = W.P[d.at], m = makeProp(d.prop); m.position.set(x + (d.dx || 0), this.H(x, z) + (d.dy || 0), z + (d.dz || 0)); m.traverse((o) => { if (o.isMesh) o.castShadow = true; }); this.scene.add(m); this.decor.push(m); }
     // lit hearths / torches
     for (const t of ch.things || []) if (t.lit && W.P[t.at]) { const on = !!f[t.lit], have = this.lits.get(t.id); if (on && !have) { const [x, z] = W.P[t.at], m = new THREE.Mesh(GEO.cone, mat(who === 'kim' ? 0xff8ab8 : 0xffb030, true)); const torch = t.at[0] === 't'; m.position.set(x, this.H(x, z) + (torch ? 2.9 : 1.9), z); m.scale.set(torch ? 0.3 : 0.6, torch ? 0.8 : 1.3, torch ? 0.3 : 0.6); this.scene.add(m); this.lits.set(t.id, m); } else if (!on && have) { this.scene.remove(have); this.lits.delete(t.id); } }
     for (const [id, m] of this.lits) if (!(ch.things || []).some((t) => t.id === id && W.P[t.at])) { this.scene.remove(m); this.lits.delete(id); }
@@ -371,6 +380,53 @@ export class Game {
     if (!this.trail) { const m = new THREE.InstancedMesh(GEO.sph, new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd870).multiplyScalar(2.2), transparent: true, opacity: 0.95, depthWrite: false }), 260); m.frustumCulled = false; const beam = part(GEO.cyl, 0xffe08a, 0, 0, 0, 0.16, 9, 0.16, true); beam.material = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd870).multiplyScalar(1.8), transparent: true, opacity: 0.55, depthWrite: false }); this.trail = { m, beam, pts: [] }; }
     const tr = this.trail; tr.t = 16; tr.target = t; tr.re = 0; this.scene.add(tr.m, tr.beam); this.sound.sfx('chime');
   }
+  // ── Activities: optional, replayable games at marked spots (a striped pole with a gold star) ──
+  nearPlay() { const p = this.player; if (this.riding || !p.ground) return null; for (const s of PLAYS[this.W.name] || []) if (Math.hypot(p.x - s.at[0], p.z - s.at[1]) < 3.4 && (!s.ruby || (this.S.items.whistle && p.who === 'amber'))) return s; return null; }
+  markPlays() { const W = this.W; if (W.playMarks) return; W.playMarks = new THREE.Group(); for (const s of PLAYS[W.name] || []) { const [x, z] = s.at, y = W.height(x, z), g = new THREE.Group(); g.add(part(GEO.cyl, 0xffffff, 0, 1.5, 0, 0.09, 3, 0.09)); for (let i = 0; i < 4; i++) g.add(part(GEO.cyl, i % 2 ? 0xe8344a : 0xf5c84a, 0, 0.5 + i * 0.7, 0, 0.1, 0.3, 0.1)); const st = part(GEO.sph, 0xffd24a, 0, 3.35, 0, 0.42, 0.42, 0.16, true); g.add(st, part(GEO.cyl, 0xf3e6cf, 0, 0.06, 0, 1.5, 0.12, 1.5)); g.position.set(x, y, z); g.userData.star = st; W.playMarks.add(g); W.circles.push([x, z, 0.3]); } W.group.add(W.playMarks); }
+  async play(s) {
+    UI.closeDialog(); const res = await this['play_' + s.id](s), best = (this.S.best ||= {}); this.mode = null; this.playS = null; UI.setTimer(null); UI.controlsVisible(false);
+    if (!res) return; const old = best[s.id], better = old === undefined || res.score > old; if (better) best[s.id] = res.score; const gain = Math.max(1, Math.round(res.cinders || 1)); this.S.sparks = (this.S.sparks || 0) + gain; this.sound.sfx('chapter');
+    await UI.say('', `${res.text} ${better && old !== undefined ? 'A new best!' : old !== undefined ? 'Your best: ' + res.fmt(old) + '.' : ''} (+${gain} cinder${gain > 1 ? 's' : ''})`);
+  }
+  // run about collecting glowing things before the time runs out
+  collectGame({ items, time, label, color = 0xffd24a, reach = 1.7, onGet, keepMode }) {
+    const ms = items.map(([x, y, z]) => { const m = new THREE.Mesh(GEO.sph, new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(2) })); m.position.set(x, y, z); m.scale.set(0.42, 0.42, 0.2); this.scene.add(m); return m; });
+    if (!keepMode) this.mode = 'play'; UI.controlsVisible(true); return new Promise((res) => { this.playS = { ms, got: 0, t: time, time, label, reach, onGet, end: (why) => { for (const m of ms) this.scene.remove(m); this.playS = null; res({ got: this.playGot, left: this.playLeft, why }); } }; this.playGot = 0; this.playLeft = time; });
+  }
+  updatePlay(dt) {
+    const S = this.playS, p = this.player; S.t -= dt; this.playLeft = S.t; if (S.tick) S.tick(dt);
+    if (S.ms) { for (const m of S.ms) { if (!m.visible) continue; m.rotation.y += dt * 4; if (Math.hypot(m.position.x - p.x, m.position.y - p.y - 1, m.position.z - p.z) < S.reach) { m.visible = false; S.got++; this.playGot = S.got; this.sound.sfx('ring'); this.puff(m.position.x, m.position.y, m.position.z, 0xffe08a, 16, 0.8, 2, 0.9); S.onGet?.(m); } }
+      UI.setTimer(`${S.label} ${S.got}/${S.ms.length}`, S.t / S.time); if (S.got >= S.ms.length) return S.end('all'); }
+    if (S.t <= 0 && !S.noClock) S.end('time');
+  }
+  async play_stars() { const W = this.W, items = W.bouncers.slice(0, 10).map(([x, z, r, top], i) => [x + (i % 2 ? 0.8 : -0.8), W.height(x, z, true) + top + 2.3 + (i % 3) * 0.7, z]); await UI.say('', 'Ten sugar stars hang over the marshmallows. Jump onto one, bounce, and catch them all before the minute is up.'); this.place(101, 36);
+    const r = await this.collectGame({ items, time: 60, label: 'Stars', reach: 1.9 }); return { score: r.got * 100 + Math.round(Math.max(0, r.left)), cinders: r.got / 2, fmt: (v) => Math.floor(v / 100) + ' stars', text: r.got >= 10 ? `All ten, with ${Math.round(r.left)} seconds to spare!` : `${r.got} of 10 stars.` }; }
+  async play_lanterns() { const W = this.W, pts = [[-9, 52], [9, 58], [-10, 64], [10, 70], [-9, 78], [8, 84], [-6, 92], [6, 96], [0, 74], [0, 54], [-14, 86], [14, 90]], items = pts.map(([x, z]) => [x, W.height(x, z) + 1.3, z]); await UI.say('', 'Twelve cold lanterns down the market lane. Run past each one to light it before the bell: forty-five seconds.');
+    const r = await this.collectGame({ items, time: 45, label: 'Lanterns', color: 0x7ab8ff, reach: 2.1, onGet: (m) => { const l = part(GEO.sph, 0xffb030, m.position.x, m.position.y, m.position.z, 0.3, 0.3, 0.3, true); this.scene.add(l); setTimeout(() => this.scene.remove(l), 6000); this.sound.sfx('lit'); } });
+    return { score: r.got * 100 + Math.round(Math.max(0, r.left)), cinders: r.got / 3, fmt: (v) => Math.floor(v / 100) + ' lanterns', text: r.got >= 12 ? `Every lantern lit, ${Math.round(r.left)} seconds before the bell!` : `${r.got} of 12 lanterns lit.` }; }
+  async play_turtles() { const W = this.W, cx = -97, cz = 36, ts = []; await UI.say('', 'Six chocolate-lake turtles have wandered up the biscuit beach. Tag each one gently so it paddles home. They are quicker than they look: fifty seconds.'); this.place(-92, 34);
+    for (let i = 0; i < 6; i++) { const a = i * 1.05, m = makeProp('turtle'); m.scale.setScalar(1.15); const t = { m, x: cx + Math.cos(a) * 8, z: cz + Math.sin(a) * 8, yaw: a, w: 0, tx: cx, tz: cz, home: false }; this.scene.add(m); ts.push(t); }
+    this.mode = 'play'; UI.controlsVisible(true); const p = this.player; let got = 0; const time = 50;
+    const r = await new Promise((res) => { this.playS = { t: time, time, end: (why) => { for (const t of ts) this.scene.remove(t.m); this.playS = null; res({ got, left: this.playLeft, why }); }, tick: (dt) => { for (const t of ts) { if (t.home) { t.m.position.y -= dt * 0.6; t.m.scale.multiplyScalar(1 - dt); continue; } const d = Math.hypot(p.x - t.x, p.z - t.z); let vx = 0, vz = 0, sp = 1.2;
+          if (d < 1.4) { t.home = true; got++; this.sound.sfx('boing'); this.puff(t.x, W.height(t.x, t.z) + 0.5, t.z, 0xbfe3a0, 14, 0.7, 1.5, 0.8); setTimeout(() => (t.m.visible = false), 900); continue; }
+          if (d < 7) { vx = (t.x - p.x) / d; vz = (t.z - p.z) / d; sp = 4.9; const side = Math.sin(this.t * 2 + t.yaw) * 0.6; [vx, vz] = [vx - vz * side, vz + vx * side]; } else { if ((t.w -= dt) <= 0) { t.w = 1.5 + Math.random() * 2; const a = Math.random() * 6.283; t.tx = cx + Math.cos(a) * 9; t.tz = cz + Math.sin(a) * 9; } const k = Math.hypot(t.tx - t.x, t.tz - t.z) || 1; vx = (t.tx - t.x) / k; vz = (t.tz - t.z) / k; }
+          const out = Math.hypot(t.x - cx, t.z - cz); if (out > 13) { vx += (cx - t.x) / out * 1.6; vz += (cz - t.z) / out * 1.6; } const n = Math.hypot(vx, vz) || 1, [nx, nz] = this.collide(t.x + vx / n * sp * dt, t.z + vz / n * sp * dt, 0.5); t.yaw = Math.atan2(nx - t.x, nz - t.z); t.x = nx; t.z = nz; t.m.position.set(t.x, W.height(t.x, t.z) + Math.abs(Math.sin(this.t * 9 + t.yaw)) * 0.06, t.z); t.m.rotation.y = t.yaw; }
+        UI.setTimer(`Turtles ${got}/6`, this.playS.t / time); if (got >= 6) this.playS.end('all'); } }; this.playLeft = time; });
+    return { score: r.got * 100 + Math.round(Math.max(0, r.left)), cinders: r.got / 2, fmt: (v) => Math.floor(v / 100) + ' turtles', text: r.got >= 6 ? `All six safely home, with ${Math.round(r.left)} seconds left!` : `${r.got} of 6 turtles sent home.` }; }
+  async play_sled(s) { const W = this.W, R = rnd(Math.floor(this.t * 10) + 3), items = []; for (let z = -148; z < -106; z += 3.4) { const x = -10 + R() * 20; items.push([x, W.height(x, z) + 1.1, z]); }
+    await UI.fade(true, 'The basket swings alarmingly at every post.'); await wait(1.4); const game = this.collectGame({ items, time: 999, label: 'Sprinkles', reach: 2.4, keepMode: true }); this.playS.noClock = true; const run = this.mini_sled_free(); await UI.fade(false); await run; const got = this.playGot; this.playS?.end('done'); await game;
+    await UI.fade(true); this.place(s.at[0], s.at[1] + 3); await UI.fade(false); return { score: got, cinders: got / 3, fmt: (v) => v + ' sprinkles', text: `Down the Ice Cream Mountain with ${got} of ${items.length} sprinkle stars.` }; }
+  async mini_sled_free() { const p = this.player; this.place(0, -156); this.mode = 'sled'; this.sledV = 4; this.camYaw = 0; UI.controlsVisible(true); await new Promise((res) => (this.sledDone = res)); this.mode = null; this.sound.sfx('hit'); this.shake = 0.5; this.puff(p.x, p.y + 1, p.z, 0xffffff, 30); await wait(0.6); }
+  async play_rings(s) { const t0 = this.t; await UI.say('', 'Ruby stretches her wings. Eight rings, as fast as you dare.'); this.sound.sfx('roar'); await this.fly({ rings: s.rings, start: [s.at[0], this.W.height(s.at[0], s.at[1]) + 14, s.at[1]], land: [s.at[0], s.at[1] + 4] }); const secs = Math.round(this.t - t0);
+    return { score: -secs, cinders: Math.max(1, 6 - secs / 20), fmt: (v) => -v + ' seconds', text: `Eight rings in ${secs} seconds.` }; }
+  poseNpc(n) { // small stagings: the king lies in his bed, the dancers actually dance
+    const pose = n.def.pose || (n.id === 'king' && n.def.at === 'king' ? 'lie' : null); if (!pose) return; const m = n.model, t = this.t;
+    if (pose === 'lie') { m.rotation.set(-Math.PI / 2, 0, 0); m.position.set(n.x, n.y + 1.12, n.z - 2.5); if (!n.fx) { n.fx = part(GEO.box, 0xa3182c, 0, 0, 0, 2.6, 0.16, 2.5); n.fx.position.set(n.x, n.y + 1.42, n.z - 3.5); this.scene.add(n.fx); m.userData.bed = n.fx; } return; }
+    if (pose === 'dance') { const ph = (n.x * 3 + n.z) % 6.28, still = this.busy && Math.hypot(this.player.x - n.x, this.player.z - n.z) < 5;
+      if (!n.fx) { n.fx = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.035, 6, 28), mat(0xffa030, true)); m.add(n.fx); n.fx.position.y = 1.15; }
+      n.fx.rotation.set(1.1 + Math.sin(t * 3 + ph) * 0.5, t * 5 + ph, 0); if (still) return;
+      m.position.set(n.x + Math.cos(t * 0.9 + ph) * 1.5, n.y + Math.abs(Math.sin(t * 5 + ph)) * 0.22, n.z + Math.sin(t * 0.9 + ph) * 1.5); m.rotation.y = t * 2.6 + ph; }
+  }
   updateTira(dt) { // Kim's little creature: sometimes rides in the bag, sometimes scurries about beside her
     const k = this.comp?.id === 'kim' ? this.comp : this.player.who === 'kim' ? this.player : null;
     if (!this.tira) { this.tira = { m: makeProp('tira'), out: false, t: 6, x: 0, z: 0, yaw: 0, tx: 0, tz: 0, w: 0 }; this.tira.m.visible = false; this.scene.add(this.tira.m); }
@@ -458,11 +514,11 @@ export class Game {
     const free = !this.busy, [mx, my] = free || this.flying || this.mode ? UI.readMove() : [0, 0];
     const sens = (this.S.opt.fast ? 0.009 : 0.006); this.camYaw -= UI.input.lx * sens; this.camPitch = clamp(this.camPitch + UI.input.ly * sens * 0.8, -0.5, 1.2); UI.input.lx = UI.input.ly = 0;
     if (UI.input.keys.has('KeyZ')) this.camYaw += dt * 2; if (UI.input.keys.has('KeyX')) this.camYaw -= dt * 2;
-    if (this.riding) this.updateRide(dt, mx, my); else if (this.mode === 'sled') this.updateSled(dt, mx); else if (this.mode === 'med') { this.updateFoot(dt, 0, 0, false); this.updateMed(dt, Math.hypot(mx, my) > 0.25 || UI.hit('jump')); } else this.updateFoot(dt, free ? mx : 0, free ? my : 0, free);
+    if (this.riding) this.updateRide(dt, mx, my); else if (this.mode === 'sled') this.updateSled(dt, mx); else if (this.mode === 'play') this.updateFoot(dt, mx, my, true); else if (this.mode === 'med') { this.updateFoot(dt, 0, 0, false); this.updateMed(dt, Math.hypot(mx, my) > 0.25 || UI.hit('jump')); } else this.updateFoot(dt, free ? mx : 0, free ? my : 0, free);
     if (free && !this.riding && !this.mode && UI.hit('med')) this.startMed();
     { const show = p.who === 'amber' && !this.riding && !this.rail && this.fireOK(); if (show !== this.hpShown || this.S.hp !== this.hpLast) { this.hpShown = show; this.hpLast = this.S.hp; UI.setHearts(this.S.hp ?? 3, show); } }
     // people
-    for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < 7 && !this.riding && n.id !== 'warden1' && n.id !== 'warden2') n.tyaw = Math.atan2(p.x - n.x, p.z - n.z); n.yaw += wrap((n.tyaw ?? n.yaw) - n.yaw) * Math.min(1, dt * 5); n.model.rotation.y = n.yaw; n.model.visible = d < 110; if (d < 55) { n.model.userData.pose = this.busy && d < 6 ? 'talk' : null; animPerson(n.model, dt, false); } }
+    for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < 7 && !this.riding && n.id !== 'warden1' && n.id !== 'warden2') n.tyaw = Math.atan2(p.x - n.x, p.z - n.z); n.yaw += wrap((n.tyaw ?? n.yaw) - n.yaw) * Math.min(1, dt * 5); n.model.rotation.y = n.yaw; this.poseNpc(n); n.model.visible = d < 110; if (d < 55) { n.model.userData.pose = this.busy && d < 6 ? 'talk' : null; animPerson(n.model, dt, false); } }
     if (this.comp) this.updateComp(dt);
     this.updateRuby(dt); this.updateFire(dt); this.updateTira(dt); this.updateHint(dt);
     for (const t of this.things) if (t.prop) t.prop.rotation.y += dt * (t.def.prop === 'turtle' || t.def.prop === 'cat' ? 0 : 1.2);
@@ -477,7 +533,8 @@ export class Game {
     this.clouds.position.set(this.cam.position.x, Math.max(420, this.cam.position.y + 260), this.cam.position.z);
     { const g = this.grass[this.S.world], m = this.motes[this.S.world], fx = this.S.opt.fx !== false; if (g) { g.visible = fx; g.material.uniforms.uCam.value.set(this.riding ? this.ruby.x : p.x, 0, this.riding ? this.ruby.z : p.z); } if (m) { m.visible = fx; m.material.uniforms.uCam.value.copy(this.cam.position); } }
     if (free && !this.riding && !this.mode) this.interact(dt); else if (!this.riding) UI.setAct(null);
-    this.hudButtons(free);
+    if (this.playS) this.updatePlay(dt);
+    this.hudButtons(free || this.mode === 'play');
     if (this.meter) { this.meterV = Math.max(0.12, (this.meterV ?? 1) - dt / 70); UI.setMeter(this.meter, this.meterV); }
     if ((this.saveT = (this.saveT || 0) + dt) > 15) { this.saveT = 0; this.save(); }
   }
@@ -606,6 +663,7 @@ export class Game {
     // talk / examine
     if (best && !best.key && cmp?.goal && this.curStep()?.lead && best.def.label === cmp.goal.label && Math.hypot(cmp.x - p.x, cmp.z - p.z) < 9 && p.ground) { cmp.goal = null; return this.run(best.def.script); }
     if (best) { const isNpc = !!best.model && best.key; UI.setAct(isNpc ? 'Talk · ' + best.name : best.def.label); if (UI.hit('act')) { if (isNpc) { const t = best.def.talk, s = typeof t === 'function' ? t(f, this) : t; best.face(p.x, p.z); if (s) return this.run(s); } else return this.run(best.def.script); } }
+    else if (this.nearPlay()) { const s = this.nearPlay(); UI.setAct('Play · ' + s.label); if (UI.hit('act')) return this.run([{ fn: (g) => g.play(s) }]); }
     else if (this.nearDoor() && p.ground) { const d = this.nearDoor(); UI.setAct(d.label || 'Go inside'); if (UI.hit('act')) return this.enterDoor(d); }
     else { UI.setAct(this.ruby.state === 'idle' && this.freeRide() && Math.hypot(p.x - this.ruby.x, p.z - this.ruby.z) < 8 ? 'Ride Ruby' : null); if (UI.hit('act') && this.ruby.state === 'idle' && this.freeRide() && Math.hypot(p.x - this.ruby.x, p.z - this.ruby.z) < 8) { this.mount(); this.ruby.pitch = 0.45; } }
   }

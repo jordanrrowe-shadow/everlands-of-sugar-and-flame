@@ -56,7 +56,7 @@ export function buildEmber() {
     return h;
   };
   w.P = {
-    market_s: [0, 49], orin: [-12, 58], glass: [13, 55], metal: [20, 70], candle: [-16, 74], square: [0, 82], kids: [-6, 66], kids2: [7, 64],
+    market_s: [0, 49], orin: [-12, 58], glass: [13, 55], metal: [20, 70], candle: [-16, 74], square: [0, 82], square_b: [4, 85], square_c: [-4.5, 96.5], kids: [-6, 66], kids2: [7, 64],
     hearth1: [-10, 88], hearth2: [10, 88], hearth3: [0, 95], stairs: [0, 42], court: [0, 0],
     king: [0, -36], king_side: [4.5, -37], king_front: [0, -31], king_door: [0, -23], king_door_in: [1.8, -26], pillar: [8, -18], guard1: [-3.5, -21], guard2: [4, -20.5],
     window_arch: [28, -4], regent_door: [40, -14], regent_desk: [46, -23], regent_drawer: [52, -19], regent_shelf: [41.5, -28], regent_s: [44, -17], regent_p: [50, -27],

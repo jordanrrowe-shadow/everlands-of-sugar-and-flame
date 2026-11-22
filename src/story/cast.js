@@ -9,6 +9,8 @@ export const CAST = {
   metal:   { name: 'Ironwright Brand', style: 'man', hair: 0x4b2c20, skin: 0xb9805c, top: 0x55413a, legs: 0x3a2a24, h: 1.1 },
   candle:  { name: 'Candle-maker Lumi', style: 'woman', hair: 0xf06aa0, skin: 0xedc09c, top: 0xd98a2b, skirt: 0xa6521c },
   dancer:  { name: 'Flame Dancer', style: 'girl', hair: 0xf2b441, skin: 0xe0aa80, top: 0xe2572b, skirt: 0xf08a2e },
+  dancer2: { name: 'Flame Dancer', style: 'girl', hair: 0xd9632b, skin: 0xd9a680, top: 0xf08a2e, skirt: 0xe2572b },
+  dancer3: { name: 'Shadow Caster', style: 'man', hair: 0x4a2c20, skin: 0xc9906a, top: 0x8a3a2a, legs: 0x4a2a22 },
   child1:  { name: 'Market Child', style: 'child', hair: 0xe98a3a, skin: 0xedc09c, top: 0xd94c2b, legs: 0x6b3a2a },
   child2:  { name: 'Market Child', style: 'child', hair: 0xf5d06a, skin: 0xd99f77, top: 0xe9a23b, legs: 0x6b3a2a },
   king:    { name: 'The King', style: 'elder', hair: 0xb9b0a6, skin: 0xe4c2a6, top: 0x8e1b2c, skirt: 0x6a1220, trim: 0xe9b949, crown: 1 },

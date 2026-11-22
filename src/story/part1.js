@@ -57,7 +57,8 @@ const ch1 = {
       ], retry: 1 },
       { give: 'lantern' }, { set: 'c1_lantern' },
     ] },
-    { id: 'dancer', at: 'square', talk: (f) => f.c1_dance ? [['Flame Dancer', 'You always cheer the loudest, Highness.']] : !f.c1_lantern ? [['Flame Dancer', 'We begin when the square is ready. Soon!']] : [
+    { id: 'dancer2', at: 'square_b', pose: 'dance' }, { id: 'dancer3', at: 'square_c' },
+    { id: 'dancer', at: 'square', pose: 'dance', talk: (f) => f.c1_dance ? [['Flame Dancer', 'You always cheer the loudest, Highness.']] : !f.c1_lantern ? [['Flame Dancer', 'We begin when the square is ready. Soon!']] : [
       'Two dancers spin beneath streaming ribbons of fire while a third casts their shadows onto a pale screen.',
       'A village appears, huddled and dark on a cold mountain. A small dragon’s shadow creeps down from the peaks. A child’s shadow holds out a hand.',
       ['Flame Dancer', 'The dragon breathed — and now we need our hearths! Highness, will you light them?'],
@@ -227,7 +228,7 @@ const ch2 = {
     { id: 'spy', at: 'room_spy', label: 'Mother’s spyglass', prop: 'spyglass', if: (f) => f.c2_note && !f.p_spy, script: [{ set: 'p_spy' }, 'Her mother’s small brass spyglass, which she was allowed to keep on the condition that she never pointed it out to sea.', { give: 'spyglass' }, { go: 'packed' }] },
     { id: 'cape', at: 'room_cape', label: 'Flying cape', if: (f) => f.p_flask && f.p_buns && f.p_coins && f.p_spy && !f.c2_end, script: [
       'Crimson, embroidered along the hem with small gold flames, and light as a breath, because nothing in Emberland needs to be heavier. She fastens it at her throat and thinks no more about it.',
-      'When the bells come, she counts all twelve.', { set: 'c2_end' }] },
+      'When the bells come, she counts all twelve.', { set: 'cape' }, { set: 'c2_end' }] },
   ],
   scripts: { packed: [{ if: all('p_flask', 'p_buns', 'p_coins', 'p_spy'), then: [[A, 'That’s the whole plan. Now the cape.']] }] },
 };
@@ -241,6 +242,7 @@ const wardenBanter = [
   [W2, 'I’m on harbor duty that night. Tell her I’m heartbroken.'],
 ];
 const ch3 = {
+  decor: [{ prop: 'bun', at: 'bun_stone', if: 'c3_bun', dy: 0.3 }],
   n: 3, title: 'Beyond the Dragon Mountains', world: 'ember', time: 'night', spawn: 'side_door',
   intro: 'Emberland did not go dark at night. It only changed color.',
   steps: [
