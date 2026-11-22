@@ -467,6 +467,10 @@ export class Game {
     const fx = this.S.opt.fx !== false && !this.zone && !W.sea, want = { snow: fx && W.name === 'sugar' ? smooth(-84, -112, p.z) : 0, petal: fx && W.name === 'sugar' && p.z > -80 && p.z < 104 ? 0.85 : 0, ash: fx && W.name === 'ember' ? smooth(-88, -130, p.z) : 0 };
     for (const k in F) { const u = F[k].material.uniforms; u.uAmt.value = lerp(u.uAmt.value, want[k], Math.min(1, dt * 1.2)); F[k].visible = u.uAmt.value > 0.02; if (F[k].visible) u.uCam.value.set(p.x, p.y, p.z); }
   }
+  updatePin(dt) { // a bobbing gold marker over whatever the action button would act on
+    if (!this.pin) { this.pin = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd24a).multiplyScalar(2), fog: false })); this.pin.scale.set(1, 1.5, 1); this.scene.add(this.pin); }
+    const a = this.pinAt, on = !!a && !this.busy && !this.riding && !this.zone; this.pin.visible = on; if (on) { this.pin.position.set(a[0], this.H(a[0], a[2]) + a[1] + Math.sin(this.t * 4) * 0.12, a[2]); this.pin.rotation.y += dt * 3; }
+  }
   // ── torches: after dark, every unlit torch can be lit with Amber's (or Kim's) flame ──
   nightNow() { return this.S.time === 'night' || this.S.time === 'dusk'; }
   markTorches() { const W = this.W; if (!W.torches || W.torchGroup) return; W.torchGroup = new THREE.Group(); for (const t of W.torches) { t.m = new THREE.Mesh(GEO.cone, mat(t.pink ? 0xff8ab8 : 0xffa030, true)); t.m.position.set(t.x, t.y + 0.45, t.z); t.m.scale.set(0.3, 0.9, 0.3); t.m.visible = false; const c = new THREE.Mesh(GEO.cone, mat(t.pink ? 0xffd0e4 : 0xffe08a, true)); c.scale.set(0.5, 0.6, 0.5); c.position.y = -0.2; t.m.add(c); W.torchGroup.add(t.m); } W.group.add(W.torchGroup); }
@@ -577,7 +581,7 @@ export class Game {
     // people
     for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < 7 && !this.riding && n.id !== 'warden1' && n.id !== 'warden2') n.tyaw = Math.atan2(p.x - n.x, p.z - n.z); n.yaw += wrap((n.tyaw ?? n.yaw) - n.yaw) * Math.min(1, dt * 5); n.model.rotation.y = n.yaw; this.poseNpc(n); n.model.visible = d < 110; if (d < 55) { n.model.userData.pose = this.busy && d < 6 ? 'talk' : null; animPerson(n.model, dt, !!n.walk); } }
     if (this.comp) this.updateComp(dt);
-    this.updateRuby(dt); this.updateFire(dt); this.updateTorches(dt); this.updateLamps(dt); this.updateWeather(dt); this.updateSound(dt, mx, my); this.updateTira(dt); this.updateHint(dt);
+    this.updateRuby(dt); this.updateFire(dt); this.updateTorches(dt); this.updateLamps(dt); this.updateWeather(dt); this.updatePin(dt); this.updateSound(dt, mx, my); this.updateTira(dt); this.updateHint(dt);
     for (const t of this.things) if (t.prop) t.prop.rotation.y += dt * (t.def.prop === 'turtle' || t.def.prop === 'cat' ? 0 : 1.2);
     for (const [, m] of this.lits) { const s = 1 + Math.sin(this.t * 9 + m.position.x) * 0.15; m.scale.y = (m.scale.x < 0.5 ? 0.8 : 1.3) * s; }
     for (let i = this.sparks.length - 1; i >= 0; i--) { const m = this.sparks[i], u = m.userData, a = m.geometry.attributes.position; u.age += dt; for (let j = 0; j < a.count; j++) a.setXYZ(j, a.getX(j) + u.vel[j * 3] * dt, a.getY(j) + u.vel[j * 3 + 1] * dt, a.getZ(j) + u.vel[j * 3 + 2] * dt); a.needsUpdate = true; m.material.opacity = 0.9 * (1 - u.age / u.life); if (u.age > u.life) { this.scene.remove(m); this.sparks.splice(i, 1); } }
@@ -717,13 +721,15 @@ export class Game {
     if (tapped && !UI.input.flame && !this.flameT) this.castBolt();
     if (fl) { const hx = p.x + Math.sin(p.yaw) * 0.5, hz = p.z + Math.cos(p.yaw) * 0.5, s = 0.16 + Math.sin(this.t * 20) * 0.03 + Math.min(0.22, (this.flameT || 0) * 0.14); this.flame.position.set(hx, p.y + 1.25, hz); this.flame.scale.set(s, s * 1.7, s); this.flame.material.color.set(p.who === 'kim' ? 0xff8ab8 : 0xffc040); this.flameLight.position.copy(this.flame.position); if (p.model.userData.armR) p.model.userData.armR.rotation.x = -1.3; this.flameT = (this.flameT || 0) + dt; if (!this.flameS || this.t - this.flameS > 0.5) { this.flameS = this.t; this.sound.sfx('flame'); } if (!flameT && this.flameT > 0.6) { const tc = this.nearTorch(); if (tc) { this.lightTorch(tc); this.flameT = 0.15; } }
       if (flameT && this.flameT > 0.8) { this.flameT = 0; this.flame.visible = false; this.flameLight.intensity = 0; this.sound.sfx('lit'); const q = flameT.def.self ? [p.x, p.z] : W.P[flameT.def.at]; this.puff(q[0], this.H(q[0], q[1]) + 1.8, q[1], p.who === 'kim' ? 0xff8ab8 : 0xffb030, 18, 0.6, 2.5); return this.run(flameT.def.script); } } else if (this.flameT > 0) { const h = this.flameT; this.flameT = 0; if (h < 0.3) this.castBolt(); else if (h > 1.0) this.flare(); }
+    UI.setHold(fl ? Math.min(1, (this.flameT || 0) / 1.0) : 0);
     // whistle
     if (UI.hit('whistle') && this.canWhistle()) { this.sound.sfx('whistle'); const s = this.chapter.whistle?.(f); if (s) return this.run(s); if (this.freeRide()) return this.run([{ ruby: 'arrive', at: 'player' }, { fn: (g) => { g.mount(); g.ruby.pitch = 0.45; UI.tip('Steer with the left thumb. ▽ Land when you are low over open ground.', 6); } }]); }
     // talk / examine
     if (best && !best.key && cmp?.goal && this.curStep()?.lead && best.def.label === cmp.goal.label && Math.hypot(cmp.x - p.x, cmp.z - p.z) < 9 && p.ground) { cmp.goal = null; return this.run(best.def.script); }
-    if (best) { const isNpc = !!best.model && best.key; UI.setAct(isNpc ? 'Talk · ' + best.name : best.def.label); if (UI.hit('act')) { if (isNpc) { const t = best.def.talk, s = typeof t === 'function' ? t(f, this) : t; best.face(p.x, p.z); if (s) return this.run(s); } else return this.run(best.def.script); } }
-    else if (this.nearPlay()) { const s = this.nearPlay(); UI.setAct('Play · ' + s.label); if (UI.hit('act')) return this.run([{ fn: (g) => g.play(s) }]); }
-    else if (this.nearDoor() && p.ground) { const d = this.nearDoor(); UI.setAct(d.label || 'Go inside'); if (UI.hit('act')) return this.enterDoor(d); }
+    this.pinAt = null;
+    if (best) { const isNpc = !!best.model && best.key; UI.setAct(isNpc ? 'Talk · ' + best.name : best.def.label); const d0 = best.def, q0 = isNpc ? [best.x, best.z] : d0.kimTalk && cmp ? [cmp.x, cmp.z] : d0.at === 'player' ? null : W.P[d0.at]; if (q0) this.pinAt = [q0[0], isNpc || d0.kimTalk ? 2.5 : 1.7, q0[1]]; if (UI.hit('act')) { if (isNpc) { const t = best.def.talk, s = typeof t === 'function' ? t(f, this) : t; best.face(p.x, p.z); if (s) return this.run(s); } else return this.run(best.def.script); } }
+    else if (this.nearPlay()) { const s = this.nearPlay(); UI.setAct('Play · ' + s.label); this.pinAt = [s.at[0], 4.2, s.at[1]]; if (UI.hit('act')) return this.run([{ fn: (g) => g.play(s) }]); }
+    else if (this.nearDoor() && p.ground) { const d = this.nearDoor(); UI.setAct(d.label || 'Go inside'); this.pinAt = [d.x, 2.6, d.z]; if (UI.hit('act')) return this.enterDoor(d); }
     else { UI.setAct(this.ruby.state === 'idle' && this.freeRide() && Math.hypot(p.x - this.ruby.x, p.z - this.ruby.z) < 8 ? 'Ride Ruby' : null); if (UI.hit('act') && this.ruby.state === 'idle' && this.freeRide() && Math.hypot(p.x - this.ruby.x, p.z - this.ruby.z) < 8) { this.mount(); this.ruby.pitch = 0.45; } }
   }
   reach(q, r) { // how close counts as "there": generous, and measured from the edge of any obstacle the point sits in or beside

@@ -87,7 +87,12 @@ export function setGoal(chap, text, pulse) { $('chap').textContent = chap; $('go
 export function setTimer(label, v) { const m = $('meter'); show(m, !!label); if (!label) return; m.classList.remove('heat'); $('meterLabel').textContent = label; $('meterFill').style.width = Math.round(Math.max(0, Math.min(1, v)) * 100) + '%'; }
 export function setMeter(type, v) { const m = $('meter'); show(m, !!type); if (!type) return; m.classList.toggle('heat', type === 'heat'); $('meterLabel').textContent = type === 'cold' ? (v < 0.3 ? 'Shivering' : 'Cold') : (v < 0.3 ? 'Far too hot' : 'Too warm'); $('meterFill').style.width = Math.round(v * 100) + '%'; }
 export function setHearts(n, show, hurt) { const h = $('hearts'); showB(h, show); if (!show) return; if (h.children.length !== 3) h.innerHTML = '<i></i><i></i><i></i>'; [...h.children].forEach((e, i) => e.classList.toggle('off', i >= n)); if (hurt) { h.classList.remove('hurt'); void h.offsetWidth; h.classList.add('hurt'); } }
-export function setAct(label) { const b = $('bAct'); show(b, !!label); if (label && b.textContent !== label) b.textContent = label; }
+const ACTS = [[/^Talk · (.*)$/, '💬', 'Talk'], [/^Play · (.*)$/, '⭐', 'Play'], [/^Ride (.*)$/, '🐉', 'Ride'], [/^(Go inside)$/, '🚪', 'Enter'], [/^(Climb the tower)$/, '🗼', 'Climb'], [/^(Go outside|Climb down)$/, '🚪', 'Leave'], [/^(Read .*)$/, '📜', 'Read'], [/^(Sit .*)$/, '🪑', 'Sit'], [/^(Leave .*|Write .*)$/, '✋', 'Do']];
+let actLabel = null;
+export function setAct(label) { const b = $('bAct'), chip = $('actChip'); show(b, !!label); show(chip, !!label); if (!label || label === actLabel) { if (!label) actLabel = null; return; } actLabel = label;
+  let icon = '🔍', verb = 'Look', sub = label; for (const [re, ic, vb] of ACTS) { const m = label.match(re); if (m) { icon = ic; verb = vb; sub = m[1]; break; } }
+  b.firstElementChild.textContent = icon; b.lastElementChild.textContent = verb; chip.textContent = sub; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
+export function setHold(v) { $('bFlame').style.setProperty('--hold', Math.round(v * 360) + 'deg'); }
 export function setButtons(o) { showB($('bJump'), o.jump); showB($('bFlame'), o.flame); $('bFlame').classList.toggle('kim', !!o.kim); showB($('bWhistle'), o.whistle); showB($('bBoost'), o.boost); showB($('bLand'), o.land); showB($('bMed'), o.med); }
 export function playUI(on) { show($('hud'), on); show($('controls'), on); }
 export function controlsVisible(on) { show($('controls'), on); }
