@@ -7,6 +7,10 @@ import { CAST, CODEX } from './story/cast.js';
 import p1 from './story/part1.js'; import p2 from './story/part2.js'; import p3 from './story/part3.js';
 import * as UI from './ui.js';
 import { Sound } from './audio.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const KEY = 'everlands.save.v1', BUILD = { ember: buildEmber, sugar: buildSugar, sea: buildSea };
 const TIPS = {
@@ -27,7 +31,10 @@ export class Game {
     r.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
     this.scene = new THREE.Scene(); this.scene.fog = new THREE.FogExp2(0xffffff, 0.003);
     this.cam = new THREE.PerspectiveCamera(58, 1, 0.3, 1800);
-    this.hemi = new THREE.HemisphereLight(0xffffff, 0x886655, 1); this.sun = new THREE.DirectionalLight(0xffffff, 1); this.sun.position.set(-0.5, 1, 0.4); this.scene.add(this.hemi, this.sun);
+    this.hemi = new THREE.HemisphereLight(0xffffff, 0x886655, 1); this.sun = new THREE.DirectionalLight(0xffffff, 1); this.sun.position.set(-0.5, 1, 0.4); this.scene.add(this.hemi, this.sun, this.sun.target);
+    // soft sun shadows that follow the player, and a gentle glow on lava, lamps and Ruby's scales
+    r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; this.sun.castShadow = true; const sh = this.sun.shadow; sh.mapSize.set(2048, 2048); sh.camera.left = sh.camera.bottom = -42; sh.camera.right = sh.camera.top = 42; sh.camera.near = 1; sh.camera.far = 260; sh.bias = -0.0006; sh.normalBias = 0.6;
+    this.composer = new EffectComposer(r); this.composer.addPass(new RenderPass(this.scene, this.cam)); this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.42, 0.7, 0.86); this.composer.addPass(this.bloom); this.composer.addPass(new OutputPass());
     const dome = new THREE.SphereGeometry(1500, 24, 12); dome.setAttribute('color', new THREE.BufferAttribute(new Float32Array(dome.attributes.position.count * 3), 3));
     this.dome = new THREE.Mesh(dome, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })); this.scene.add(this.dome);
     const sp = []; for (let i = 0; i < 500; i++) { const a = Math.random() * 6.28, e = Math.random() * 1.3 + 0.15; sp.push(Math.cos(a) * Math.cos(e) * 1400, Math.sin(e) * 1400, Math.sin(a) * Math.cos(e) * 1400); }
@@ -41,7 +48,7 @@ export class Game {
     UI.initInput(canvas); this.journal = UI.initJournal(this);
     addEventListener('resize', () => this.resize()); addEventListener('orientationchange', () => setTimeout(() => this.resize(), 250)); this.resize();
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.save(); });
-    this.last = performance.now(); const loop = (now) => { requestAnimationFrame(loop); const dt = Math.min(0.05, (now - this.last) / 1000); this.last = now; for (let i = 0; i < (this.warp || 1); i++) this.update(dt); this.renderer.render(this.scene, this.cam); }; requestAnimationFrame(loop);
+    this.last = performance.now(); const loop = (now) => { requestAnimationFrame(loop); const dt = Math.min(0.05, (now - this.last) / 1000); this.last = now; for (let i = 0; i < (this.warp || 1); i++) this.update(dt); if (this.S.opt.fx !== false) this.composer.render(dt); else this.renderer.render(this.scene, this.cam); }; requestAnimationFrame(loop);
   }
   get f() { return this.S.flags; }
   get chapter() { return this.chapters[this.S.ch - 1]; }
@@ -49,7 +56,7 @@ export class Game {
   blank() { return { ch: 1, max: 1, flags: {}, leads: [], items: {}, codex: [], vis: {}, world: 'ember', time: 'day', pos: null, opt: { sound: true, invert: false, fast: false } }; }
   resize() { // one renderer budget for every screen, from an iPhone to a 12.9" iPad
     const w = innerWidth, h = innerHeight, a = w / h; this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2, Math.sqrt(2.8e6 / (w * h))));
-    this.renderer.setSize(w, h, false); this.cam.aspect = a; this.cam.fov = a < 0.8 ? 74 : a < 1.6 ? 64 : 58; this.cam.updateProjectionMatrix(); this.camDist = a < 0.8 ? 8.5 : 7.5; }
+    this.renderer.setSize(w, h, false); if (this.composer) { this.composer.setPixelRatio(this.renderer.getPixelRatio()); this.composer.setSize(w, h); } this.cam.aspect = a; this.cam.fov = a < 0.8 ? 74 : a < 1.6 ? 64 : 58; this.cam.updateProjectionMatrix(); this.camDist = a < 0.8 ? 8.5 : 7.5; }
 
   // ───────── saving ─────────
   hasSave() { try { return !!localStorage.getItem(KEY); } catch { return false; } }
@@ -88,6 +95,7 @@ export class Game {
   // ───────── world / sky ─────────
   async enterWorld(name, time) {
     if (!this.worlds[name]) { this.worlds[name] = BUILD[name](); await wait(0); }
+    this.worlds[name].group.traverse((o) => { if (o.isMesh && !o.userData.sh) { o.userData.sh = 1; const lit = o.material.isMeshLambertMaterial; o.receiveShadow = lit; o.castShadow = lit && !(o.geometry.type === 'PlaneGeometry'); } });
     for (const k in this.worlds) { const g = this.worlds[k].group; if (k === name) this.scene.add(g); else this.scene.remove(g); }
     this.S.world = name; this.clearNpcs(); this.inside.clear(); this.setTime(time || this.S.time);
     this.sound.mood = name;
@@ -286,6 +294,7 @@ export class Game {
     if (this.council) { const C = this.council; C.ds.forEach((x) => { x.a += dt * 0.35; x.d.position.set(C.c[0] + Math.sin(x.a) * 44, C.c[1] + Math.sin(x.a * 2) * 3, C.c[2] + Math.cos(x.a) * 44); x.d.rotation.y = x.a + Math.PI / 2; x.d.rotation.z = -0.3; animDragon(x.d, dt, true); }); if (this.ruby.state === 'council') { const r = this.ruby; r.ca = (r.ca ?? 0) + dt * 0.35; r.x = C.c[0] + Math.sin(r.ca) * 44; r.z = C.c[2] + Math.cos(r.ca) * 44; r.y = C.c[1]; r.yaw = r.ca + Math.PI / 2; r.bank = -0.3; r.pitch = 0; } }
     for (const m of this.fxs) { if (m.userData.crown) m.rotation.y += dt * 0.5; else { const s = m.userData.src, C = this.council.c, top = C[1] + 60, hgt = Math.max(1, top - s.y); m.position.set(lerp(s.x, C[0], 0.5), s.y + hgt / 2, lerp(s.z, C[2], 0.5)); m.scale.set(1.2, Math.hypot(hgt, Math.hypot(C[0] - s.x, C[2] - s.z)), 1.2); m.lookAt(C[0], top, C[2]); m.rotateX(Math.PI / 2); } }
     if (this.rail) { this.rail.t = Math.min(1, this.rail.t + dt / this.rail.dur); this.rail.f(this.rail.t); } else this.updateCam(dt);
+    { const fx = this.S.opt.fx !== false, c = this.riding ? this.ruby : p, night = this.S.time === 'night'; this.sun.castShadow = fx && !this.W.sea; this.sun.target.position.set(c.x, c.y, c.z); this.sun.position.set(c.x - 45, c.y + 90, c.z + 36); this.bloom.strength = night ? 0.75 : this.S.world === 'sugar' ? 0.26 : 0.42; this.bloom.threshold = this.S.world === 'sugar' ? 0.93 : 0.86; }
     this.dome.position.copy(this.cam.position); this.stars.position.copy(this.cam.position);
     if (free && !this.riding && !this.mode) this.interact(dt); else if (!this.riding) UI.setAct(null);
     this.hudButtons(free);

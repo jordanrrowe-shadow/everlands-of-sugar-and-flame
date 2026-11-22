@@ -38,6 +38,7 @@ export function makePerson(L) {
   if (L.collar) g.add(part(GEO.sph, L.collar, 0, 1.44, 0, 0.3, 0.1, 0.26));
   if (L.style === 'guard') { g.add(part(GEO.cyl, 0x6b4a2a, 0.42, 1.2, 0.1, 0.025, 2.3, 0.025), part(GEO.cone, 0xcfd3d6, 0.42, 2.45, 0.1, 0.07, 0.24, 0.07)); }
   if (L.tira) { g.add(part(GEO.box, 0xc9a0dc, -0.36, 0.95, 0.05, 0.18, 0.26, 0.26)); const t = makeCritter('tira'); t.position.set(-0.36, 1.1, 0.05); t.scale.setScalar(0.6); g.add(t); }
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   const h = (L.h || 1) * (L.style === 'child' ? 0.68 : 1); g.scale.setScalar(h); u.h = h;
   return g;
 }
@@ -75,6 +76,7 @@ export function makeDragon(accent) {
     for (const [x, y, z] of [[5.6, 0.7, 1.4], [6.6, 0.3, -0.5], [4.6, 0, -2.6], [3.4, 0.5, 1.2]]) w.add(R(x, y, z, 0.17));
     g.add(w); if (sx < 0) u.wingL = w; else u.wingR = w;
   }
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return g;
 }
 export function animDragon(d, dt, flying) {
