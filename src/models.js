@@ -1,8 +1,11 @@
 // Procedural characters, the dragon, critters and small props.
 import * as THREE from 'three';
 import { GEO, part, mat } from './kit.js';
+import { peopleReady, makeRig, animRig } from './people.js';
 
-export function makePerson(L) {
+export function makePerson(L) { return peopleReady() ? makeRig(L) : makeSimple(L); }
+
+function makeSimple(L) {
   const g = new THREE.Group(), u = (g.userData = { t: Math.random() * 6 });
   const skirted = L.style === 'girl' || L.style === 'woman' || L.style === 'elder';
   const skin = L.skin || 0xf0c8a8;
@@ -44,6 +47,7 @@ export function makePerson(L) {
   return g;
 }
 export function animPerson(p, dt, moving) {
+  if (p.userData.rig) return animRig(p, dt, moving);
   const u = p.userData; u.t += dt * (moving ? 10 : 2);
   const a = moving ? Math.sin(u.t) * 0.7 : Math.sin(u.t) * 0.04;
   if (u.armL) { u.armL.rotation.x = a; u.armR.rotation.x = -a; }

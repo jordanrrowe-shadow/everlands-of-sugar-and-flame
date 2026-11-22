@@ -72,3 +72,12 @@ The four paintings in `public/art` are the authors' own concept art.
   and tinted by the game's own palette. Buildings and props get a triplanar plaster/stone grain from the same source.
 - Soft sun shadows, sky-lit reflections, animated water, wind-blown instanced grass, drifting embers, a procedural cloud deck and bloom.
 - "Shadows & glow" in the journal settings turns the heavier effects off; resolution also scales down automatically if the frame rate drops.
+
+## Models and credits
+
+All third-party art is CC0 (public domain):
+
+- Quaternius — Medieval Village MegaKit, Stylized Nature MegaKit, Universal Base Characters, Modular Character Outfits (Fantasy), Universal Animation Library.
+- Poly Haven — ground, plaster, roof-tile and wood textures.
+
+Voices are generated with ElevenLabs; assignments are in `tools/cast-voices.sh`.

@@ -5,6 +5,7 @@ import { makePerson, animPerson, makeDragon, animDragon, makeProp, makeRing } fr
 import { GEO, mat, part, rnd } from './kit.js';
 import { U, makeGrass, makeMotes, makeClouds } from './gfx.js';
 import { loadPack, WORLD_PACKS } from './assets.js';
+import { loadPeople } from './people.js';
 import { CAST, CODEX } from './story/cast.js';
 import p1 from './story/part1.js'; import p2 from './story/part2.js'; import p3 from './story/part3.js';
 import * as UI from './ui.js';
@@ -98,6 +99,7 @@ export class Game {
 
   // ───────── world / sky ─────────
   async enterWorld(name, time) {
+    await loadPeople();
     if (!this.worlds[name]) { await Promise.all((WORLD_PACKS[name] || []).map(loadPack)); this.worlds[name] = BUILD[name](); await wait(0); }
     this.worlds[name].group.traverse((o) => { if (o.isMesh && !o.userData.sh) { o.userData.sh = 1; const lit = !!o.material.isMeshStandardMaterial; o.receiveShadow = lit; o.castShadow = lit && !o.userData.ground; } });
     for (const k in this.worlds) { const g = this.worlds[k].group; if (k === name) this.scene.add(g); else this.scene.remove(g); }
@@ -227,7 +229,7 @@ export class Game {
   unride(at, silent) {
     const r = this.ruby, p = this.player; if (!this.riding) return; this.riding = false;
     r.model.remove(p.model); p.model.scale.setScalar(p.model.userData.h); this.scene.add(p.model);
-    if (this.rideComp) { r.model.remove(this.rideComp.model); this.rideComp.model.scale.setScalar(this.rideComp.model.userData.h); this.scene.add(this.rideComp.model); this.comp = this.rideComp; this.rideComp = null; }
+    p.model.userData.pose = null; if (this.rideComp) { this.rideComp.model.userData.pose = null; r.model.remove(this.rideComp.model); this.rideComp.model.scale.setScalar(this.rideComp.model.userData.h); this.scene.add(this.rideComp.model); this.comp = this.rideComp; this.rideComp = null; }
     const pt = at ? this.pt(at) : [r.x, r.z]; this.place(pt[0], pt[1]); if (this.comp) this.placeComp();
     if (this.solo) { r.state = 'council'; } else if (!silent) { const rp = [pt[0] + 6, pt[1] + 5]; this.rubyAt = rp; this.rubyRest(rp); } this.solo = false; this.clearRings(); this.fogOverride = null; this.camPitch = 0.3;
   }
@@ -279,7 +281,7 @@ export class Game {
     if (best) yaw = Math.atan2(best[0], best[1]); if (!src) p.tyaw = p.yaw = yaw; else p.yaw = yaw;
     const m = new THREE.Mesh(GEO.sph, new THREE.MeshBasicMaterial({ color: new THREE.Color(kim ? 0xff7ab0 : 0xffa030).multiplyScalar(2.2) })), sc = kim ? 0.16 : 0.24 + Math.min(0.14, (this.S.sparks || 0) / 200); m.scale.setScalar(sc);
     const bolt = { x: p.x + Math.sin(yaw) * 0.6, y: p.y + 1.25, z: p.z + Math.cos(yaw) * 0.6, yaw, left: range, kim, mesh: m, sc, vy: best ? (ty - (p.y + 1.25)) / (bd / 28) : 0, tr: 0 }; m.position.set(bolt.x, bolt.y, bolt.z); this.scene.add(m); this.bolts.push(bolt);
-    this.sound.sfx('flame'); this.sound.tone(kim ? 900 : 520, 0.25, 'sawtooth', 0.05, kim ? 1400 : 220); if (!src && p.model.userData.armR) p.model.userData.armR.rotation.x = -1.5;
+    this.sound.sfx('flame'); this.sound.tone(kim ? 900 : 520, 0.25, 'sawtooth', 0.05, kim ? 1400 : 220); (src ? src.model : p.model).userData.once?.('Spell_Simple_Shoot'); if (!src && p.model.userData.armR) p.model.userData.armR.rotation.x = -1.5;
     if (!src && this.comp?.id === 'kim' && this.S.ch >= 15) setTimeout(() => { if (this.comp && !this.busy) this.castBolt(this.comp); }, 380);
   }
   flare() { if (!this.fireOK()) return; const p = this.player, kim = p.who === 'kim', r = kim ? 3.5 : 6.5; this.sound.sfx('lit'); this.sound.sfx('roar'); this.shake = 0.3; for (let i = 0; i < 3; i++) this.puff(p.x, p.y + 0.6 + i * 0.5, p.z, kim ? 0xff8ab8 : 0xff8a20, 46, r * 1.6, 2.2, 1.1); for (const b of [...this.breaks]) if (Math.hypot(b.x - p.x, b.z - p.z) < r) this.smash(b); }
@@ -376,7 +378,7 @@ export class Game {
     if (free && !this.riding && !this.mode && UI.hit('med')) this.startMed();
     { const show = p.who === 'amber' && !this.riding && !this.rail && this.fireOK(); if (show !== this.hpShown || this.S.hp !== this.hpLast) { this.hpShown = show; this.hpLast = this.S.hp; UI.setHearts(this.S.hp ?? 3, show); } }
     // people
-    for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < 7 && !this.riding && n.id !== 'warden1' && n.id !== 'warden2') n.tyaw = Math.atan2(p.x - n.x, p.z - n.z); n.yaw += wrap((n.tyaw ?? n.yaw) - n.yaw) * Math.min(1, dt * 5); n.model.rotation.y = n.yaw; animPerson(n.model, dt, false); }
+    for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < 7 && !this.riding && n.id !== 'warden1' && n.id !== 'warden2') n.tyaw = Math.atan2(p.x - n.x, p.z - n.z); n.yaw += wrap((n.tyaw ?? n.yaw) - n.yaw) * Math.min(1, dt * 5); n.model.rotation.y = n.yaw; n.model.visible = d < 110; if (d < 55) { n.model.userData.pose = this.busy && d < 6 ? 'talk' : null; animPerson(n.model, dt, false); } }
     if (this.comp) this.updateComp(dt);
     this.updateRuby(dt); this.updateFire(dt);
     for (const t of this.things) if (t.prop) t.prop.rotation.y += dt * (t.def.prop === 'turtle' || t.def.prop === 'cat' ? 0 : 1.2);
@@ -417,7 +419,7 @@ export class Game {
     if (free && UI.hit('jump') && p.ground) { p.vy = 8.6; p.ground = false; }
     if (!p.ground || p.y > h + 0.05) { p.vy -= 24 * dt; p.y += p.vy * dt; p.ground = false; if (p.y <= h) { const fell = p.vy; p.y = h; p.ground = true; p.vy = 0; if (fell < -3 && this.onBouncer(p.x, p.z)) { p.vy = 13.6; p.ground = false; p.y += 0.02; this.sound.sfx('boing'); } } }
     else p.y = h;
-    p.model.position.set(p.x, p.y, p.z); p.model.rotation.y = p.yaw; animPerson(p.model, dt, moving && p.ground);
+    p.model.userData.pose = this.mode === 'med' ? 'sit' : p.ground ? null : 'air'; p.model.position.set(p.x, p.y, p.z); p.model.rotation.y = p.yaw; animPerson(p.model, dt, moving && p.ground);
   }
   onBouncer(x, z) { for (const b of this.W.bouncers || []) if ((x - b[0]) ** 2 + (z - b[1]) ** 2 < b[2] * b[2]) return true; return false; }
   updateSled(dt, mx) { const p = this.player; this.sledV = Math.min(27, this.sledV + dt * 9); p.z += this.sledV * dt; p.x = clamp(p.x + mx * 13 * dt, -13, 13); p.y = this.H(p.x, p.z) + 0.2; p.yaw = mx * 0.5; p.model.position.set(p.x, p.y, p.z); p.model.rotation.set(-0.35, p.yaw, 0); if (this.comp) { this.comp.x = p.x + 3.4; this.comp.z = p.z + 4; } if (Math.random() < 0.5) this.puff(p.x, p.y, p.z - 0.5, 0xffffff, 2, 0.6, 1.5, 0.6); if (p.z > -101) { p.model.rotation.set(0, 0, 0); this.sledDone?.(); this.sledDone = null; } }
@@ -445,6 +447,7 @@ export class Game {
       if (UI.hit('land') && this.canLand()) { this.unride(); this.refresh(); this.save(); }
     }
     this.camYaw += wrap(r.yaw - this.camYaw) * Math.min(1, dt * 2.2);
+    if (!this.solo) for (const m of [this.player.model, this.rideComp?.model]) if (m) { m.userData.pose = 'sit'; animPerson(m, dt, false); }
   }
   canLand() { const r = this.ruby, W = this.W; if (W.sea || r.y - W.height(r.x, r.z) > 16) return false; const b = W.bounds; if (r.x < b[0] || r.x > b[1] || r.z < b[2] || r.z > b[3]) return false; const [cx, cz] = this.collide(r.x, r.z, 2); if (Math.hypot(cx - r.x, cz - r.z) > 0.5) return false; return this.chapter.free || Math.hypot(r.x, r.z - 140) < 34; }
   async cross() { this.busy++; const to = this.S.world === 'ember' ? 'sugar' : 'ember'; await UI.fade(true, to === 'sugar' ? 'Across the sea, to Sugarland' : 'Across the sea, to Emberland', true); await this.enterWorld(to, 'day'); const r = this.ruby; r.x = 215; r.z = 40; r.y = 60; r.yaw = -Math.PI / 2; this.camYaw = r.yaw; this.refresh(); await wait(1.2); await UI.fade(false); this.busy--; }
