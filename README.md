@@ -78,6 +78,15 @@ The four paintings in `public/art` are the authors' own concept art.
 - Soft sun shadows, sky-lit reflections, animated water, wind-blown instanced grass, drifting embers, a procedural cloud deck and bloom.
 - "Shadows & glow" in the journal settings turns the heavier effects off; resolution also scales down automatically if the frame rate drops.
 
+- A storybook finish: soft ink outlines (`src/ink.js`), firelight from the nearest torches and hearths, snow, petals and ash, swaying capes and hair.
+
+## What would take it further
+
+The world, Ruby and the cake houses are assembled from simple shapes in code, and the people are recoloured free models.
+The largest remaining step up in quality is authored 3D art: sculpted and rigged models of Amber, Kim and Ruby from the
+character sheet (`docs/art`), custom animation (sitting, sleeping, hugging, facial expression), and modelled hero buildings.
+Those need a 3D artist; the code already loads `.glb` models, so they can be dropped in when they exist.
+
 ## Models and credits
 
 All third-party art is CC0 (public domain):

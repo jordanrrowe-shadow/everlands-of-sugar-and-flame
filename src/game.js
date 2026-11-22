@@ -196,8 +196,8 @@ export class Game {
   autoBg() {
     const W = this.W, p = this.player, t = this.S.time, P = W.P, near = (k, r) => P[k] && Math.hypot(p.x - P[k][0], p.z - P[k][1]) < r; if (this.chapter.cutBg) return this.chapter.cutBg(this.f, this);
     if (W.sea) return t === 'night' ? 'sea' : 'ship';
-    if (W.name === 'ember') { if (near('king', 10)) return 'kingroom'; if (near('overlook', 24)) return 'overlook'; if (near('room_desk', 13)) return 'room'; if (p.z > 30) return t === 'night' ? 'terrace' : 'market'; if (near('terrace', 16) || near('high_king', 14)) return t === 'day' ? 'balcony' : 'terrace'; return t === 'night' ? 'terrace' : t === 'dusk' && p.z < -46 ? 'balcony' : 'hall'; }
-    if (near('wtable', 11)) return 'workshop'; if (near('house_s', 13) || near('cradle', 11)) return 'home'; if (near('praline', 9)) return 'shop'; if (near('choc_shore', 26)) return 'choclake'; if (p.z > 112) return 'forest';
+    if (W.name === 'ember') { if (near('king', 10)) return 'kingroom'; if (near('overlook', 24)) return 'overlook'; if (near('square', 19)) return t === 'night' ? 'terrace' : 'square'; if (near('statue', 20)) return 'garden'; if (near('quay', 26)) return 'quay'; if (near('room_desk', 13)) return 'room'; if (p.z > 30) return t === 'night' ? 'terrace' : 'market'; if (near('terrace', 16) || near('high_king', 14)) return t === 'day' ? 'balcony' : 'terrace'; return t === 'night' ? 'terrace' : t === 'dusk' && p.z < -46 ? 'balcony' : 'hall'; }
+    if (near('wtable', 11)) return 'workshop'; if (near('house_s', 13) || near('cradle', 11)) return 'home'; if (near('praline', 9)) return 'shop'; if (near('choc_shore', 26)) return 'choclake'; if (p.z > 112) return 'forest'; if (p.z < -100) return 'summit'; if (near('meadows', 44)) return 'meadows';
     return t === 'night' || t === 'dusk' ? 'sugarnight' : 'sugar';
   }
   direct(run) {
