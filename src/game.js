@@ -7,6 +7,7 @@ import { U, makeGrass, makeMotes, makeClouds } from './gfx.js';
 import { loadPack, WORLD_PACKS } from './assets.js';
 import { loadPeople } from './people.js';
 import { playCut } from './cut.js';
+import { makeRoom, deckZone } from './rooms.js';
 import { spokenLine } from './story/speak.js';
 import { CAST, CODEX } from './story/cast.js';
 import p1 from './story/part1.js'; import p2 from './story/part2.js'; import p3 from './story/part3.js';
@@ -67,7 +68,7 @@ export class Game {
 
   // ───────── saving ─────────
   hasSave() { try { return !!localStorage.getItem(KEY); } catch { return false; } }
-  save() { if (this.busy || !this.started) return; const p = this.player; this.S.pos = this.riding ? null : [p.x, p.z, this.camYaw]; try { localStorage.setItem(KEY, JSON.stringify(this.S)); } catch { /* private mode */ } }
+  save() { if (this.busy || !this.started) return; const p = this.player; this.S.pos = this.riding ? null : this.zone ? [this.zone.back[0], this.zone.back[1], this.camYaw] : [p.x, p.z, this.camYaw]; try { localStorage.setItem(KEY, JSON.stringify(this.S)); } catch { /* private mode */ } }
   load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.ch) { this.S = Object.assign(this.blank(), s); return true; } } catch { /* ignore */ } return false; }
   erase() { try { localStorage.removeItem(KEY); } catch { /* ignore */ } }
   applyOptions() { this.sound.setOn(this.S.opt.sound); this.save(); }
@@ -118,13 +119,13 @@ export class Game {
     for (let i = 0; i < pos.count; i++) { const t = clamp(pos.getY(i) / 900 + 0.08, 0, 1); c.copy(bot).lerp(top, Math.pow(t, 0.7)); col.setXYZ(i, c.r, c.g, c.b); } col.needsUpdate = true;
     this.scene.fog.color.set(p[2]); this.baseFog = p[3]; this.sun.color.set(p[4]); this.sun.intensity = p[5] * 1.5; this.hemi.color.set(p[6]).lerp(new THREE.Color(0xffffff), 0.45); this.hemi.groundColor.set(p[2]).multiplyScalar(0.7); this.hemi.intensity = time === 'night' ? 1.25 : 1.7;
     this.stars.visible = time === 'night'; this.sound.night = time === 'night';
-    const night = time === 'night'; this.sun.intensity = p[5] * (night ? 1.3 : 1.75); this.hemi.intensity = night ? 0.75 : 0.5;
+    const night = time === 'night'; this.sun.intensity = p[5] * (night ? 1.3 : 1.75); this.hemi.intensity = night ? 0.75 : 0.5; this.sunBase = this.sun.intensity; this.hemiBase = this.hemi.intensity;
     { const es = new THREE.Scene(), d = new THREE.Mesh(this.dome.geometry, this.dome.material); es.add(d); const old = this.envRT; this.envRT = this.pmrem.fromScene(es, 0.04, 1, 3000); this.scene.environment = this.envRT.texture; this.scene.environmentIntensity = night ? 0.4 : 0.55; this.renderer.toneMappingExposure = this.S.world === 'sugar' && !night ? 0.86 : 1; old?.dispose(); }
     const cu = this.clouds.material.uniforms; cu.uCol.value.set(p[1]).lerp(new THREE.Color(0xffffff), night ? 0.05 : 0.6).multiplyScalar(night ? 0.35 : 1); cu.uShade.value.set(p[0]).lerp(new THREE.Color(p[1]), 0.5).multiplyScalar(night ? 0.3 : 0.92); cu.uCover.value = this.S.world === 'sugar' ? 0.5 : 0.56;
     if (this.grass.sugar) this.grass.sugar.material.uniforms.uLight.value = night ? 0.4 : time === 'day' ? 1 : 0.85;
   }
-  H(x, z) { return this.W.height(x, z); }
-  place(x, z) { const p = this.player; p.x = x; p.z = z; p.y = this.H(x, z); p.vy = 0; p.ground = true; }
+  H(x, z) { const Z = this.zone; return Z && Z.has(x, z) ? Z.y : this.W.height(x, z); }
+  place(x, z) { if (this.zone) this.dropZone(); const p = this.player; p.x = x; p.z = z; p.y = this.H(x, z); p.vy = 0; p.ground = true; }
   faceCam(to) { const W = this.W, p = this.player, t = to || this.chapter.face || (W.name === 'sea' ? [0, -50] : W.name === 'ember' ? [0, -30] : [0, 20]); this.camYaw = Math.atan2(t[0] - p.x, t[1] - p.z) || 0; this.camPitch = 0.26; p.yaw = p.tyaw = this.camYaw; this.camSnap = 2; }
   pt(at) { if (Array.isArray(at)) return at; if (at === 'player') return [this.player.x, this.player.z]; return this.W.P[at]; }
 
@@ -365,7 +366,7 @@ export class Game {
     const pts = []; for (let k = best; k >= 0; k = from[k]) pts.push([minX + (k % nx) * C, minZ + ((k / nx) | 0) * C]); pts.reverse(); if (bestH < 2.5) pts.push([x1, z1]); pts[0] = [x0, z0]; return pts;
   }
   showHint() {
-    if (this.busy || this.paused || !this.started) return; const st = this.curStep(), p = this.player; if (st?.hint) UI.tip(st.hint, 9);
+    if (this.busy || this.paused || !this.started) return; if (this.zone) { UI.tip(this.zone.deck ? 'Climb down first, then ask again.' : 'Step outside first, then ask again.', 5); return; } const st = this.curStep(), p = this.player; if (st?.hint) UI.tip(st.hint, 9);
     if (this.riding || this.flying || this.mode) return; const t = this.hintTarget(); if (!t) { if (this.canWhistle()) UI.tip('Try the ruby whistle. ♪', 6); return; }
     if (!this.trail) { const m = new THREE.InstancedMesh(GEO.sph, new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd870).multiplyScalar(2.2), transparent: true, opacity: 0.95, depthWrite: false }), 260); m.frustumCulled = false; const beam = part(GEO.cyl, 0xffe08a, 0, 0, 0, 0.16, 9, 0.16, true); beam.material = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd870).multiplyScalar(1.8), transparent: true, opacity: 0.55, depthWrite: false }); this.trail = { m, beam, pts: [] }; }
     const tr = this.trail; tr.t = 16; tr.target = t; tr.re = 0; this.scene.add(tr.m, tr.beam); this.sound.sfx('chime');
@@ -373,7 +374,7 @@ export class Game {
   updateTira(dt) { // Kim's little creature: sometimes rides in the bag, sometimes scurries about beside her
     const k = this.comp?.id === 'kim' ? this.comp : this.player.who === 'kim' ? this.player : null;
     if (!this.tira) { this.tira = { m: makeProp('tira'), out: false, t: 6, x: 0, z: 0, yaw: 0, tx: 0, tz: 0, w: 0 }; this.tira.m.visible = false; this.scene.add(this.tira.m); }
-    const T = this.tira; if (!k || this.riding || this.mode || this.room?.deck) { T.m.visible = false; T.out = false; return; }
+    const T = this.tira; if (!k || this.riding || this.mode || this.zone?.deck) { T.m.visible = false; T.out = false; return; }
     if ((T.t -= dt) <= 0) { T.out = !T.out; T.t = T.out ? 16 + Math.random() * 16 : 9 + Math.random() * 10; if (T.out) { T.x = k.x + 0.5; T.z = k.z; this.sound.tone(1500, 0.08, 'sine', 0.05, 1900); } }
     if (!T.out) { T.m.visible = false; return; }
     if ((T.w -= dt) <= 0 || Math.hypot(T.tx - k.x, T.tz - k.z) > 3.6) { T.w = 0.8 + Math.random() * 1.6; const a = Math.random() * 6.283, r = 1 + Math.random() * 1.6; T.tx = k.x + Math.sin(a) * r; T.tz = k.z + Math.cos(a) * r; }
@@ -470,6 +471,7 @@ export class Game {
     if (this.council) { const C = this.council; C.ds.forEach((x) => { x.a += dt * 0.35; x.d.position.set(C.c[0] + Math.sin(x.a) * 44, C.c[1] + Math.sin(x.a * 2) * 3, C.c[2] + Math.cos(x.a) * 44); x.d.rotation.y = x.a + Math.PI / 2; x.d.rotation.z = -0.3; animDragon(x.d, dt, true); }); if (this.ruby.state === 'council') { const r = this.ruby; r.ca = (r.ca ?? 0) + dt * 0.35; r.x = C.c[0] + Math.sin(r.ca) * 44; r.z = C.c[2] + Math.cos(r.ca) * 44; r.y = C.c[1]; r.yaw = r.ca + Math.PI / 2; r.bank = -0.3; r.pitch = 0; } }
     for (const m of this.fxs) { if (m.userData.crown) m.rotation.y += dt * 0.5; else { const s = m.userData.src, C = this.council.c, top = C[1] + 60, hgt = Math.max(1, top - s.y); m.position.set(lerp(s.x, C[0], 0.5), s.y + hgt / 2, lerp(s.z, C[2], 0.5)); m.scale.set(1.2, Math.hypot(hgt, Math.hypot(C[0] - s.x, C[2] - s.z)), 1.2); m.lookAt(C[0], top, C[2]); m.rotateX(Math.PI / 2); } }
     if (this.rail) { this.rail.t = Math.min(1, this.rail.t + dt / this.rail.dur); this.rail.f(this.rail.t); } else this.updateCam(dt);
+    { const k = this.zone?.room ? 0.28 : 1; this.sun.intensity = (this.sunBase ?? 1) * k; this.hemi.intensity = (this.hemiBase ?? 0.5) * (k < 1 ? 0.55 : 1); this.scene.environmentIntensity = k < 1 ? 0.3 : 1; }
     { const fx = this.S.opt.fx !== false, c = this.riding ? this.ruby : p, night = this.S.time === 'night'; this.sun.castShadow = fx && !this.W.sea; this.sun.target.position.set(c.x, c.y, c.z); this.sun.position.set(c.x - 45, c.y + 90, c.z + 36); this.bloom.strength = night ? 0.7 : 0.45; this.bloom.threshold = 1.02; this.bloom.radius = 0.55; }
     this.dome.position.copy(this.cam.position); this.stars.position.copy(this.cam.position); U.time.value = this.t;
     this.clouds.position.set(this.cam.position.x, Math.max(420, this.cam.position.y + 260), this.cam.position.z);
@@ -480,6 +482,11 @@ export class Game {
     if ((this.saveT = (this.saveT || 0) + dt) > 15) { this.saveT = 0; this.save(); }
   }
   collide(x, z, r = 0.45) {
+    const Z = this.zone; if (Z) { // inside a house or on a tower top
+      for (const c of Z.circles) { const dx = x - c[0], dz = z - c[1], d = Math.hypot(dx, dz), m = c[2] + r; if (d < m && d > 1e-4) { x = c[0] + dx / d * m; z = c[1] + dz / d * m; } }
+      for (const q of Z.boxes) { if (x > q[0] - r && x < q[1] + r && z > q[2] - r && z < q[3] + r) { const l = x - (q[0] - r), rr = (q[1] + r) - x, t = z - (q[2] - r), bb = (q[3] + r) - z, m = Math.min(l, rr, t, bb); if (m === l) x = q[0] - r; else if (m === rr) x = q[1] + r; else if (m === t) z = q[2] - r; else z = q[3] + r; } }
+      if (Z.deck) { const d = Math.hypot(x - Z.cx, z - Z.cz), m = Z.r - r; return d > m ? [Z.cx + (x - Z.cx) / d * m, Z.cz + (z - Z.cz) / d * m] : [x, z]; }
+      return [clamp(x, Z.x0, Z.x1), clamp(z, Z.z0, Z.z1)]; }
     const W = this.W, b = W.bounds;
     for (const c of W.circles) { const dx = x - c[0], dz = z - c[1], d = Math.hypot(dx, dz), m = c[2] + r; if (d < m && d > 1e-4) { x = c[0] + dx / d * m; z = c[1] + dz / d * m; } }
     for (const q of W.boxes) { if (x > q[0] - r && x < q[1] + r && z > q[2] - r && z < q[3] + r) { const l = x - (q[0] - r), rr = (q[1] + r) - x, t = z - (q[2] - r), bb = (q[3] + r) - z, m = Math.min(l, rr, t, bb); if (m === l) x = q[0] - r; else if (m === rr) x = q[1] + r; else if (m === t) z = q[2] - r; else z = q[3] + r; } }
@@ -550,13 +557,36 @@ export class Game {
   updateCam(dt) {
     const p = this.player, r = this.ruby; let tx, ty, tz, dist, pitch = this.camPitch;
     if (this.riding) { tx = r.x; ty = r.y + 2.5; tz = r.z; dist = 21; pitch = 0.22 - r.pitch * 0.5 + (this.camPitch - 0.3) * 0.5; }
-    else { tx = p.x; ty = p.y + 1.55; tz = p.z; dist = this.mode === 'sled' ? 9 : this.camDist; if (this.mode === 'sled') { this.camYaw = 0; pitch = 0.42; } }
+    else { tx = p.x; ty = p.y + 1.55; tz = p.z; dist = this.mode === 'sled' ? 9 : this.zone?.room ? 4.6 : this.camDist; if (this.mode === 'sled') { this.camYaw = 0; pitch = 0.42; } }
     const cp = Math.cos(pitch); let cx = tx - Math.sin(this.camYaw) * cp * dist, cy = ty + Math.sin(pitch) * dist, cz = tz - Math.cos(this.camYaw) * cp * dist;
-    const gh = this.W.height(cx, cz) + 0.6; if (cy < gh) cy = gh;
+    const Z = this.zone, W = this.W;
+    if (Z?.room) { cx = clamp(cx, Z.x0 - 0.3, Z.x1 + 0.3); cz = clamp(cz, Z.z0 - 0.3, Z.z1 + 0.3); cy = Math.min(cy, Z.ceil - 0.35); }
+    else if (!this.riding) { // keep the camera under roofs and on this side of tall walls
+      for (const r of W.roofs || []) if (p.x > r[0] && p.x < r[1] && p.z > r[2] && p.z < r[3] && p.y < r[4]) cy = Math.min(cy, r[4] - 0.45);
+      if (W.tall && !Z) { let k = 1; for (let s = 1; s <= 6 && k === 1; s++) { const q = s / 6, x = tx + (cx - tx) * q, z = tz + (cz - tz) * q, y = ty + (cy - ty) * q; for (const c of W.tall) if (y < c[3] && (x - c[0]) ** 2 + (z - c[1]) ** 2 < c[2] * c[2]) { k = Math.max(0.18, (s - 1) / 6); break; } } if (k < 1) { cx = tx + (cx - tx) * k; cz = tz + (cz - tz) * k; cy = ty + (cy - ty) * k + (1 - k) * 1.2; } } }
+    const gh = this.W.height(cx, cz) + 0.6; if (cy < gh && !Z?.room) cy = gh;
     if (this.shake > 0) { this.shake -= dt; cx += (Math.random() - 0.5) * this.shake; cy += (Math.random() - 0.5) * this.shake; }
     const k = this.camSnap > 0 ? 1 : Math.min(1, dt * 10); if (this.camSnap > 0) this.camSnap--; this.cam.position.set(lerp(this.cam.position.x, cx, k), lerp(this.cam.position.y, cy, k), lerp(this.cam.position.z, cz, k)); this.cam.lookAt(tx, ty, tz);
   }
+  // ── going inside: houses have rooms, towers have tops ──
+  nearDoor() { const p = this.player; let best = null, bd = 2.7; for (const d of this.W.doors || []) { const k = Math.hypot(p.x - d.x, p.z - d.z); if (k < bd) { bd = k; best = d; } } return best; }
+  async enterDoor(d) {
+    this.busy++; UI.setAct(null); this.sound.sfx('page'); await UI.fade(true); const p = this.player, Z = d.deck ? deckZone(d.deck) : makeRoom(this.W.name, d.seed); Z.back = [d.x, d.z]; this.zone = Z;
+    if (Z.group) this.scene.add(Z.group); if (Z.resident) { const L = { ...CAST[Z.resident.id] }; Z.npc = makePerson(L); Z.npc.position.set(Z.resident.x, Z.y, Z.resident.z); Z.npc.rotation.y = Math.atan2(Z.spawn[0] - Z.resident.x, Z.spawn[1] - Z.resident.z); this.scene.add(Z.npc); }
+    p.x = Z.spawn[0]; p.z = Z.spawn[1]; p.y = Z.y; p.vy = 0; p.ground = true; p.yaw = p.tyaw = Z.room ? Math.PI : Math.atan2(Z.cx - p.x, Z.cz - p.z); this.camYaw = p.yaw; this.camSnap = 3; if (this.comp) this.placeComp();
+    if (this.trail) this.trail.t = 0.01; await wait(0.15); await UI.fade(false); this.busy--; if (Z.deck && !this.f.tipDeck) { this.f.tipDeck = 1; UI.tip('The whole kingdom from up here. The hatch takes you back down.', 6); }
+  }
+  dropZone() { const Z = this.zone; if (!Z) return; if (Z.group) this.scene.remove(Z.group); if (Z.npc) this.scene.remove(Z.npc); this.zone = null; }
+  async leaveZone() { const Z = this.zone; this.busy++; UI.setAct(null); this.sound.sfx('page'); await UI.fade(true); this.dropZone(); this.place(Z.back[0], Z.back[1]); if (this.comp) this.placeComp(); this.camSnap = 3; this.refresh(); await UI.fade(false); this.busy--; this.save(); }
+  zoneInteract(dt) {
+    const p = this.player, Z = this.zone; this.flame.visible = false; this.flameLight.intensity = 0; UI.hit('flameTap'); UI.hit('whistle');
+    if (Z.npc) { animPerson(Z.npc, dt, false); Z.npc.rotation.y += wrap(Math.atan2(p.x - Z.resident.x, p.z - Z.resident.z) - Z.npc.rotation.y) * Math.min(1, dt * 4); }
+    if (Math.hypot(p.x - Z.exit.x, p.z - Z.exit.z) < 2.3) { UI.setAct(Z.exit.label); if (UI.hit('act')) return this.leaveZone(); }
+    else if (Z.npc && Math.hypot(p.x - Z.resident.x, p.z - Z.resident.z) < 3) { UI.setAct('Talk · Neighbour'); if (UI.hit('act')) return this.run([['Neighbour', Z.resident.line]]); }
+    else UI.setAct(null);
+  }
   interact(dt) {
+    if (this.zone) return this.zoneInteract(dt);
     const p = this.player, f = this.f, W = this.W; let best = null, bd = 1e9;
     for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z) - 3.3; if (d < 0 && d < bd && n.def.talk && (typeof n.def.talk !== 'function' || n.def.talk(f, this))) { best = n; bd = d; } }
     let flameT = null, anyFlame = false; const cmp = this.comp;
@@ -576,6 +606,7 @@ export class Game {
     // talk / examine
     if (best && !best.key && cmp?.goal && this.curStep()?.lead && best.def.label === cmp.goal.label && Math.hypot(cmp.x - p.x, cmp.z - p.z) < 9 && p.ground) { cmp.goal = null; return this.run(best.def.script); }
     if (best) { const isNpc = !!best.model && best.key; UI.setAct(isNpc ? 'Talk · ' + best.name : best.def.label); if (UI.hit('act')) { if (isNpc) { const t = best.def.talk, s = typeof t === 'function' ? t(f, this) : t; best.face(p.x, p.z); if (s) return this.run(s); } else return this.run(best.def.script); } }
+    else if (this.nearDoor() && p.ground) { const d = this.nearDoor(); UI.setAct(d.label || 'Go inside'); if (UI.hit('act')) return this.enterDoor(d); }
     else { UI.setAct(this.ruby.state === 'idle' && this.freeRide() && Math.hypot(p.x - this.ruby.x, p.z - this.ruby.z) < 8 ? 'Ride Ruby' : null); if (UI.hit('act') && this.ruby.state === 'idle' && this.freeRide() && Math.hypot(p.x - this.ruby.x, p.z - this.ruby.z) < 8) { this.mount(); this.ruby.pitch = 0.45; } }
   }
   reach(q, r) { // how close counts as "there": generous, and measured from the edge of any obstacle the point sits in or beside
@@ -583,7 +614,7 @@ export class Game {
     for (const b of W.boxes) if (q[0] > b[0] - 1.2 && q[0] < b[1] + 1.2 && q[1] > b[2] - 1.2 && q[1] < b[3] + 1.2) ext = Math.max(ext, Math.min(b[1] - b[0], b[3] - b[2]) / 2 + 1.2);
     return Math.max(r || 0, 4.6) + Math.min(ext, 9);
   }
-  freeRide() { const p = this.player; return p.who === 'amber' && !this.W.sea && (this.chapter.free || (this.f.rideSugar && this.S.world === 'sugar' && Math.hypot(p.x, p.z - 140) < 34)); }
-  canWhistle() { return this.S.items.whistle && this.player.who === 'amber' && !this.riding && (this.chapter.canWhistle?.(this.f) || this.freeRide()); }
+  freeRide() { const p = this.player; return p.who === 'amber' && !this.zone && !this.W.sea && (this.chapter.free || (this.f.rideSugar && this.S.world === 'sugar' && Math.hypot(p.x, p.z - 140) < 34)); }
+  canWhistle() { return this.S.items.whistle && this.player.who === 'amber' && !this.riding && !this.zone && (this.chapter.canWhistle?.(this.f) || this.freeRide()); }
   hudButtons(free) { const on = free || this.flying; UI.setButtons({ jump: on && !this.riding && !this.mode, flame: free && !this.riding && !this.mode && (this.anyFlame || this.fireOK()), kim: this.player.who === 'kim', whistle: free && this.canWhistle(), med: free && !this.riding && !this.mode && this.player.who === 'amber' && (this.S.hp ?? 3) < 3 && this.fireOK(), boost: this.riding && on, land: this.riding && free && !this.flying && this.canLand() }); UI.hit('flameTap'); UI.hit('boostTap'); if (!free) { UI.hit('act'); UI.hit('jump'); UI.hit('whistle'); UI.hit('land'); UI.hit('med'); } }
 }

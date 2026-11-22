@@ -9,6 +9,7 @@ You play Amber, princess of Emberland, across all 17 chapters, with a free-roam 
 - **Controls (touch):** left thumb moves, drag the right side to look. **◆** talks / examines, **▲** jumps, **✦** is your flame, **♪** is the ruby whistle. While riding Ruby: left thumb steers, **»** flies faster, **▽** lands.
 - **Controls (keyboard):** WASD move, mouse-drag or Z/X look, E talk, Space jump, F flame, Q whistle, Shift faster, L land, J journal.
 - **Stuck?** The **?** button shows the current hint and draws a glowing trail (with a beam of light at the end) to the next person or place.
+- **Going inside:** every house door opens (◆ *Go inside*), and every palace tower can be climbed to its top.
 - **Saving:** automatic, on the device, after every conversation and discovery. The journal (❖) holds the current goal, everything people have told you, keepsakes, chapter replay and settings.
 
 ## Design
@@ -32,6 +33,8 @@ out of the shipwreck, out to guide the first Sugarland ship home — and in the 
 | `src/models.js` | People, Ruby, critters, props |
 | `src/game.js` | Engine: movement, flight, camera, NPCs, script runner, saves |
 | `src/ui.js` | Touch/keyboard input, dialogue box, journal |
+| `src/rooms.js` | House interiors and tower tops |
+| `src/cut.js` | Illustrated cut scenes |
 | `src/audio.js` | Synthesised music and effects |
 
 ### Script format (for editing the story)
