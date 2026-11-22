@@ -39,7 +39,7 @@ export class Game {
     this.flameLight = new THREE.PointLight(0xffa040, 0, 14); this.scene.add(this.flameLight);
     this.spark = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), new THREE.MeshBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.9, fog: false })); this.sparks = [];
     UI.initInput(canvas); this.journal = UI.initJournal(this);
-    addEventListener('resize', () => this.resize()); this.resize();
+    addEventListener('resize', () => this.resize()); addEventListener('orientationchange', () => setTimeout(() => this.resize(), 250)); this.resize();
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.save(); });
     this.last = performance.now(); const loop = (now) => { requestAnimationFrame(loop); const dt = Math.min(0.05, (now - this.last) / 1000); this.last = now; for (let i = 0; i < (this.warp || 1); i++) this.update(dt); this.renderer.render(this.scene, this.cam); }; requestAnimationFrame(loop);
   }
@@ -47,7 +47,9 @@ export class Game {
   get chapter() { return this.chapters[this.S.ch - 1]; }
   get W() { return this.worlds[this.S.world]; }
   blank() { return { ch: 1, max: 1, flags: {}, leads: [], items: {}, codex: [], vis: {}, world: 'ember', time: 'day', pos: null, opt: { sound: true, invert: false, fast: false } }; }
-  resize() { const w = innerWidth, h = innerHeight; this.renderer.setSize(w, h, false); this.cam.aspect = w / h; this.cam.fov = w < h ? 72 : 58; this.cam.updateProjectionMatrix(); }
+  resize() { // one renderer budget for every screen, from an iPhone to a 12.9" iPad
+    const w = innerWidth, h = innerHeight, a = w / h; this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2, Math.sqrt(2.8e6 / (w * h))));
+    this.renderer.setSize(w, h, false); this.cam.aspect = a; this.cam.fov = a < 0.8 ? 74 : a < 1.6 ? 64 : 58; this.cam.updateProjectionMatrix(); this.camDist = a < 0.8 ? 8.5 : 7.5; }
 
   // ───────── saving ─────────
   hasSave() { try { return !!localStorage.getItem(KEY); } catch { return false; } }
@@ -150,7 +152,7 @@ export class Game {
     for (const n of list) {
       if (!n) continue;
       if (typeof n === 'string') { this.sound.sfx('page'); await UI.say('', n); continue; }
-      if (Array.isArray(n)) { this.sound.sfx('page'); this.speaker(n[0]); await UI.say(n[0], n[1]); continue; }
+      if (Array.isArray(n)) { this.sound.sfx('page'); this.speaker(n[0]); this.voice(n[0], n[1]); await UI.say(n[0], n[1]); this.voiceEl?.pause(); continue; }
       if (n.c) { for (;;) { const i = await UI.choose(n.c.map((o) => ({ t: o[0] }))); const o = n.c[i]; if (o[1]?.length) await this.exec(o[1]); if (!n.retry || o[2]) break; } continue; }
       if (n.hub) { await this.hub(n); continue; }
       if (n.if !== undefined && (n.then || n.else)) { await this.exec(this.cond(n.if) ? n.then || [] : n.else || []); continue; }
@@ -183,6 +185,8 @@ export class Game {
       this.f[hash(opts[i].q)] = 1; await this.exec(opts[i].a); if (opts[i].end) break;
     }
   }
+  // Recorded voice lines: public/voice/<id>.mp3, listed in public/voice/index.json (see tools/voices.mjs).
+  voice(name, text) { if (!this.S.opt.sound) return; if (!this.voiceSet) { this.voiceSet = new Set(); fetch('voice/index.json').then((r) => r.json()).then((a) => (this.voiceSet = new Set(a))).catch(() => {}); return; } const id = hash(name + '|' + text); if (!this.voiceSet.has(id)) return; const a = (this.voiceEl = this.voiceEl || new Audio()); a.src = 'voice/' + id + '.mp3'; a.play().catch(() => {}); }
   speaker(name) { const n = this.npcs.find((x) => x.name === name); if (n) { n.face(this.player.x, this.player.z); if (!this.riding) this.player.tyaw = Math.atan2(n.x - this.player.x, n.z - this.player.z); } }
   bark(line) { if (typeof line === 'string') UI.bark('', line); else UI.bark(line[0], line[1]); }
 
