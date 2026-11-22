@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 // Chapters 1–5. Script DSL is documented in README.md.
 const A = 'Amber', K = 'Kim', O = 'Master Orin', F = 'The King', L = 'Lord Ashlock', R = 'Ruby';
 const all = (...fl) => (f) => fl.every((x) => f[x]);
@@ -242,12 +243,12 @@ const wardenBanter = [
   [W2, 'I’m on harbor duty that night. Tell her I’m heartbroken.'],
 ];
 const ch3 = {
-  decor: [{ prop: 'bun', at: 'bun_stone', if: 'c3_bun', dy: 0.3 }],
+  decor: [{ prop: 'bun', at: 'bun_stone', if: 'c3_bun', dy: 0.3 }, { prop: 'crates', at: 'hide1' }, { prop: 'crates', at: 'hide2' }],
   n: 3, title: 'Beyond the Dragon Mountains', world: 'ember', time: 'night', spawn: 'side_door',
   intro: 'Emberland did not go dark at night. It only changed color.',
   steps: [
     { goal: 'Hood up. Reach the mountain gate, north of the palace.', hint: 'Keep north past the palace walls. A baker is out late; nobody stops you.', until: 'c3_near' },
-    { goal: 'Slip past the Cinderwardens.', hint: 'Wait in the shadow of the wall. Cross only while they have turned to talk to each other.', until: 'c3_gate' },
+    { goal: 'Slip past the Cinderwardens.', hint: 'Keep out of their lamplight. Hide in the shadow of the wall or behind the crates while they walk their beats, and slip through the gate while they stand talking or both have their backs to it.', until: 'c3_gate' },
     { goal: 'Climb the familiar path to the sheltered overlook.', hint: 'Follow the seams of molten orange up the mountain, north and a little east.', until: 'c3_top' },
     { goal: 'Sound one clear note.', hint: 'The ruby whistle.', until: 'c3_ruby' },
     { goal: 'Ask her.', hint: 'Go to Ruby. Press your forehead to familiar warmth.', until: 'c3_asked' },
@@ -316,14 +317,23 @@ const ch3 = {
       'A breeze comes down the path to meet her, fresh and sweet. It goes straight through her cape as though the cape were not there.',
       [A, 'Seven greetings for people I was never to meet. And all I have is my own name and a wish to be liked.'], { set: 'c3_end' }] },
   ],
+  // The wardens stop to talk, then walk their beats along the wall, look out over the court, and walk back.
+  // Each carries a lamp: stand in its light and you are seen, unless you are in the wall's shadow or behind the crates.
   tick(g, dt) {
-    const f = g.f; if (!f.c3_near || f.c3_gate) { g.tmp.watch = true; return; }
-    const T = (g.tmp.gt = (g.tmp.gt || 0) + dt), ph = T % 9;
-    const talking = ph > 5.2; g.tmp.watch = !talking;
-    const a = g.npc('warden1'), b = g.npc('warden2'); if (!a || !b) return;
-    if (talking) { a.face(b.x, b.z); b.face(a.x, a.z); } else { a.face(a.x - 2, a.z + 10); b.face(b.x + 2, b.z + 10); }
-    if (talking && !g.tmp.wasTalk) { const i = (g.tmp.wi = ((g.tmp.wi ?? -1) + 1) % wardenBanter.length); g.bark(wardenBanter[i]); }
-    g.tmp.wasTalk = talking;
+    const f = g.f, a = g.npc('warden1'), b = g.npc('warden2'); g.tmp.watch = false; if (!a || !b || f.c3_gate) return;
+    const T = (g.tmp.gt = (g.tmp.gt || 0) + dt) % 17, P = g.W.P, p = g.player;
+    const beat = (n, home, far, s) => { let tx = home[0], tz = home[1], look = null;
+      if (T < 5) look = [n === a ? b.x : a.x, n === a ? b.z : a.z]; else if (T < 9.5) { tx = far[0]; tz = far[1]; } else if (T < 12) { tx = far[0]; tz = far[1]; look = [far[0] + s * 2 * Math.sin((T - 9.5) * 1.6), far[1] + 12]; }
+      const d = Math.hypot(tx - n.x, tz - n.z); n.walk = d > 0.25; if (n.walk) { const sp = Math.min(d, 2.9 * dt); n.x += (tx - n.x) / d * sp; n.z += (tz - n.z) / d * sp; n.tyaw = Math.atan2(tx - n.x, tz - n.z); } else if (look) n.face(look[0], look[1]);
+      n.y = g.H(n.x, n.z); n.model.position.set(n.x, n.y, n.z);
+      if (!n.cone) { const geo = new THREE.CircleGeometry(13, 16, Math.PI / 2 - 0.72, 1.44); geo.rotateX(-Math.PI / 2); n.cone = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide })); n.cone.position.y = 0.12; n.cone.scale.setScalar(1 / (n.model.scale.x || 1)); n.model.add(n.cone); } };
+    beat(a, P.gate_w1, [-17, -86], -1); beat(b, P.gate_w2, [17, -86], 1);
+    if (T < 0.1 && !g.tmp.wasTalk) { const i = (g.tmp.wi = ((g.tmp.wi ?? -1) + 1) % wardenBanter.length); g.bark(wardenBanter[i]); } g.tmp.wasTalk = T < 0.1;
+    if (!f.c3_near || g.busy || p.z > -72) return;
+    const hidden = [P.gate_shadow, P.hide1, P.hide2].some((q) => Math.hypot(p.x - q[0], p.z - q[1]) < 2.6);
+    const sees = (n) => { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d > 13 || d < 0.1) return d < 0.1; let da = Math.atan2(p.x - n.x, p.z - n.z) - n.yaw; da = Math.atan2(Math.sin(da), Math.cos(da)); return Math.abs(da) < 0.72; };
+    for (const n of [a, b]) n.cone.material.color.set(hidden ? 0xffd27a : sees(n) ? 0xff5a3a : 0xffd27a);
+    if (!hidden && (sees(a) || sees(b))) { g.tmp.seen = (g.tmp.seen || 0) + dt; if (g.tmp.seen > 0.45) { g.tmp.seen = 0; g.tmp.gt = 0.2; g.run([[W1, 'Who’s there?'], 'Amber shrinks back into the shadow until the lamp-light moves on.', { tp: 'gate_shadow' }]); } } else g.tmp.seen = 0;
   },
 };
 

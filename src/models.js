@@ -81,6 +81,19 @@ export function makeDragon(accent) {
     for (const [x, y, z] of [[5.6, 0.7, 1.4], [6.6, 0.3, -0.5], [4.6, 0, -2.6], [3.4, 0.5, 1.2]]) w.add(R(x, y, z, 0.17));
     g.add(w); if (sx < 0) u.wingL = w; else u.wingR = w;
   }
+  // detail: jaw and teeth, nostrils, brows, a crown of horns, spines down the back, belly plates, thighs and claws, wing fingers, tail fin
+  const sc = 0x2a1a1e, bone = 0xe8dcc8, belly = 0x4a1820;
+  const jaw = new THREE.Group(); jaw.position.set(0, -0.3, 0.3); jaw.add(P(GEO.box, 0, -0.06, 0.55, 0.42, 0.14, 1.0, sc)); for (let i = 0; i < 4; i++) for (const sx of [-1, 1]) { const t = P(GEO.cone, sx * 0.19, 0.06, 0.25 + i * 0.22, 0.035, 0.13, 0.035, bone); jaw.add(t); } head.add(jaw); u.jaw = jaw;
+  for (let i = 0; i < 4; i++) for (const sx of [-1, 1]) { const t = P(GEO.cone, sx * 0.2, -0.3, 0.55 + i * 0.2, 0.035, 0.13, 0.035, bone); t.rotation.x = Math.PI; head.add(t); }
+  for (const sx of [-1, 1]) { head.add(part(GEO.sph, 0xff5a2a, sx * 0.14, 0.07, 1.18, 0.045, 0.04, 0.05, true), P(GEO.box, sx * 0.34, 0.22, 0.22, 0.2, 0.09, 0.42, sc), part(GEO.sph, 0x1a0a0a, sx * 0.425, 0.08, 0.22, 0.03, 0.07, 0.05));
+    const h2 = P(GEO.cone, sx * 0.4, 0.3, -0.25, 0.07, 0.45, 0.07, bone); h2.rotation.set(-1.2, 0, -sx * 0.5); head.add(h2); const h3 = P(GEO.cone, sx * 0.3, 0.52, -0.75, 0.06, 0.5, 0.06, bone); h3.rotation.x = -1.25; head.add(h3); const ch = P(GEO.cone, sx * 0.3, -0.3, -0.1, 0.05, 0.3, 0.05, sc); ch.rotation.set(Math.PI - 0.6, 0, sx * 0.4); head.add(ch); }
+  for (let i = 0; i < 6; i++) { const t = i / 5, s = P(GEO.cone, 0, 1.2 + t * 1.9, 1.75 + t * 2.2, 0.07, 0.42 - t * 0.12, 0.07, sc); s.rotation.x = -0.7; g.add(s); }
+  for (let i = 0; i < 6; i++) { const s = P(GEO.cone, 0, 1.05 - Math.abs(i - 2.5) * 0.05, 1.3 - i * 0.62, 0.09, 0.5, 0.09, sc); s.rotation.x = -0.35; g.add(s); }
+  for (let i = 0; i < 9; i++) { const t = i / 8, s = P(GEO.cone, 0, 0.42 - t * 0.5, -2.2 - t * 5.2, 0.06, 0.4 - t * 0.25, 0.06, sc); s.rotation.x = -0.5; g.add(s); }
+  for (let i = 0; i < 7; i++) g.add(P(GEO.box, 0, -0.86, 1.9 - i * 0.62, 0.95 - Math.abs(i - 3) * 0.1, 0.16, 0.54, belly)); for (let i = 0; i < 5; i++) { const t = i / 4; g.add(P(GEO.box, 0, 0.0 + t * 1.75, 2.45 + t * 2.1, 0.5 - t * 0.14, 0.14, 0.5, belly)); }
+  for (const [x, z] of [[-0.9, 1.4], [0.9, 1.4], [-0.9, -1.4], [0.9, -1.4]]) { g.add(P(GEO.sph, x * 1.05, -0.35, z, 0.42, 0.6, 0.6, bk), P(GEO.box, x, -1.62, z + 0.22, 0.48, 0.2, 0.8, sc)); for (const dx of [-0.16, 0, 0.16]) { const c = P(GEO.cone, x + dx, -1.6, z + 0.72, 0.05, 0.28, 0.05, bone); c.rotation.x = Math.PI / 2; g.add(c); } }
+  for (const sx of [-1, 1]) { const w = sx < 0 ? u.wingL : u.wingR; for (const [x, y, z] of [[6.6, 0.3, -0.5], [4.6, 0, -2.6], [2.3, 0, -2.9]]) { const L = Math.hypot(x, y, z - 0.9), f = P(GEO.cyl, x / 2, y / 2 + 0.03, (z + 0.9) / 2, 0.05, L, 0.05, sc); f.lookAt(x, y + 0.03, z); f.rotateX(Math.PI / 2); w.add(f); const cl = P(GEO.cone, x, y, z, 0.07, 0.4, 0.07, bone); cl.lookAt(x * 2, y, z * 2 - 0.9); cl.rotateX(Math.PI / 2); w.add(cl); } const th = P(GEO.cone, 5.75, 0.95, 1.55, 0.07, 0.5, 0.07, bone); w.add(th); }
+  for (const sx of [-1, 1]) { const fin = P(GEO.box, sx * 0.3, -0.6, -7.6, 0.6, 0.05, 0.7, sc); fin.rotation.y = sx * 0.6; g.add(fin); g.add(R(sx * 0.62, 0.72, 0.65, 0.2), R(sx * 0.8, 0.1, -0.9, 0.17), R(sx * 0.55, 1.5, 3.0, 0.12)); }
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return g;
 }
@@ -89,7 +102,7 @@ export function animDragon(d, dt, flying) {
   const f = flying ? Math.sin(u.t * 4.2) * 0.55 : 0.9 + Math.sin(u.t * 1.3) * 0.04;
   u.wingL.rotation.z = -f; u.wingR.rotation.z = f;
   const sx = flying ? 1 : 0.55; u.wingL.scale.set(-sx, 1, 1); u.wingR.scale.set(sx, 1, 1);
-  u.head.rotation.x = Math.sin(u.t * 0.9) * 0.06;
+  u.head.rotation.x = Math.sin(u.t * 0.9) * 0.06; u.head.rotation.y = flying ? 0 : Math.sin(u.t * 0.45) * 0.22; if (u.jaw) u.jaw.rotation.x = Math.max(0, Math.sin(u.t * 0.7) - 0.75) * 1.2;
   const b = 0.55 + 0.45 * Math.sin(u.t * 1.25); u.ruby.color.copy(u.base).multiplyScalar(0.7 + 1.5 * b);
 }
 
@@ -106,6 +119,7 @@ export function makeProp(name) {
   if (name === 'flask') g.add(part(GEO.cyl, 0x8a5a3a, 0, 0.2, 0, 0.12, 0.3, 0.08), part(GEO.cyl, 0xd9b36a, 0, 0.4, 0, 0.05, 0.1, 0.05));
   else if (name === 'bun') g.add(part(GEO.sph, 0xd9963a, 0, 0.14, 0, 0.18, 0.12, 0.18), part(GEO.sph, 0xf5d68a, 0, 0.2, 0, 0.12, 0.06, 0.12));
   else if (name === 'picnic') { g.add(part(GEO.box, 0xf7a8c8, 0, 0.02, 0, 2.2, 0.04, 1.7), part(GEO.box, 0xffffff, 0, 0.03, 0, 2.2, 0.04, 0.3), part(GEO.box, 0xffffff, 0, 0.035, 0, 0.3, 0.04, 1.7), part(GEO.cyl, 0xc98a5a, -0.6, 0.2, 0.3, 0.3, 0.4, 0.3), part(GEO.cyl, 0xfff1d6, 0.4, 0.1, -0.3, 0.1, 0.16, 0.1), part(GEO.cyl, 0xfff1d6, 0.7, 0.1, 0.2, 0.1, 0.16, 0.1), part(GEO.sph, 0x4a2814, 0.4, 0.17, -0.3, 0.085, 0.02, 0.085), part(GEO.sph, 0x4a2814, 0.7, 0.17, 0.2, 0.085, 0.02, 0.085), part(GEO.sph, 0xa8d88a, -0.1, 0.07, -0.45, 0.16, 0.05, 0.12)); }
+  else if (name === 'crates') { g.add(part(GEO.box, 0x8a6248, 0, 0.6, 0, 1.3, 1.2, 1.3), part(GEO.box, 0x7a5238, 1.25, 0.5, 0.2, 1.1, 1, 1.1), part(GEO.box, 0x9a7254, 0.5, 1.6, 0.1, 1, 0.9, 1), part(GEO.cyl, 0x6b4a36, -1.1, 0.6, 0.5, 0.5, 1.2, 0.5)); for (const [x, y] of [[0, 0.6], [1.25, 0.5], [0.5, 1.6]]) g.add(part(GEO.box, 0x5a3a26, x, y, 0.66, 1.0, 0.12, 0.04)); }
   else if (name === 'purse') g.add(part(GEO.sph, 0x8e1b2c, 0, 0.14, 0, 0.14, 0.14, 0.14), part(GEO.sph, 0xe9b949, 0, 0.3, 0, 0.05, 0.05, 0.05));
   else if (name === 'spyglass') { const m = part(GEO.cyl, 0xc9a04a, 0, 0.12, 0, 0.05, 0.5, 0.05); m.rotation.z = Math.PI / 2; g.add(m); }
   else if (name === 'herbs') g.add(part(GEO.cone, 0x7fc98a, 0, 0.25, 0, 0.25, 0.5, 0.25), part(GEO.sph, 0xbfa0e8, 0, 0.5, 0, 0.1, 0.1, 0.1));

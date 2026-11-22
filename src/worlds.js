@@ -1,7 +1,7 @@
 // The three places: Emberland, Sugarland, and the sea between. Everything is built from code.
 import * as THREE from 'three';
 import { Kit, smooth, noise2, rnd } from './kit.js';
-import { makeDragon, animDragon, makeCritter } from './models.js';
+import { makeDragon, animDragon, makeCritter, makePerson } from './models.js';
 import { terrainMaterial, waterMaterial } from './gfx.js';
 import { Scatter, hasModel } from './assets.js';
 
@@ -65,7 +65,7 @@ export function buildEmber() {
     side_door: [-12, -38], room_desk: [-34, -44], room_flask: [-30, -41], room_buns: [-35.5, -40.5], room_coins: [-36.5, -46.5], room_spy: [-31, -48], room_cape: [-28, -45],
     terrace: [-18, -62], terrace_ruby: [-21, -66], terrace_chair: [-13.5, -59], high_king: [13, -60], high_rail: [15, -66.5],
     t1: [16, -26], t2: [22, -31], ladder: [26.5, -35], t3: [29, -39], t4: [33, -43], long_window: [36.5, -46.5], linen: [19, -36],
-    baker: [9, -72], gate: [0, -92], gate_w1: [-3.2, -89.5], gate_w2: [3.2, -89.5], gate_shadow: [-10, -80],
+    baker: [9, -72], hide1: [10.5, -79], hide2: [-1.5, -74], gate: [0, -92], gate_w1: [-3.2, -89.5], gate_w2: [3.2, -89.5], gate_shadow: [-10, -80],
     overlook: [26, -150], overlook_ruby: [31, -155],
     quay: [124, 36], quay_ruby: [131, 44], quay_orin: [117, 30], awning: [111, 26], quay_s: [127, 30], quay_t: [130, 33.5], quay_l: [121, 41], quay_p: [115, 38],
   };
@@ -217,7 +217,13 @@ export function buildEmber() {
   k.box(39, ky, -48.5, 8, 1.1, 0.6, IV, { ry: 0.7 }); for (const s of [-1, 1]) k.box(39 + s * 2.6, ky, -48.5 + s * 2.2, 0.6, 5, 0.6, IV); k.box(39, ky + 5, -48.5, 8, 0.6, 0.7, GOLD, { ry: 0.7 }); w.circles.push([39, -48.5, 1.6], [36.6, -50.6, 1.2], [41.4, -46.4, 1.2]);
   // queen's garden
   for (let a = 0; a < 20; a++) { if (a > 2 && a < 5) continue; const x = -80 + Math.cos(a * 0.314) * 13, z = 9 + Math.sin(a * 0.314) * 13; k.box(x, 0, z, 4.2, 1.1, 0.6, IV, { ry: -a * 0.314 + Math.PI / 2 }); w.circles.push([x, z, 1.4]); }
-  k.cyl(-85, 0, 5, 1.3, 1.5, 1, IV); k.cyl(-85, 1, 5, 0.42, 0.6, 1.9, 0xfaf3e6); k.sph(-85, 3.2, 5, 0.34, 0xfaf3e6); k.box(-84.5, 2.5, 5.2, 0.9, 0.14, 0.14, 0xfaf3e6); k.cone(-84, 2.6, 5.2, 0.16, 0.4, 0xfaf3e6); k.sph(-84.1, 1.12, 6.1, 0.1, 0xffd060, { glow: 1 }); w.circles.push([-85, 5, 1.6]);
+  { // the queen: a real figure in pale stone on a stepped plinth, a stone flame in her open palm, a candle at her feet
+    k.cyl(-85, 0, 5, 2.1, 2.3, 0.45, IV, {}, 16); k.cyl(-85, 0.45, 5, 1.6, 1.75, 0.45, 0xfaf3e6, {}, 16); k.cyl(-85, 0.9, 5, 1.15, 1.25, 0.5, IV, {}, 12); k.box(-85, 1.0, 6.22, 1.3, 0.3, 0.06, GOLD); k.sph(-84.1, 0.58, 6.3, 0.1, 0xffd060, { glow: 1 }); k.cyl(-84.1, 0.45, 6.3, 0.05, 0.05, 0.12, 0xfff1d6); w.circles.push([-85, 5, 2.3]);
+    try { const st = makePerson({ name: 'Queen', style: 'woman', hairLong: 2, hair: 0xe9e2d6, skin: 0xe9e2d6, top: 0xe9e2d6, skirt: 0xe9e2d6, trim: 0xe9e2d6 }), stone = new THREE.MeshStandardMaterial({ color: 0xe9e2d6, roughness: 0.88, metalness: 0 });
+      const u = st.userData; if (u.mixer) { u.play?.('Wave', 0); u.mixer.setTime(0.9); } st.traverse((o) => { if (o.isMesh) { o.material = stone; o.castShadow = true; o.frustumCulled = false; } });
+      st.scale.multiplyScalar(1.75); st.position.set(-85, 1.4, 5); st.rotation.y = 0.9; g.add(st);
+      const fl = new THREE.Group(); fl.add(new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.55, 8), stone), new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), stone)); fl.children[0].position.y = 0.3; fl.children[1].position.y = 0.05; let hand = null; st.traverse((o) => { if (o.isBone && o.name === 'WristR') hand = o; else if (o.isBone && /Wrist.?R/.test(o.name) && !hand) hand = o; }); if (hand) { fl.scale.setScalar(0.55); fl.position.set(0, 0.1, 0); hand.add(fl); }
+    } catch (e) { k.cyl(-85, 1.4, 5, 0.42, 0.6, 1.9, 0xfaf3e6); k.sph(-85, 3.6, 5, 0.34, 0xfaf3e6); } }
   for (let i = 0; i < 40; i++) { const a = R() * 6.28, d = 3 + R() * 9, x = -80 + Math.cos(a) * d, z = 9 + Math.sin(a) * d; k.cone(x, 0.3, z, 0.18, 0.5, i % 3 ? 0xe2402c : 0xff8a2a); k.cyl(x, 0, z, 0.03, 0.03, 0.4, 0x4a6a3a, {}, 4); }
   for (let i = 0; i < 9; i++) k.box(-56 - i * 1.5, PL.h * (1 - (i + 1) / 9) * 0.9, 0 + i * 0.5, 1.6, 0.5, 5, IV, { ry: 0.3 });
   // crimson vines / trees
@@ -346,7 +352,16 @@ export function buildSugar() {
     k.box(34, y + 6, -5, 17, 0.4, 15, 0xff9ec0, { rz: 0.03 }); k.box(39, y + 6.4, -9, 1.3, 3, 1.3, 0xc98a5a, { rz: 0.22 }); k.sph(39.6, y + 9.6, -9, 0.9, 0xffffff);
     k.box(34, y, -6.4, 5, 1, 1.8, 0xd9a070, { wood: 1 }); box(31.5, 36.5, -7.3, -5.5); k.sph(33, y + 1.2, -6.4, 0.3, 0xffb0d0); k.sph(35, y + 1.15, -6.4, 0.2, 0x2a1a1a);
     k.box(40.6, y, -8.5, 1.4, 3.4, 5, 0xc98a5a); box(39.9, 41.6, -11, -6); for (let i = 0; i < 6; i++) k.sph(40.3, y + 1.3 + (i % 3) * 0.9, -10.3 + i * 0.7, 0.24, sg[i % 5], { glow: 1 });
-    k.cyl(39.5, y, -1.6, 0.5, 0.6, 0.7, 0xc98a5a); w.circles.push([39.5, -1.6, 0.7]); }
+    k.cyl(39.5, y, -1.6, 0.5, 0.6, 0.7, 0xc98a5a); w.circles.push([39.5, -1.6, 0.7]);
+    // The family confectionery is the landmark of the town: a tall front with a great rose window of stained sugar-glass, twin spires and a striped arch
+    const fz = 2.3, cy = y + 11.2; for (const s of [-1, 1]) { k.box(34 + s * 7.4, y, fz, 1.6, 9, 1.6, W); k.box(34 + s * 7.4, y + 9, fz, 2, 0.5, 2, 0xff9ec0); k.cyl(34 + s * 7.4, y + 9.5, fz, 1, 1.15, 6.5, 0xfff6ee, {}, 10); for (let i = 0; i < 5; i++) k.cyl(34 + s * 7.4, y + 9.9 + i * 1.3, fz, 1.03, 1.17, 0.5, 0xff8ab0, {}, 10); k.cone(34 + s * 7.4, y + 16, fz, 1.5, 3.6, 0xff6a9a, {}, 10); k.sph(34 + s * 7.4, y + 19.9, fz, 0.42, 0xe8243c); w.circles.push([34 + s * 7.4, fz, 1.3]); for (const q of [3, 6]) k.box(34 + s * 7.4, y + q, fz + 0.82, 0.8, 1.5, 0.08, sg[q % 5], { glow: 1 }); }
+    k.box(34, y + 5.6, fz, 13.4, 1, 1.3, 0xff9ec0); k.box(34, y + 6.6, fz, 13.4, 9.6, 0.9, W); k.box(34, y + 16.2, fz, 9.5, 2.4, 0.9, W); k.box(34, y + 18.6, fz, 5.4, 1.8, 0.9, W); k.box(34, y + 16.2, fz, 14.2, 0.4, 1.3, 0xff9ec0); k.cone(34, y + 20.4, fz, 2.2, 3, 0xff6a9a, {}, 4); k.sph(34, y + 23.7, fz, 0.5, 0xe8243c);
+    for (let i = 0; i < 7; i++) k.sph(27.6 + i * 2.13, y + 5.5, fz + 0.6, 0.62, i % 2 ? 0xffffff : 0xffd0e0);
+    k.torus(34, cy, fz + 0.5, 4.3, 0.34, 0xffffff); k.torus(34, cy, fz - 0.5, 4.3, 0.34, 0xffffff); k.torus(34, cy, fz + 0.52, 2.1, 0.16, 0xffe08a); k.torus(34, cy, fz - 0.52, 2.1, 0.16, 0xffe08a);
+    for (let i = 0; i < 12; i++) { const a = i * 0.5236 + 0.26, c = sg[i % 5], c2 = sg[(i + 2) % 5]; for (const zz of [fz + 0.47, fz - 0.47]) { k.box(34 + Math.cos(a) * 3.15, cy + Math.sin(a) * 3.15 - 0.8, zz, 1.5, 1.6, 0.05, c, { glow: 1, rz: a - Math.PI / 2 }); k.box(34 + Math.cos(a) * 1.2, cy + Math.sin(a) * 1.2 - 0.5, zz, 0.6, 1, 0.05, c2, { glow: 1, rz: a - Math.PI / 2 }); k.box(34 + Math.cos(a - 0.26) * 2.9, cy + Math.sin(a - 0.26) * 2.9 - 1.15, zz + (zz > fz ? 0.03 : -0.03), 0.1, 2.3, 0.05, 0xffffff, { rz: a - 0.26 - Math.PI / 2 }); } }
+    for (const zz of [fz + 0.5, fz - 0.5]) { k.sph(34, cy, zz, 0.75, 0xffe08a, { glow: 1, s: [1, 1, 0.12] }); k.sph(34, cy, zz, 0.4, 0xff7ab0, { glow: 1, s: [1, 1, 0.2] }); }
+    for (const s of [-1, 1]) for (const zz of [fz + 0.47, fz - 0.47]) { k.box(34 + s * 4.9, y + 8, zz, 1.3, 2.6, 0.05, sg[s > 0 ? 1 : 3], { glow: 1 }); k.sph(34 + s * 4.9, y + 9.3, zz, 0.65, sg[s > 0 ? 4 : 0], { glow: 1, s: [1, 1, 0.08] }); }
+    k.box(34, y + 6.75, fz + 0.5, 6.4, 1.1, 0.14, 0xfff1d6); k.box(34, y + 6.75, fz + 0.58, 5.8, 0.7, 0.06, 0xf58ab5); }
   // Kim's house (open to the south) with the back room and the cradle
   { const y = H(60, -22), W = 0xfff1d6; k.box(60, y - 0.2, -22, 22, 0.3, 20, 0xf5dcc0); k.box(60, y, -32, 22, 5, 0.5, W); box(49, 71, -32.4, -31.6); k.box(49, y, -22, 0.5, 5, 20, W); box(48.6, 49.4, -32, -12); k.box(71, y, -22, 0.5, 5, 20, W); box(70.6, 71.4, -32, -12);
     k.box(54.5, y, -24, 11, 5, 0.4, W); box(49, 60, -24.3, -23.7); k.box(60, y + 5, -22, 23, 0.4, 21, 0xf58ab5, { rz: -0.03 }); k.sph(60, y + 5.6, -22, 1, 0xe8243c);

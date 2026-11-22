@@ -131,3 +131,10 @@ button { font: inherit; color: inherit; border: 0; background: none; padding: 0;
 @keyframes tiraBob { 0%, 100% { margin-bottom: 0; } 50% { margin-bottom: 6px; } }
 @media (min-width: 700px) and (min-height: 700px) { #cutT { bottom: calc(170px + var(--sb)); height: 17%; } }
 @media (orientation: portrait) { #cutT { height: 12%; bottom: calc(150px + var(--sb)); } }
+.cutP.flip { scale: -1 1; }
+/* Fill the whole screen, edge to edge, including under a side status bar or notch (iOS home-screen apps can
+   otherwise stop the page short of the unsafe area). Controls keep clear of those areas through the --s* insets. */
+html, body { inset: auto; top: 0; left: 0; width: 100vw; height: 100vh; min-height: 100vh; }
+canvas#c, #title, #fade, #cut, #img, #journal { inset: auto; top: 0; left: 0; width: 100vw; height: 100vh; }
+@supports (height: 100lvh) { html, body { height: 100lvh; min-height: 100lvh; } canvas#c, #title, #fade, #cut, #img, #journal { height: 100lvh; } }
+#titleInner { padding: 20px max(20px, var(--sr)) 20px max(20px, var(--sl)); }

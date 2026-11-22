@@ -6,10 +6,11 @@ import { GEO, mat, part, rnd } from './kit.js';
 import { U, makeGrass, makeMotes, makeClouds } from './gfx.js';
 import { loadPack, WORLD_PACKS } from './assets.js';
 import { loadPeople } from './people.js';
-import { playCut } from './cut.js';
+import { playCut, WHO as CUTWHO } from './cut.js';
 import { makeRoom, deckZone } from './rooms.js';
 const PLAYS = {
   sugar: [{ id: 'stars', at: [95, 43], label: 'Star-hop the Marshmallow Meadows' }, { id: 'turtles', at: [-90, 33], label: 'Turtle round-up' }, { id: 'sled', at: [-5.5, -89], label: 'Sled the Ice Cream Mountain' },
+    { id: 'tira', at: [-7, 14], label: 'Tira’s crumb hunt' }, { id: 'kim', at: [24, 3], label: 'Kim’s delivery round' }, { id: 'rubyfish', at: [-22, 141], label: 'Meanwhile, Ruby…', rings: [[-32, 8, 124], [-8, 12, 112], [22, 14, 126], [30, 12, 150], [5, 10, 162], [-26, 12, 156], [-52, 17, 166], [-32, 8, 124]] },
     { id: 'rings', at: [14, 132], label: 'Ring flight with Ruby', ruby: 1, rings: [[0, 34, 100], [-38, 44, 30], [-60, 52, -40], [0, 66, -96], [42, 62, -70], [86, 44, -62], [108, 48, 10], [40, 36, 90]] }],
   ember: [{ id: 'lanterns', at: [11, 47], label: 'Lantern dash' },
     { id: 'rings', at: [-22, 16], label: 'Ring flight with Ruby', ruby: 1, rings: [[-58, 40, -8], [-52, 48, -52], [-34, 56, -78], [0, 64, -112], [34, 56, -78], [52, 50, -58], [58, 42, -6], [0, 34, 34]] }],
@@ -26,7 +27,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const KEY = 'everlands.save.v1', BUILD = { ember: buildEmber, sugar: buildSugar, sea: buildSea };
 const TIPS = {
-  flame: 'Tap ✦ to throw a fire bolt. Hold ✦ close to something to light it. Hold longer, then let go, for a flare.', whistle: 'Tap ♪ Whistle (or Q).', stealth: 'Stay in the shadow. Cross only while the wardens face each other.',
+  flame: 'Tap ✦ to throw a fire bolt. Hold ✦ close to something to light it. Hold longer, then let go, for a flare.', whistle: 'Tap ♪ Whistle (or Q).', stealth: 'The wardens carry lamps. Stay out of the light: hide in the wall’s shadow or behind the crates, and cross while they talk or have their backs turned.',
   fly: 'Steer with the left thumb. Fly through the glowing rings. » flies faster.', bounce: 'Jump onto a low marshmallow. Each bounce carries you higher.', asruby: 'Tonight you are Ruby. Climb to the circle.',
 };
 const lerp = (a, b, t) => a + (b - a) * t, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -69,7 +70,7 @@ export class Game {
   get W() { return this.worlds[this.S.world]; }
   blank() { return { ch: 1, max: 1, flags: {}, leads: [], items: {}, codex: [], vis: {}, sparks: 0, hp: 3, world: 'ember', time: 'day', pos: null, opt: { sound: true, invert: false, fast: false } }; }
   resize() { // one renderer budget for every screen, from an iPhone to a 12.9" iPad
-    const w = innerWidth, h = innerHeight, a = w / h; this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2, Math.sqrt(2.8e6 / (w * h))) * (this.resScale || 1));
+    const box = this.renderer.domElement.getBoundingClientRect(), w = Math.max(innerWidth, Math.round(box.width) || 0), h = Math.max(innerHeight, Math.round(box.height) || 0), a = w / h; this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2, Math.sqrt(2.8e6 / (w * h))) * (this.resScale || 1));
     this.renderer.setSize(w, h, false); if (this.composer) { this.composer.setPixelRatio(this.renderer.getPixelRatio()); this.composer.setSize(w, h); } this.cam.aspect = a; this.cam.fov = a < 0.8 ? 74 : a < 1.6 ? 64 : 58; this.cam.updateProjectionMatrix(); this.camDist = a < 0.8 ? 8.5 : 7.5; }
 
   // ───────── saving ─────────
@@ -143,7 +144,7 @@ export class Game {
     if (id === 'kim') { L.tira = 1; if (f.c17_cape) L.cape = 0xa3182c; }
     return L;
   }
-  whoNow() { const a = this.chapter.as; return (typeof a === 'function' ? a(this.f) : a) || 'amber'; }
+  whoNow() { if (this.asOverride) return this.asOverride; const a = this.chapter.as; return (typeof a === 'function' ? a(this.f) : a) || 'amber'; }
   clearNpcs() { for (const n of this.npcs) { this.scene.remove(n.model); if (n.fx) this.scene.remove(n.fx); } this.npcs = []; if (this.comp) { this.scene.remove(this.comp.model); this.comp = null; } }
   npc(id) { return this.npcs.find((n) => n.id === id); }
   refresh() {
@@ -157,7 +158,7 @@ export class Game {
     this.npcs = this.npcs.filter((n) => { const lk = JSON.stringify(this.look(n.id)); if (want.has(n.key) && n.lk === lk) { n.def = want.get(n.key); want.delete(n.key); return true; } this.scene.remove(n.model); if (n.fx) this.scene.remove(n.fx); return false; });
     for (const [k, d] of want) { const [x, z] = W.P[d.at], L = this.look(d.id), n = { key: k, id: d.id, def: d, x, z, y: this.H(x, z), yaw: 0, model: makePerson(L), name: L.name, lk: JSON.stringify(L), face(tx, tz) { this.tyaw = Math.atan2(tx - this.x, tz - this.z); } }; n.yaw = n.tyaw = Math.atan2(p.x - x, p.z - z); n.model.position.set(x, n.y, z); this.scene.add(n.model); this.npcs.push(n); }
     // companion
-    const cid = !this.riding && typeof ch.companion === 'function' ? ch.companion(f) : null, clk = cid ? JSON.stringify(this.look(cid)) : '';
+    const cid = !this.riding && !this.asOverride && typeof ch.companion === 'function' ? ch.companion(f) : null, clk = cid ? JSON.stringify(this.look(cid)) : '';
     if ((this.comp?.id || null) !== cid || (this.comp && this.comp.lk !== clk)) { const old = this.comp; if (old) this.scene.remove(old.model); this.comp = null; if (cid) { this.comp = { id: cid, lk: clk, model: makePerson(this.look(cid)), x: old ? old.x : p.x - 1.5, z: old ? old.z : p.z - 1.5, y: 0, yaw: 0 }; this.scene.add(this.comp.model); if (!old) this.placeComp(); } }
     // Ruby at rest
     if (!this.riding && this.ruby.state !== 'arrive' && this.ruby.state !== 'leave' && this.ruby.state !== 'council') { const at = typeof ch.ruby === 'function' ? ch.ruby(f) : null, pt = (at && W.P[at]) || this.rubyAt; if (pt) { if (this.ruby.state !== 'idle' || this.ruby.at !== pt) this.rubyRest(pt); } else if (this.ruby.state === 'idle') { this.ruby.state = 'hidden'; this.ruby.model.visible = false; } }
@@ -184,24 +185,29 @@ export class Game {
   }
   // Conversations carried by Amber and Kim play as illustrated cut scenes, staged automatically.
   cutify(list) {
-    if (!Array.isArray(list) || this.S.opt.cuts === false) return list; const out = []; let run = [];
+    if (!Array.isArray(list) || this.S.opt.cuts === false || this.mode === 'play') return list; const out = []; let run = [];
     const isLine = (n) => typeof n === 'string' || (Array.isArray(n) && n.length === 2 && typeof n[0] === 'string' && typeof n[1] === 'string');
-    const flush = () => { const sp = run.filter(Array.isArray), ak = sp.filter((l) => l[0] === 'Amber' || l[0] === 'Kim').length; if (run.length >= 4 && sp.length >= 3 && ak >= sp.length * 0.6) out.push({ cut: this.direct(run) }); else out.push(...run); run = []; };
+    const flush = () => { const sp = run.filter(Array.isArray), cast = sp.filter((l) => CUTWHO[l[0]]).length; if (run.length >= 4 && sp.length >= 2 && cast >= sp.length * 0.6) out.push({ cut: this.direct(run) }); else out.push(...run); run = []; };
     for (const n of list) { if (isLine(n)) run.push(n); else { flush(); out.push(n); } } flush(); return out;
   }
   autoBg() {
     const W = this.W, p = this.player, t = this.S.time, P = W.P, near = (k, r) => P[k] && Math.hypot(p.x - P[k][0], p.z - P[k][1]) < r; if (this.chapter.cutBg) return this.chapter.cutBg(this.f, this);
-    if (W.sea) return 'sea';
-    if (W.name === 'ember') { if (near('room_desk', 13)) return 'room'; if (p.z > 30) return t === 'night' ? 'terrace' : 'market'; if (near('terrace', 16) || near('high_king', 14)) return t === 'day' ? 'balcony' : 'terrace'; return t === 'night' ? 'terrace' : t === 'dusk' ? 'balcony' : 'hall'; }
-    if (near('wtable', 11)) return 'workshop'; if (near('house_s', 13) || near('cradle', 11)) return 'home'; if (near('choc_shore', 26)) return 'choclake'; if (p.z > 112) return 'forest';
+    if (W.sea) return t === 'night' ? 'sea' : 'ship';
+    if (W.name === 'ember') { if (near('king', 10)) return 'kingroom'; if (near('overlook', 24)) return 'overlook'; if (near('room_desk', 13)) return 'room'; if (p.z > 30) return t === 'night' ? 'terrace' : 'market'; if (near('terrace', 16) || near('high_king', 14)) return t === 'day' ? 'balcony' : 'terrace'; return t === 'night' ? 'terrace' : t === 'dusk' && p.z < -46 ? 'balcony' : 'hall'; }
+    if (near('wtable', 11)) return 'workshop'; if (near('house_s', 13) || near('cradle', 11)) return 'home'; if (near('praline', 9)) return 'shop'; if (near('choc_shore', 26)) return 'choclake'; if (p.z > 112) return 'forest';
     return t === 'night' || t === 'dusk' ? 'sugarnight' : 'sugar';
   }
   direct(run) {
-    const who = this.player.who, speaks = (n) => run.some((l) => Array.isArray(l) && l[0] === n), amber = speaks('Amber') || who === 'amber', kim = speaks('Kim') || who === 'kim' || this.comp?.id === 'kim';
+    const who = this.player.who, speaks = (n) => run.some((l) => Array.isArray(l) && l[0] === n), rubyHere = !this.W.sea && this.ruby.model.visible && Math.hypot(this.ruby.x - this.player.x, this.ruby.z - this.player.z) < 30;
     const mood = (n, t) => { const sad = /sorry|afraid|don’t know|can’t|couldn’t|alone|lost|scared|worr|never|nobody|missing|…$|—$/i.test(t), joy = /laugh|ha!|wonderful|delicious|love|perfect|best|beautiful|sweet|!$/i.test(t), ask = /\?$/.test(t);
-      return n === 'Amber' ? (sad ? 'worried' : /!$/.test(t) && !/love|wonderful|delicious|beautiful/i.test(t) ? 'fierce' : joy ? 'laugh' : ask ? 'worried' : 'smile') : (sad ? 'shy' : ask || /oh|really|what/i.test(t) && /[!?]$/.test(t) ? 'amazed' : joy ? 'laugh' : 'smile'); };
-    const out = [{ bg: this.autoBg() }]; if (amber) out.push({ amber: 'smile' }); if (kim) out.push({ kim: 'smile' });
-    for (const l of run) { if (Array.isArray(l) && (l[0] === 'Amber' || l[0] === 'Kim')) out.push({ [l[0] === 'Amber' ? 'amber' : 'kim']: mood(l[0], l[1]) }); else if (typeof l === 'string' && kim && /Tira/.test(l)) out.push({ tira: /startl|squeak|jump/i.test(l) ? 'startled' : /sleep|doz/i.test(l) ? 'asleep' : 'happy' }); out.push(l); }
+      if (n === 'Amber') return sad ? 'worried' : /!$/.test(t) && !/love|wonderful|delicious|beautiful/i.test(t) ? 'fierce' : joy ? 'laugh' : ask ? 'worried' : 'smile';
+      if (n === 'Kim') return sad ? 'shy' : ask || (/oh|really|what/i.test(t) && /[!?]$/.test(t)) ? 'amazed' : joy ? 'laugh' : 'smile';
+      if (n === 'Ruby') return joy ? 'happy' : ask ? 'curious' : 'soft'; if (n === 'The King') return sad ? 'grave' : joy ? 'proud' : 'smile';
+      return /coat/i.test(t) ? 'coat' : sad || ask ? 'fuss' : 'smile'; };
+    const out = [{ bg: this.autoBg() }], others = ['The King', 'Madame Praline'].filter(speaks), ruby = speaks('Ruby') || (rubyHere && !others.length && !speaks('Kim') && run.some((l) => typeof l === 'string' && /Ruby/.test(l)));
+    const amber = speaks('Amber') || who === 'amber', kim = speaks('Kim') || who === 'kim' || (this.comp?.id === 'kim' && !others.length && !ruby);
+    if (amber) out.push({ amber: 'smile' }); if (kim && !(amber && (others.length || ruby))) out.push({ kim: 'smile' }); for (const o of others.slice(0, 1)) out.push({ [CUTWHO[o]]: 'smile' }); if (ruby && !others.length) out.push({ ruby: 'soft' });
+    for (const l of run) { if (Array.isArray(l) && CUTWHO[l[0]]) out.push({ [CUTWHO[l[0]]]: mood(l[0], l[1]) }); else if (typeof l === 'string') { if (kim && /Tira/.test(l)) out.push({ tira: /startl|squeak|jump/i.test(l) ? 'startled' : /sleep|doz/i.test(l) ? 'asleep' : 'happy' }); if (ruby && /Ruby/.test(l)) out.push({ ruby: /snort|flame|leap|delight|splash|grin/i.test(l) ? 'happy' : /tilt|watch|sniff|listen|look/i.test(l) ? 'curious' : 'soft' }); } out.push(l); }
     return out;
   }
   async exec(list) {
@@ -419,6 +425,21 @@ export class Game {
   async mini_sled_free() { const p = this.player; this.place(0, -156); this.mode = 'sled'; this.sledV = 4; this.camYaw = 0; UI.controlsVisible(true); await new Promise((res) => (this.sledDone = res)); this.mode = null; this.sound.sfx('hit'); this.shake = 0.5; this.puff(p.x, p.y + 1, p.z, 0xffffff, 30); await wait(0.6); }
   async play_rings(s) { const t0 = this.t; await UI.say('', 'Ruby stretches her wings. Eight rings, as fast as you dare.'); this.sound.sfx('roar'); await this.fly({ rings: s.rings, start: [s.at[0], this.W.height(s.at[0], s.at[1]) + 14, s.at[1]], land: [s.at[0], s.at[1] + 4] }); const secs = Math.round(this.t - t0);
     return { score: -secs, cinders: Math.max(1, 6 - secs / 20), fmt: (v) => -v + ' seconds', text: `Eight rings in ${secs} seconds.` }; }
+  async play_tira() { const W = this.W, p = this.player, old = p.model, cd = this.camDist, pts = [[7, 10], [-12, 8], [-10, 30], [9, 41], [-6, 20], [6, 21], [0, 26], [-15, 44], [12, 28], [3, 4], [-5, 36], [14, 16]];
+    await UI.say('', 'Meanwhile, Tira has smelled biscuit. Twelve crumbs have rolled under the market stalls and benches, and somebody small has to fetch them: fifty seconds.');
+    const t = makeProp('tira'); t.scale.setScalar(1.7); t.userData.critter = true; this.scene.remove(old); this.scene.add(t); p.model = t; this.camDist = 4.4; if (this.comp) this.comp.model.visible = false; this.place(2, 15);
+    const r = await this.collectGame({ items: pts.map(([x, z]) => [x, W.height(x, z) + 0.75, z]), time: 50, label: 'Crumbs', color: 0xe8b86a, reach: 1.5 });
+    this.scene.remove(t); this.scene.add(old); p.model = old; this.camDist = cd; if (this.comp) this.comp.model.visible = true;
+    return { score: r.got * 100 + Math.round(Math.max(0, r.left)), cinders: r.got / 3, fmt: (v) => Math.floor(v / 100) + ' crumbs', text: r.got >= 12 ? `Every crumb, and ${Math.round(r.left)} seconds to wash her whiskers.` : `${r.got} of 12 crumbs. Tira considers this a start.` }; }
+  async play_kim(s) { const W = this.W, doors = (W.doors || []).filter((d) => !d.deck).sort((a, b) => Math.hypot(a.x, a.z - 16) - Math.hypot(b.x, b.z - 16)).slice(0, 8);
+    await UI.say('', 'Meanwhile, Kim has the morning round. Eight ribboned boxes, eight doorsteps, and the pastry is best warm: seventy-five seconds.');
+    this.asOverride = 'kim'; this.refresh(); this.place(s.at[0], s.at[1] + 2);
+    const r = await this.collectGame({ items: doors.map((d) => [d.x, W.height(d.x, d.z) + 1.2, d.z]), time: 75, label: 'Deliveries', color: 0xff8ab8, reach: 2 });
+    this.asOverride = null; this.refresh(); this.place(s.at[0], s.at[1] + 2);
+    return { score: r.got * 100 + Math.round(Math.max(0, r.left)), cinders: r.got / 2, fmt: (v) => Math.floor(v / 100) + ' doorsteps', text: r.got >= 8 ? `All eight delivered warm, with ${Math.round(r.left)} seconds in hand.` : `${r.got} of 8 boxes delivered.` }; }
+  async play_rubyfish(s) { const t0 = this.t; await UI.say('', 'Meanwhile, Ruby has the forest to herself. The strawberry lake is full of slow pink fish, and nobody is watching. Skim the eight rings, low over the water and the striped trees.'); this.sound.sfx('roar');
+    await this.fly({ solo: 1, rings: s.rings, start: [-40, this.W.height(-40, 138) + 9, 138], land: [s.at[0], s.at[1] + 4] }); const secs = Math.round(this.t - t0);
+    return { score: -secs, cinders: Math.max(1, 6 - secs / 20), fmt: (v) => -v + ' seconds', text: `Eight rings in ${secs} seconds, and a chin dripping pink.` }; }
   poseNpc(n) { // small stagings: the king lies in his bed, the dancers actually dance
     const pose = n.def.pose || (n.id === 'king' && n.def.at === 'king' ? 'lie' : null); if (!pose) return; const m = n.model, t = this.t;
     if (pose === 'lie') { m.rotation.set(-Math.PI / 2, 0, 0); m.position.set(n.x, n.y + 1.4, n.z - 2.2); if (!n.fx) { n.fx = part(GEO.box, 0xf6ead8, 0, 0, 0, 2.3, 0.16, 1.05); n.fx.add(part(GEO.box, 0xe2b24a, 0, 0.52, -0.42, 1, 0.3, 0.1)); n.fx.position.set(n.x, n.y + 1.56, n.z - 2.75); this.scene.add(n.fx); m.userData.bed = n.fx; } return; }
@@ -518,7 +539,7 @@ export class Game {
     if (free && !this.riding && !this.mode && UI.hit('med')) this.startMed();
     { const show = p.who === 'amber' && !this.riding && !this.rail && this.fireOK(); if (show !== this.hpShown || this.S.hp !== this.hpLast) { this.hpShown = show; this.hpLast = this.S.hp; UI.setHearts(this.S.hp ?? 3, show); } }
     // people
-    for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < 7 && !this.riding && n.id !== 'warden1' && n.id !== 'warden2') n.tyaw = Math.atan2(p.x - n.x, p.z - n.z); n.yaw += wrap((n.tyaw ?? n.yaw) - n.yaw) * Math.min(1, dt * 5); n.model.rotation.y = n.yaw; this.poseNpc(n); n.model.visible = d < 110; if (d < 55) { n.model.userData.pose = this.busy && d < 6 ? 'talk' : null; animPerson(n.model, dt, false); } }
+    for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < 7 && !this.riding && n.id !== 'warden1' && n.id !== 'warden2') n.tyaw = Math.atan2(p.x - n.x, p.z - n.z); n.yaw += wrap((n.tyaw ?? n.yaw) - n.yaw) * Math.min(1, dt * 5); n.model.rotation.y = n.yaw; this.poseNpc(n); n.model.visible = d < 110; if (d < 55) { n.model.userData.pose = this.busy && d < 6 ? 'talk' : null; animPerson(n.model, dt, !!n.walk); } }
     if (this.comp) this.updateComp(dt);
     this.updateRuby(dt); this.updateFire(dt); this.updateTira(dt); this.updateHint(dt);
     for (const t of this.things) if (t.prop) t.prop.rotation.y += dt * (t.def.prop === 'turtle' || t.def.prop === 'cat' ? 0 : 1.2);
@@ -566,7 +587,7 @@ export class Game {
     if (free && UI.hit('jump') && p.ground) { p.vy = 8.6; p.ground = false; }
     if (!p.ground || p.y > h + 0.05) { p.vy -= 24 * dt; p.y += p.vy * dt; p.ground = false; if (p.y <= h) { const fell = p.vy; p.y = h; p.ground = true; p.vy = 0; if (fell < -3 && this.onBouncer(p.x, p.z)) { p.vy = 13.6; p.ground = false; p.y += 0.02; this.sound.sfx('boing'); } } }
     else p.y = h;
-    p.model.userData.pose = this.mode === 'med' ? 'sit' : p.ground ? null : 'air'; p.model.position.set(p.x, p.y, p.z); p.model.rotation.y = p.yaw; animPerson(p.model, dt, moving && p.ground);
+    p.model.userData.pose = this.mode === 'med' ? 'sit' : p.ground ? null : 'air'; p.model.position.set(p.x, p.y, p.z); p.model.rotation.y = p.yaw; if (p.model.userData.critter) p.model.position.y += moving && p.ground ? Math.abs(Math.sin(this.t * 16)) * 0.14 : 0; else animPerson(p.model, dt, moving && p.ground);
   }
   onBouncer(x, z) { for (const b of this.W.bouncers || []) if ((x - b[0]) ** 2 + (z - b[1]) ** 2 < b[2] * b[2]) return true; return false; }
   updateSled(dt, mx) { const p = this.player; this.sledV = Math.min(27, this.sledV + dt * 9); p.z += this.sledV * dt; p.x = clamp(p.x + mx * 13 * dt, -13, 13); p.y = this.H(p.x, p.z) + 0.2; p.yaw = mx * 0.5; p.model.position.set(p.x, p.y, p.z); p.model.rotation.set(-0.35, p.yaw, 0); if (this.comp) { this.comp.x = p.x + 3.4; this.comp.z = p.z + 4; } if (Math.random() < 0.5) this.puff(p.x, p.y, p.z - 0.5, 0xffffff, 2, 0.6, 1.5, 0.6); if (p.z > -101) { p.model.rotation.set(0, 0, 0); this.sledDone?.(); this.sledDone = null; } }
