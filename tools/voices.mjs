@@ -22,8 +22,9 @@ console.log(lines.size, 'lines,', [...lines.values()].reduce((a, l) => a + l[1].
 if (!process.env.ELEVENLABS_API_KEY) { console.log('Set ELEVENLABS_API_KEY to record.'); process.exit(0); }
 // curl is used so the request honours the system proxy settings.
 import { execFileSync } from 'node:child_process';
+const redo = new Set((process.env.REDO || '').split(',').filter(Boolean)); // REDO=Kim re-records that character's lines with their current voice
 const model = process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2'; let n = 0;
-for (const [id, [who, text]] of lines) { const f = dir + id + '.mp3'; if (fs.existsSync(f)) continue;
+for (const [id, [who, text]] of lines) { const f = dir + id + '.mp3'; if (fs.existsSync(f) && !redo.has(who)) continue;
   const code = execFileSync('curl', ['-s', '-o', f, '-w', '%{http_code}', '-X', 'POST', `https://api.elevenlabs.io/v1/text-to-speech/${voices[who]}?output_format=mp3_44100_64`, '-H', 'xi-api-key: ' + process.env.ELEVENLABS_API_KEY, '-H', 'content-type: application/json', '-d', JSON.stringify({ text, model_id: model })]).toString();
   if (code !== '200') { console.error('\nFAILED', who, code, fs.readFileSync(f, 'utf8').slice(0, 300)); fs.unlinkSync(f); break; }
   if (++n % 20 === 0) console.log(n, 'recorded'); if (process.env.LIMIT && n >= +process.env.LIMIT) break; }
