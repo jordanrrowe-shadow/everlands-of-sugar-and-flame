@@ -9,7 +9,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder), src = {}, clips = { lady: {}, man: {} };
 // Sculpted hero models (generated from the authors' character art): Amber, Kim and the King are rigged and animated; Ruby and Tira are statues the game moves itself.
-const hero = {}, HEROES = ['amber', 'amber-coat', 'kim', 'king', 'ruby', 'tira'], HERO_OF = { Amber: 'amber', Kim: 'kim', 'The King': 'king' };
+const hero = {}, HEROES = ['amber', 'amber-coat', 'kim', 'king', 'ruby', 'tira', 'lava', 'smorella', 'tafford', 'praline', 'ashlock'], HERO_OF = { Amber: 'amber', Kim: 'kim', 'The King': 'king', 'Grandma Lava': 'lava', Smorella: 'smorella', Tafford: 'tafford', 'Madame Praline': 'praline', 'Lord Ashlock': 'ashlock' }, HERO_H = { kim: 1.07, king: 1.15, amber: 1.12, 'amber-coat': 1.12, lava: 1.0, smorella: 1.1, tafford: 1.2, praline: 0.98, ashlock: 1.2 };
 export const getHero = (n) => hero[n];
 export function heroStatic(n, size) { const h = hero[n]; if (!h) return null; const m = h.scene.clone(true), box = new THREE.Box3().setFromObject(m), sz = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3()), k = size / Math.max(sz.x, sz.y, sz.z), g = new THREE.Group(); m.position.set(-c.x * k, -box.min.y * k, -c.z * k); m.scale.multiplyScalar(k); g.add(m); g.userData.size = sz.multiplyScalar(k); m.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material.envMapIntensity = 0.5; o.material.metalness = 0; o.material.roughness = 0.85; } }); return g; }
 const LADIES = ['Formal', 'Witch'], MEN = ['King', 'Farmer', 'Adventurer', 'Worker', 'Suit', 'Casual'];
@@ -73,7 +73,7 @@ function makeHero(L, key) {
   const cl = H.clips, has = (n, d) => (cl[n] ? n : d); animate(u, body, cl);
   u.A = { idle: 'Idle', walk: has('Walking_Woman', has('Casual_Walk', 'Idle')), jog: has('Run_02', has('Casual_Walk', 'Idle')), sit: has('Chair_Sit_Idle_F', has('Chair_Sit_Idle_M', 'Idle')), air: 'Idle', talk: has('Talk_with_Hands_Open', has('Talk_with_Right_Hand_Open', 'Idle')), cast: has('mage_soell_cast', 'Big_Wave_Hello'), sleep: has('Sleep_Normally', 'Idle'), dance: has('Joyful_Dance_with_Hand_Sway', 'Idle') };
   u.cast = () => u.once(u.A.cast); u.cur = null; u.play('Idle', 0);
-  const h = (L.h || 1) * (key === 'kim' ? 1.07 : key === 'king' ? 1.15 : 1.12); g.scale.setScalar(h); u.h = h; u.fast = key !== 'king';
+  const h = HERO_H[key] || 1.1; g.scale.setScalar(h); u.h = h; u.fast = /amber|kim/.test(key);
   return g;
 }
 function makeLady(L) {
