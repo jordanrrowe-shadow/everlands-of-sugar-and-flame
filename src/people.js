@@ -40,7 +40,7 @@ function assemble(g, bodyName, headName, paint, keep) {
     for (const [o, pn] of list) { const sk = new THREE.Skeleton(o.skeleton.bones.map((b) => bone[b.name]), o.skeleton.boneInverses); g.add(o); o.bind(sk, o.bindMatrix); o.castShadow = true; o.frustumCulled = false; paint(o, pn); } }
   g.updateMatrixWorld(true);
   const on = (b, m) => { g.add(m); m.updateMatrixWorld(true); (bone[b] || bone.Hips).attach(m); m.traverse((o) => { if (o.isMesh) o.castShadow = true; }); return m; };
-  return { body, on };
+  return { body, on, bone };
 }
 function animate(u, body, cl) {
   u.mixer = new THREE.AnimationMixer(body); u.actions = {}; u.cur = null;
@@ -68,21 +68,35 @@ function makeLady(L) {
     let c; if (mn === 'Skin') c = L.skin || 0xf0c8a8; else if (mn === 'Hair_Black' || (head && mn === 'Red')) c = L.hair; else if (head && (mn === 'Purple' || mn === 'Gold')) { o.visible = false; return; } else if (head) c = 0x3a2418;
     else if (/Feet/.test(pn)) c = L.accent || (elder ? skirt : dark); else if (mn === 'Gold') c = L.trim || 0xe9b949; else if (mn === 'LimeGreen' || mn === 'Purple') c = L.top; else c = L.accent || (elder ? skirt : dark);
     if (/Legs/.test(pn) || (elder && /Feet/.test(pn))) { o.visible = false; return; } o.material = mat(c ?? 0x8a6a5a); };
-  const { body, on } = assemble(g, base, L.hairLong && base === 'Formal' ? 'Witch' : null, paint);
+  const { body, on, bone } = assemble(g, base, L.hairLong && base === 'Formal' ? 'Witch' : null, paint);
   const long = elder, sk = new THREE.Group();
   if (L.tiers) { // a slim layered dress: three tiers falling from the waist, cream ruffles between
     const tier = (c, yBot, r) => part(GEO.frustum, c, 0, (1.1 + yBot) / 2, 0, r, 1.1 - yBot, r);
     sk.add(tier(L.top, 0.66, 0.25), tier(L.trim || 0xffffff, 0.56, 0.275), tier(skirt, 0.34, 0.3), tier(L.trim || 0xffffff, 0.25, 0.32), tier(L.top, 0.1, 0.335), part(GEO.sph, L.trim || 0xffffff, 0, 1.06, 0.12, 0.07, 0.045, 0.04)); }
   else sk.add(part(GEO.frustum, skirt, 0, long ? 0.56 : 0.6, 0, long ? 0.34 : 0.45, long ? 1.08 : 0.98, long ? 0.34 : 0.45));
-  if (L.tiers) { /* tiers carry their own trim */ } else if (!long) sk.add(part(GEO.frustum, L.trim || 0xffffff, 0, 0.19, 0, 0.52, 0.2, 0.52), part(GEO.frustum, skirt, 0, 0.36, 0, 0.49, 0.2, 0.49)); else if (L.trim) sk.add(part(GEO.frustum, L.trim, 0, 0.07, 0, 0.37, 0.11, 0.37)); if (long && L.accent) sk.add(part(GEO.frustum, L.accent, 0, 0.2, 0, 0.36, 0.16, 0.36)); on('Hips', sk);
+  if (L.tiers) { // ruffles, ribbon bands, bows, an off-shoulder frill, puff sleeves, lace gloves and a necklace
+    const cream = L.trim || 0xffffff, rose = shade(L.top, 0.82), ringOf = (n, r, y, sz, c, grp = sk) => { for (let i = 0; i < n; i++) { const a = i / n * 6.283; grp.add(part(GEO.sph, c, Math.sin(a) * r, y, Math.cos(a) * r, sz, sz * 0.8, sz)); } };
+    ringOf(16, 0.252, 0.655, 0.04, cream); ringOf(18, 0.302, 0.335, 0.043, cream); ringOf(20, 0.337, 0.1, 0.046, cream); ringOf(20, 0.325, 0.045, 0.04, 0xffffff);
+    for (const [y, r] of [[0.72, 0.232], [0.4, 0.287], [0.16, 0.327]]) sk.add(part(GEO.frustum, rose, 0, y, 0, r, 0.035, r));
+    for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283 + 0.5; sk.add(part(GEO.sph, 0xfff3c4, Math.sin(a) * 0.3, 0.24, Math.cos(a) * 0.3, 0.028, 0.028, 0.02), part(GEO.sph, 0xf2a93b, Math.sin(a) * 0.312, 0.24, Math.cos(a) * 0.312, 0.012, 0.012, 0.01)); }
+    const bow = (x, y, z, sc, c, tails) => { const b = new THREE.Group(); for (const sgn of [-1, 1]) { const l = part(GEO.sph, c, sgn * 0.075, 0, 0, 0.075, 0.05, 0.028); l.rotation.z = sgn * 0.35; b.add(l); if (tails) { const tl = part(GEO.box, c, sgn * 0.045, -0.15, -0.01, 0.045, 0.26, 0.015); tl.rotation.z = sgn * 0.22; b.add(tl); } } b.add(part(GEO.sph, c, 0, 0, 0.01, 0.03, 0.03, 0.03)); b.position.set(x, y, z); b.scale.setScalar(sc); return b; };
+    sk.add(part(GEO.frustum, cream, 0, 1.06, 0, 0.115, 0.07, 0.105)); on('Hips', bow(0, 1.08, -0.14, 1.5, cream, true));
+    const top = new THREE.Group(); for (let i = 0; i < 14; i++) { const a = i / 14 * 6.283; top.add(part(GEO.sph, cream, Math.sin(a) * 0.19, 1.405 + Math.cos(a) * 0.012, Math.cos(a) * 0.115, 0.05, 0.042, 0.045)); }
+    top.add(bow(0, 1.37, 0.135, 0.85, L.top), part(GEO.sph, 0xf2c14a, 0, 1.455, 0.085, 0.016, 0.016, 0.012)); for (let i = -3; i <= 3; i++) top.add(part(GEO.sph, 0xf2c14a, i * 0.022, 1.475 - Math.cos(i * 0.5) * 0.02 + 0.0, 0.07 + Math.cos(i * 0.5) * 0.012, 0.007, 0.007, 0.007));
+    for (let i = 0; i < 3; i++) top.add(part(GEO.box, cream, 0, 1.3 - i * 0.055, 0.118, 0.07, 0.008, 0.008)); on('Chest', top);
+    const wp = (n) => { const b = bone[n]; return b ? b.getWorldPosition(new THREE.Vector3()) : null; };
+    for (const S of ['L', 'R']) { const a = wp('UpperArm' + S), e = wp('LowerArm' + S), w = wp('Wrist' + S); if (!a || !e || !w) continue;
+      const puff = new THREE.Group(); puff.add(part(GEO.sph, L.top, 0, 0, 0, 0.082, 0.075, 0.082)); for (let i = 0; i < 8; i++) { const q = i / 8 * 6.283; puff.add(part(GEO.sph, cream, Math.sin(q) * 0.06, -0.06, Math.cos(q) * 0.06, 0.026, 0.02, 0.026)); } puff.position.copy(a).lerp(e, 0.22); on('UpperArm' + S, puff);
+      const glove = new THREE.Group(); glove.add(part(GEO.sph, 0xfffaf0, 0, 0, 0, 0.04, 0.062, 0.04)); for (let i = 0; i < 7; i++) { const q = i / 7 * 6.283; glove.add(part(GEO.sph, 0xffffff, Math.sin(q) * 0.04, 0.055, Math.cos(q) * 0.04, 0.017, 0.014, 0.017)); } glove.add(part(GEO.sph, L.top, 0, 0.05, 0.045, 0.02, 0.014, 0.012)); glove.position.copy(w).lerp(e, 0.18); on('LowerArm' + S, glove); } } else if (!long) sk.add(part(GEO.frustum, L.trim || 0xffffff, 0, 0.19, 0, 0.52, 0.2, 0.52), part(GEO.frustum, skirt, 0, 0.36, 0, 0.49, 0.2, 0.49)); else if (L.trim) sk.add(part(GEO.frustum, L.trim, 0, 0.07, 0, 0.37, 0.11, 0.37)); if (long && L.accent) sk.add(part(GEO.frustum, L.accent, 0, 0.2, 0, 0.36, 0.16, 0.36)); on('Hips', sk);
   if (L.cape) on('Chest', swing(u, 1.46, long ? cape(L.cape, 1.46, 0.5, 0.36) : cape(L.cape, 1.46, 0.78, 0.33), 0.2));
   if (L.collar) on('Chest', collar(L.collar, 1.45));
   if (L.crown) on('Head', part(GEO.cyl, 0xe9b949, 0, 1.9, 0.02, 0.11, 0.08, 0.11));
-  if (L.hairLong > 1) { // waist-length waves down the back and two locks over the shoulders; lies over the cape when she wears one
-    const hg = new THREE.Group(), out = (y) => (L.cape ? 0.21 + (1.46 - y) * 0.2 : 0.12 + (1.46 - y) * 0.06);
-    for (const [x, y, sx, sy] of [[0, 1.3, 0.17, 0.3], [-0.09, 1.08, 0.1, 0.3], [0.09, 1.05, 0.1, 0.3], [0, 0.92, 0.11, 0.27], [-0.13, 1.26, 0.07, 0.26], [0.13, 1.24, 0.07, 0.27], [-0.05, 0.8, 0.06, 0.16], [0.07, 0.78, 0.055, 0.15]]) hg.add(part(GEO.sph, L.hair, x, y, -out(y), sx, sy, 0.065));
-    for (const s of [-1, 1]) hg.add(part(GEO.sph, L.hair, s * 0.125, 1.36, 0.075, 0.042, 0.19, 0.045), part(GEO.sph, L.hair, s * 0.13, 1.22, 0.1, 0.035, 0.1, 0.04));
-    on('Chest', swing(u, 1.46, hg, 0.13)); }
+  if (L.hairLong > 1) { // one continuous fall from the back of the head to the waist, lying on the back (or over the cape), with two locks over the shoulders
+    const hg = new THREE.Group(), back = (y) => (y > 1.44 ? 0.085 + (1.68 - y) * 0.12 : L.cape ? 0.115 + (1.44 - y) * 0.33 : 0.115 + (1.44 - y) * 0.02);
+    for (let i = 0; i < 15; i++) { const t = i / 14, y = 1.68 - t * 0.93, wd = (0.14 + 0.05 * Math.sin(t * Math.PI)) * (1 - t * 0.4); hg.add(part(GEO.sph, L.hair, Math.sin(t * 5) * 0.012, y, -back(y), wd, 0.1, 0.052 - t * 0.012));
+      if (i > 2 && i % 2) for (const sgn of [-1, 1]) hg.add(part(GEO.sph, L.hair, sgn * (wd * 0.8 + 0.01 * Math.sin(i)), y - 0.03, -back(y) + 0.02, 0.05, 0.1, 0.042)); }
+    for (const sgn of [-1, 1]) { hg.add(part(GEO.sph, L.hair, sgn * 0.07, 0.72, -back(0.72), 0.05, 0.09, 0.05)); for (let i = 0; i < 5; i++) { const t = i / 4, y = 1.6 - t * 0.42; hg.add(part(GEO.sph, L.hair, sgn * (0.115 + t * 0.02), y, 0.02 + t * 0.085, 0.042, 0.085, 0.045)); } }
+    on('Chest', swing(u, 1.6, hg, 0.07)); }
   extras(L, on, true); animate(u, body, clips.lady);
   const h = (L.h || 1) * (L.style === 'child' ? 0.62 : 1); g.scale.setScalar(h); u.h = h; u.fast = L.style === 'girl' || L.style === 'child';
   return g;
