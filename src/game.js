@@ -5,6 +5,7 @@ import { makePerson, animPerson, makeDragon, animDragon, makeProp, makeRing } fr
 import { GEO, mat, part, rnd, smooth } from './kit.js';
 import { U, makeGrass, makeMotes, makeClouds, makeFall } from './gfx.js';
 import { InkPass } from './ink.js';
+import { discover, drawMini } from './map.js';
 import { loadPack, WORLD_PACKS } from './assets.js';
 import { loadPeople } from './people.js';
 import { playCut, WHO as CUTWHO } from './cut.js';
@@ -122,7 +123,7 @@ export class Game {
     if (name === 'sugar' && !this.grass.sugar) { this.grass.sugar = makeGrass(this.worlds.sugar, 260, 56, 26000, 0x5fbf86, 0xc8f2b8); }
     if (!this.motes[name] && name !== 'sea') this.motes[name] = makeMotes(name === 'ember' ? 0xff8a2a : 0xffe6f2, name === 'ember' ? 1.6 : 0.35, name === 'ember' ? 260 : 160);
     for (const k of ['ember', 'sugar']) { for (const o of [this.grass[k], this.motes[k]]) if (o) { if (k === name) this.scene.add(o); else this.scene.remove(o); } }
-    this.sound.mood = name; this.markPlays(); this.markTorches();
+    this.sound.mood = name; this.markPlays(); this.markTorches(); document.body.dataset.world = name;
   }
   setTime(time) {
     this.S.time = time; const p = (SKY[this.S.world] || SKY.ember)[time] || SKY[this.S.world].day, top = new THREE.Color(p[0]), bot = new THREE.Color(p[1]);
@@ -467,6 +468,7 @@ export class Game {
     const fx = this.S.opt.fx !== false && !this.zone && !W.sea, want = { snow: fx && W.name === 'sugar' ? smooth(-84, -112, p.z) : 0, petal: fx && W.name === 'sugar' && p.z > -80 && p.z < 104 ? 0.85 : 0, ash: fx && W.name === 'ember' ? smooth(-88, -130, p.z) : 0 };
     for (const k in F) { const u = F[k].material.uniforms; u.uAmt.value = lerp(u.uAmt.value, want[k], Math.min(1, dt * 1.2)); F[k].visible = u.uAmt.value > 0.02; if (F[k].visible) u.uCam.value.set(p.x, p.y, p.z); }
   }
+  toast(t) { UI.tip('✦ ' + t, 3.5); this.sound.sfx('ring'); }
   updatePin(dt) { // a bobbing gold marker over whatever the action button would act on
     if (!this.pin) { this.pin = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd24a).multiplyScalar(2), fog: false })); this.pin.scale.set(1, 1.5, 1); this.scene.add(this.pin); }
     const a = this.pinAt, on = !!a && !this.busy && !this.riding && !this.zone; this.pin.visible = on; if (on) { this.pin.position.set(a[0], this.H(a[0], a[2]) + a[1] + Math.sin(this.t * 4) * 0.12, a[2]); this.pin.rotation.y += dt * 3; }
@@ -581,7 +583,7 @@ export class Game {
     // people
     for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < 7 && !this.riding && n.id !== 'warden1' && n.id !== 'warden2') n.tyaw = Math.atan2(p.x - n.x, p.z - n.z); n.yaw += wrap((n.tyaw ?? n.yaw) - n.yaw) * Math.min(1, dt * 5); n.model.rotation.y = n.yaw; this.poseNpc(n); n.model.visible = d < 110; if (d < 55) { n.model.userData.pose = this.busy && d < 6 ? 'talk' : null; animPerson(n.model, dt, !!n.walk); } }
     if (this.comp) this.updateComp(dt);
-    this.updateRuby(dt); this.updateFire(dt); this.updateTorches(dt); this.updateLamps(dt); this.updateWeather(dt); this.updatePin(dt); this.updateSound(dt, mx, my); this.updateTira(dt); this.updateHint(dt);
+    this.updateRuby(dt); this.updateFire(dt); this.updateTorches(dt); this.updateLamps(dt); this.updateWeather(dt); this.updatePin(dt); if ((this.mapT = (this.mapT || 0) - dt) <= 0) { this.mapT = 0.12; discover(this, dt); const mc = document.getElementById('mini'); mc.style.display = this.zone || this.W.sea ? 'none' : ''; if (!this.zone && !this.W.sea) drawMini(mc, this); } this.updateSound(dt, mx, my); this.updateTira(dt); this.updateHint(dt);
     for (const t of this.things) if (t.prop) t.prop.rotation.y += dt * (t.def.prop === 'turtle' || t.def.prop === 'cat' ? 0 : 1.2);
     for (const [, m] of this.lits) { const s = 1 + Math.sin(this.t * 9 + m.position.x) * 0.15; m.scale.y = (m.scale.x < 0.5 ? 0.8 : 1.3) * s; }
     for (let i = this.sparks.length - 1; i >= 0; i--) { const m = this.sparks[i], u = m.userData, a = m.geometry.attributes.position; u.age += dt; for (let j = 0; j < a.count; j++) a.setXYZ(j, a.getX(j) + u.vel[j * 3] * dt, a.getY(j) + u.vel[j * 3 + 1] * dt, a.getZ(j) + u.vel[j * 3 + 2] * dt); a.needsUpdate = true; m.material.opacity = 0.9 * (1 - u.age / u.life); if (u.age > u.life) { this.scene.remove(m); this.sparks.splice(i, 1); } }

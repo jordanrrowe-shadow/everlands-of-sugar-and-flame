@@ -163,4 +163,39 @@ canvas#c, #title, #fade, #cut, #img, #journal { inset: auto; top: 0; left: 0; wi
 #actChip::after { content: ""; position: absolute; right: 58px; bottom: -6px; border: 6px solid #0000; border-top-color: #2a1018e0; border-bottom: 0; }
 @media (max-height: 430px) { #btns { transform: scale(.86); bottom: calc(10px + var(--sb)); } }
 @media (min-width: 700px) and (min-height: 700px) { #btns { transform: scale(1.32); right: calc(30px + var(--sr)); bottom: calc(34px + var(--sb)); } }
-@media (hover: hover) and (pointer: fine) { #bAct small::after { content: " · E"; opacity: .6; } #bJump small::after { content: " · ␣"; opacity: .6; } #bFlame small::after { content: " · F"; opacity: .6; } }
+
+/* ── realm themes: Emberland is ember-dark with gold line icons; Sugarland is cream and rose ── */
+body { --b1: #5a1a24; --b2: #2e0c14; --be: #e2b24a; --bi: #ffd98a; --bs: #1a060a; --a1: #ffcf6a; --a2: #c8761e; --ai: #3a1208; }
+body[data-world="sugar"] { --b1: #fffdfb; --b2: #ffd9e8; --be: #f58ab5; --bi: #c8507e; --bs: #c98aa6; --a1: #ffffff; --a2: #ffa8cc; --ai: #a83a66; }
+body[data-world="sea"] { --b1: #2a4a6a; --b2: #14263c; --be: #9ad0f5; --bi: #d8f0ff; --bs: #0a1420; --a1: #d8f0ff; --a2: #6aa8d8; --ai: #14263c; }
+.rb { background: radial-gradient(circle at 35% 26%, var(--b1), var(--b2)); border: 2px solid var(--be); color: var(--bi); box-shadow: 0 4px 0 var(--bs), 0 8px 16px #0006; }
+.rb i { font-size: 0; filter: none; display: block; } .rb i svg { width: 30px; height: 30px; display: block; }
+.rb.sm i svg { width: 23px; height: 23px; } .rb small { letter-spacing: .08em; font-weight: 600; opacity: .95; }
+.rb:active, .rb.down { box-shadow: 0 1px 0 var(--bs), 0 3px 8px #0006; }
+#bFlame, #bFlame.kim { background: radial-gradient(circle at 35% 26%, var(--b1), var(--b2)); border-color: #ff9a3a; color: #ffb45a; box-shadow: 0 4px 0 var(--bs), 0 8px 16px #0006, inset 0 0 14px #ff7a2055; }
+#bFlame.kim { border-color: #ff7ab0; color: #ff8ac0; box-shadow: 0 4px 0 var(--bs), 0 8px 16px #0006, inset 0 0 14px #ff5a9a55; }
+body[data-world="sugar"] #bFlame { color: #f0762a; } body[data-world="sugar"] #bFlame.kim { color: #e8508e; }
+#bAct { background: radial-gradient(circle at 35% 24%, var(--a1), var(--a2)); border-color: #fff; color: var(--ai); box-shadow: 0 5px 0 var(--bs), 0 10px 22px #0007, 0 0 0 4px #ffd66a44; }
+#bAct i svg { width: 40px; height: 40px; }
+@keyframes actGlow { 0%, 100% { box-shadow: 0 5px 0 var(--bs), 0 10px 22px #0007, 0 0 0 4px #ffd66a44; } 50% { box-shadow: 0 5px 0 var(--bs), 0 10px 22px #0007, 0 0 0 11px #ffd66a1c; } }
+#actChip { background: var(--b2); color: var(--bi); border-color: var(--be); } #actChip::after { border-top-color: var(--b2); }
+body[data-world="sugar"] #actChip { background: #fff; }
+/* ── top bar: quest ribbon, flame lives, way-finder, journal, mini-map ── */
+#goal { position: relative; padding: 8px 14px 8px 44px; border-radius: 6px 18px 18px 6px; border: 0; border-left: 4px solid var(--be); background: linear-gradient(90deg, #1c0a10ee, #2a1018cc 70%, #2a101888); color: #fff4e0; box-shadow: 0 3px 12px #0005; }
+#goal::before { content: ""; position: absolute; left: 11px; top: 50%; width: 22px; height: 28px; margin-top: -14px; background: radial-gradient(circle at 50% 72%, #fff3b0 0 16%, #ffb030 42%, #ff5a20 78%); clip-path: path("M11 0c1 5 9 8 9 17a9 9 0 0 1-18 0c0-4 2-6 4-8 0 3 1 4 3 5 0-6-1-9 2-14z"); animation: flick 1.6s ease-in-out infinite; }
+body[data-world="sugar"] #goal { background: linear-gradient(90deg, #fffdfbf2, #ffe9f2e6 70%, #ffe9f2aa); color: var(--ink); } body[data-world="sugar"] #goal::before { background: radial-gradient(circle at 50% 72%, #fff 0 16%, #ffb0d0 42%, #f0569a 78%); }
+#goal b { color: var(--be); letter-spacing: .16em; }
+@keyframes flick { 0%, 100% { transform: scale(1) rotate(-2deg); } 50% { transform: scale(1.08, 1.14) rotate(2deg); } }
+#hearts { background: none; border: 0; padding: 4px 2px; gap: 2px; filter: drop-shadow(0 2px 4px #0008); }
+#hearts i { width: 20px; height: 26px; clip-path: path("M10 0c1 4.500 8 7.500 8 15.500a8 8 0 0 1-16 0c0-3.500 2-5.500 3.500-7.500 0 3 1 4 2.500 4.500 0-5.500-.500-8 2-12.500z"); border-radius: 0; background: radial-gradient(circle at 50% 74%, #fff6c0 0 14%, #ffb030 40%, #ff4a1a 80%); animation: flick 1.8s ease-in-out infinite; }
+#hearts i:nth-child(2) { animation-delay: -.6s; } #hearts i:nth-child(3) { animation-delay: -1.1s; }
+#hearts i.off { opacity: 1; filter: none; background: #0006; box-shadow: inset 0 0 0 2px #fff5; animation: none; }
+#menuBtn, #hintBtn { background: radial-gradient(circle at 35% 26%, var(--b1), var(--b2)); border: 2px solid var(--be); color: var(--bi); display: flex; align-items: center; justify-content: center; }
+#menuBtn svg, #hintBtn svg { width: 24px; height: 24px; } #hintBtn svg { animation: sway 3.4s ease-in-out infinite; }
+@keyframes sway { 0%, 100% { transform: rotate(-14deg); } 50% { transform: rotate(14deg); } }
+#mini { position: fixed; top: calc(62px + var(--st)); right: calc(12px + var(--sr)); width: 104px; height: 104px; border-radius: 50%; border: 2.500px solid var(--be); box-shadow: 0 4px 14px #0007, inset 0 0 12px #0006; pointer-events: auto; background: var(--b2); }
+#hud.hide ~ #mini, #hud.hide #mini { display: none; }
+@media (max-height: 430px) { #mini { width: 88px; height: 88px; top: calc(58px + var(--st)); } }
+@media (min-width: 700px) and (min-height: 700px) { #mini { width: 150px; height: 150px; top: calc(82px + var(--st)); right: calc(22px + var(--sr)); } #menuBtn svg, #hintBtn svg { width: 30px; height: 30px; } #goal { padding-left: 52px; } }
+#jMap { width: 100%; max-width: 560px; aspect-ratio: 1; display: block; margin: 0 auto; border-radius: 16px; border: 2px solid var(--gold); background: #2a1018; }
+.mapList { columns: 2; font-size: 14px; margin-top: 10px; } .mapList li.no { opacity: .45; font-style: italic; }

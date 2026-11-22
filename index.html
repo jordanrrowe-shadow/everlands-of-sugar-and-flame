@@ -21,8 +21,9 @@
   <button id="goal"><b id="chap"></b><span id="goalText"></span></button>
   <div id="hearts" class="hide"></div>
   <div id="meter" class="hide"><span id="meterLabel"></span><div><i id="meterFill"></i></div></div>
-  <button id="hintBtn" aria-label="Show the way">?</button>
-  <button id="menuBtn" aria-label="Journal">❖</button>
+  <button id="hintBtn" aria-label="Show the way"><i data-ic="hint"></i></button>
+  <button id="menuBtn" aria-label="Journal"><i data-ic="book"></i></button>
+  <canvas id="mini" width="220" height="220" aria-label="Map"></canvas>
 </div>
 <div id="bark"></div>
 <div id="tip" class="hide"></div>
@@ -31,13 +32,13 @@
   <div id="stick"><i></i></div>
   <div id="btns">
     <div id="actChip" class="hide"></div>
-    <button id="bAct" class="rb hide" aria-label="Action"><i>💬</i><small>Talk</small></button>
-    <button id="bWhistle" class="rb sm hide" aria-label="Whistle"><i>🎵</i><small>Whistle</small></button>
-    <button id="bMed" class="rb sm hide" aria-label="Meditate"><i>🧘</i><small>Rest</small></button>
-    <button id="bFlame" class="rb hide" aria-label="Flame"><i>🔥</i><small>Flame</small></button>
-    <button id="bLand" class="rb hide" aria-label="Land"><i>⤓</i><small>Land</small></button>
-    <button id="bBoost" class="rb hide" aria-label="Faster"><i>💨</i><small>Faster</small></button>
-    <button id="bJump" class="rb" aria-label="Jump"><i>⤒</i><small>Jump</small></button>
+    <button id="bAct" class="rb hide" aria-label="Action"><i data-ic="talk"></i><small>Talk</small></button>
+    <button id="bWhistle" class="rb sm hide" aria-label="Whistle"><i data-ic="whistle"></i><small>Whistle</small></button>
+    <button id="bMed" class="rb sm hide" aria-label="Meditate"><i data-ic="rest"></i><small>Rest</small></button>
+    <button id="bFlame" class="rb hide" aria-label="Flame"><i data-ic="flame"></i><small>Flame</small></button>
+    <button id="bLand" class="rb hide" aria-label="Land"><i data-ic="land"></i><small>Land</small></button>
+    <button id="bBoost" class="rb hide" aria-label="Faster"><i data-ic="fast"></i><small>Faster</small></button>
+    <button id="bJump" class="rb" aria-label="Jump"><i data-ic="jump"></i><small>Jump</small></button>
   </div>
 </div>
 
@@ -50,7 +51,7 @@
 
 <div id="journal" class="hide">
   <div id="jBox">
-    <nav><button data-tab="quest" class="on">Journal</button><button data-tab="keeps">Keepsakes</button><button data-tab="chapters">Chapters</button><button data-tab="settings">Settings</button><button id="jClose">✕</button></nav>
+    <nav><button data-tab="quest" class="on">Journal</button><button data-tab="map">Map</button><button data-tab="keeps">Keepsakes</button><button data-tab="chapters">Chapters</button><button data-tab="settings">Settings</button><button id="jClose">✕</button></nav>
     <section id="jBody"></section>
   </div>
 </div>

@@ -1,5 +1,7 @@
 // DOM interface: touch + keyboard input, dialogue box, barks, journal.
 import { CODEX } from './story/cast.js';
+import { ICON } from './icons.js';
+import { PLACES, drawFull } from './map.js';
 const $ = (id) => document.getElementById(id);
 export const el = { $ };
 const show = (e, on = true) => e.classList.toggle('hide', !on);
@@ -87,11 +89,12 @@ export function setGoal(chap, text, pulse) { $('chap').textContent = chap; $('go
 export function setTimer(label, v) { const m = $('meter'); show(m, !!label); if (!label) return; m.classList.remove('heat'); $('meterLabel').textContent = label; $('meterFill').style.width = Math.round(Math.max(0, Math.min(1, v)) * 100) + '%'; }
 export function setMeter(type, v) { const m = $('meter'); show(m, !!type); if (!type) return; m.classList.toggle('heat', type === 'heat'); $('meterLabel').textContent = type === 'cold' ? (v < 0.3 ? 'Shivering' : 'Cold') : (v < 0.3 ? 'Far too hot' : 'Too warm'); $('meterFill').style.width = Math.round(v * 100) + '%'; }
 export function setHearts(n, show, hurt) { const h = $('hearts'); showB(h, show); if (!show) return; if (h.children.length !== 3) h.innerHTML = '<i></i><i></i><i></i>'; [...h.children].forEach((e, i) => e.classList.toggle('off', i >= n)); if (hurt) { h.classList.remove('hurt'); void h.offsetWidth; h.classList.add('hurt'); } }
-const ACTS = [[/^Talk · (.*)$/, '💬', 'Talk'], [/^Play · (.*)$/, '⭐', 'Play'], [/^Ride (.*)$/, '🐉', 'Ride'], [/^(Go inside)$/, '🚪', 'Enter'], [/^(Climb the tower)$/, '🗼', 'Climb'], [/^(Go outside|Climb down)$/, '🚪', 'Leave'], [/^(Read .*)$/, '📜', 'Read'], [/^(Sit .*)$/, '🪑', 'Sit'], [/^(Leave .*|Write .*)$/, '✋', 'Do']];
+const ACTS = [[/^Talk · (.*)$/, 'talk', 'Talk'], [/^Talk to (.*)$/, 'talk', 'Talk'], [/^(Stand with .*|Sit with .*)$/, 'talk', 'Talk'], [/^Play · (.*)$/, 'play', 'Play'], [/^Ride (.*)$/, 'ride', 'Ride'], [/^(Go inside)$/, 'door', 'Enter'], [/^(Climb the tower)$/, 'climb', 'Climb'], [/^(Go outside|Climb down)$/, 'door', 'Leave'], [/^(Read .*)$/, 'read', 'Read'], [/^(Sit .*)$/, 'sit', 'Sit'], [/^(Leave .*|Write .*)$/, 'hand', 'Do']];
+document.querySelectorAll('[data-ic]').forEach((e) => { e.innerHTML = ICON[e.dataset.ic] || ''; });
 let actLabel = null;
 export function setAct(label) { const b = $('bAct'), chip = $('actChip'); show(b, !!label); show(chip, !!label); if (!label || label === actLabel) { if (!label) actLabel = null; return; } actLabel = label;
-  let icon = '🔍', verb = 'Look', sub = label; for (const [re, ic, vb] of ACTS) { const m = label.match(re); if (m) { icon = ic; verb = vb; sub = m[1]; break; } }
-  b.firstElementChild.textContent = icon; b.lastElementChild.textContent = verb; chip.textContent = sub; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
+  let icon = 'look', verb = 'Look', sub = label; for (const [re, ic, vb] of ACTS) { const m = label.match(re); if (m) { icon = ic; verb = vb; sub = m[1]; break; } }
+  b.firstElementChild.innerHTML = ICON[icon]; b.lastElementChild.textContent = verb; chip.textContent = sub; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
 export function setHold(v) { $('bFlame').style.setProperty('--hold', Math.round(v * 360) + 'deg'); }
 export function setButtons(o) { showB($('bJump'), o.jump); showB($('bFlame'), o.flame); $('bFlame').classList.toggle('kim', !!o.kim); showB($('bWhistle'), o.whistle); showB($('bBoost'), o.boost); showB($('bLand'), o.land); showB($('bMed'), o.med); }
 export function playUI(on) { show($('hud'), on); show($('controls'), on); }
@@ -103,6 +106,7 @@ export function initJournal(G) {
   const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   const render = () => {
     const S = G.S, ch = G.chapter; let h = '';
+    if (tab === 'map') { const wn = G.W.name, got = S.places || {}, list = PLACES[wn] || []; h += `<h3>${wn === 'sugar' ? 'Sugarland' : wn === 'ember' ? 'Emberland' : 'The Sea'}</h3><canvas id="jMap" width="900" height="900"></canvas><ul class="mapList">${list.map(([k, n]) => (got[wn + ':' + k] ? `<li>${esc(n)}</li>` : '<li class="no">Somewhere you have not been</li>')).join('')}</ul>`; body.innerHTML = h; drawFull($('jMap'), G); return; }
     if (tab === 'quest') {
       const st = G.curStep();
       h += `<h3>Chapter ${ch.n > 17 ? '∞' : ch.n} · ${esc(ch.title)}</h3><div class="goal">${esc(st ? st.goal : 'The end.')}</div>`;
@@ -129,11 +133,11 @@ export function initJournal(G) {
     $('oFx')?.addEventListener('change', (e) => { S.opt.fx = e.target.checked; G.save(); }); $('oCuts')?.addEventListener('change', (e) => { S.opt.cuts = e.target.checked; G.save(); }); $('oCape')?.addEventListener('change', (e) => { S.opt.cape = e.target.checked; G.save(); G.refresh(); }); $('oTitle')?.addEventListener('click', () => location.reload());
     $('oReset')?.addEventListener('click', () => { if (confirm('Erase all progress on this device?')) { G.erase(); location.reload(); } });
   };
-  const open = () => { if (G.busy && dialogOpen()) return; hintShown = false; tab = 'quest'; sync(); show(j); G.paused = true; render(); };
+  const open = (t) => { if (G.busy && dialogOpen()) return; hintShown = false; tab = typeof t === 'string' ? t : 'quest'; sync(); show(j); G.paused = true; render(); };
   const close = () => { show(j, false); G.paused = false; };
   const sync = () => j.querySelectorAll('nav button[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
   j.querySelectorAll('nav button[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; sync(); render(); }));
-  $('jClose').addEventListener('click', close); $('menuBtn').addEventListener('click', open); $('hintBtn').addEventListener('click', () => G.showHint()); $('goal').addEventListener('click', open);
+  $('jClose').addEventListener('click', close); $('menuBtn').addEventListener('click', open); $('hintBtn').addEventListener('click', () => G.showHint()); $('mini').addEventListener('click', () => open('map')); $('goal').addEventListener('click', open);
   j.addEventListener('click', (e) => { if (e.target === j) close(); });
   return { open, close, toggle: () => (j.classList.contains('hide') ? open() : close()) };
 }
