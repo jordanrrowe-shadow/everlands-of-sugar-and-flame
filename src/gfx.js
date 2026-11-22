@@ -104,6 +104,19 @@ export function makeGrass(world, ext = 260, size = 60, count = 13000, root = 0x6
   const mesh = new THREE.Mesh(geo, mat); mesh.frustumCulled = false; return mesh;
 }
 // Drifting motes: rising embers in Emberland, sugar-dust sparkles in Sugarland.
+// falling weather near the camera: snow on the mountains, petals over the town
+export function makeFall(color, count = 420, size = 1, fall = 1.6, sway = 1.2) {
+  const p = new Float32Array(count * 3); for (let i = 0; i < count * 3; i++) p[i] = Math.random();
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  const m = new THREE.Points(g, new THREE.ShaderMaterial({ transparent: true, depthWrite: false,
+    uniforms: { uCam: { value: new THREE.Vector3() }, uTime: U.time, uCol: { value: new THREE.Color(color) }, uAmt: { value: 0 } },
+    vertexShader: `uniform vec3 uCam; uniform float uTime; varying float vA;
+      void main() { vec3 B = vec3(46.0, 26.0, 46.0); vec3 q = position * B; q.y -= uTime * ${fall.toFixed(2)} * (0.6 + position.x * 0.8); q.x += sin(uTime * 0.7 + position.z * 40.0) * ${sway.toFixed(2)}; q.z += cos(uTime * 0.55 + position.x * 40.0) * ${sway.toFixed(2)};
+        vec3 w = mod(q - uCam + B * 0.5, B) - B * 0.5 + uCam; w.y = uCam.y - 7.0 + mod(q.y, B.y); vec4 mv = viewMatrix * vec4(w, 1.0); gl_Position = projectionMatrix * mv;
+        vA = smoothstep(23.0, 14.0, length(w.xz - uCam.xz)); gl_PointSize = (1.2 + position.z * 1.8) * ${(42 * size).toFixed(1)} / -mv.z; }`,
+    fragmentShader: `uniform vec3 uCol; uniform float uAmt; varying float vA; void main() { float d = length(gl_PointCoord - 0.5); gl_FragColor = vec4(uCol, smoothstep(0.5, 0.25, d) * vA * uAmt * 0.9); }` }));
+  m.frustumCulled = false; return m;
+}
 export function makeMotes(color, rise = 1, count = 260) {
   const p = new Float32Array(count * 3); for (let i = 0; i < count * 3; i++) p[i] = Math.random();
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3));

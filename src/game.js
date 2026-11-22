@@ -2,8 +2,9 @@
 import * as THREE from 'three';
 import { buildEmber, buildSugar, buildSea, SKY } from './worlds.js';
 import { makePerson, animPerson, makeDragon, animDragon, makeProp, makeRing } from './models.js';
-import { GEO, mat, part, rnd } from './kit.js';
-import { U, makeGrass, makeMotes, makeClouds } from './gfx.js';
+import { GEO, mat, part, rnd, smooth } from './kit.js';
+import { U, makeGrass, makeMotes, makeClouds, makeFall } from './gfx.js';
+import { InkPass } from './ink.js';
 import { loadPack, WORLD_PACKS } from './assets.js';
 import { loadPeople } from './people.js';
 import { playCut, WHO as CUTWHO } from './cut.js';
@@ -49,7 +50,9 @@ export class Game {
     r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; this.sun.castShadow = true; const sh = this.sun.shadow; sh.mapSize.set(2048, 2048); sh.camera.left = sh.camera.bottom = -42; sh.camera.right = sh.camera.top = 42; sh.camera.near = 1; sh.camera.far = 260; sh.bias = -0.0006; sh.normalBias = 0.6;
     r.toneMapping = THREE.NeutralToneMapping; r.toneMappingExposure = 1.0; this.pmrem = new THREE.PMREMGenerator(r);
     this.clouds = makeClouds(); this.scene.add(this.clouds); this.motes = {}; this.grass = {};
-    this.composer = new EffectComposer(r, new THREE.WebGLRenderTarget(256, 256, { type: THREE.HalfFloatType, samples: 4 })); this.composer.addPass(new RenderPass(this.scene, this.cam)); this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.42, 0.7, 0.86); this.composer.addPass(this.bloom); this.composer.addPass(new OutputPass());
+    const rt = new THREE.WebGLRenderTarget(256, 256, { type: THREE.HalfFloatType, samples: 4 }); rt.depthTexture = new THREE.DepthTexture(256, 256); rt.depthTexture.type = THREE.UnsignedIntType;
+    this.composer = new EffectComposer(r, rt); this.composer.addPass(new RenderPass(this.scene, this.cam)); this.ink = new InkPass(this.cam); this.composer.addPass(this.ink);
+    this.lamps = [0, 1, 2, 3].map(() => { const l = new THREE.PointLight(0xffa040, 0, 26, 1.6); this.scene.add(l); return l; }); this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.42, 0.7, 0.86); this.composer.addPass(this.bloom); this.composer.addPass(new OutputPass());
     const dome = new THREE.SphereGeometry(1500, 24, 12); dome.setAttribute('color', new THREE.BufferAttribute(new Float32Array(dome.attributes.position.count * 3), 3));
     this.dome = new THREE.Mesh(dome, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })); this.dome.renderOrder = -2; this.scene.add(this.dome);
     const sp = []; for (let i = 0; i < 500; i++) { const a = Math.random() * 6.28, e = Math.random() * 1.3 + 0.15; sp.push(Math.cos(a) * Math.cos(e) * 1400, Math.sin(e) * 1400, Math.sin(a) * Math.cos(e) * 1400); }
@@ -217,7 +220,7 @@ export class Game {
       if (typeof n === 'string') { this.sound.sfx('page'); await UI.say('', n); continue; }
       if (Array.isArray(n)) { this.sound.sfx('page'); this.speaker(n[0]); this.voice(n[0], n[1]); await UI.say(n[0], n[1]); this.voiceEl?.pause(); continue; }
       if (n.c) { for (;;) { const i = await UI.choose(n.c.map((o) => ({ t: o[0] }))); const o = n.c[i]; await this.speakChoice(o[0]); if (o[1]?.length) await this.exec(o[1]); if (!n.retry || o[2]) break; } continue; }
-      if (n.cut) { UI.closeDialog(); this.inCut = true; try { await playCut(n.cut, this); } finally { this.inCut = false; } continue; }
+      if (n.cut) { UI.closeDialog(); this.inCut = true; const mood0 = this.sound.mood; if (n.cut.filter(Array.isArray).length >= 4) this.sound.mood = 'heart'; try { await playCut(n.cut, this); } finally { this.inCut = false; this.sound.mood = mood0; } continue; }
       if (n.hub) { await this.hub(n); continue; }
       if (n.if !== undefined && (n.then || n.else)) { await this.exec(this.cond(n.if) ? n.then || [] : n.else || []); continue; }
       if (n.set) { for (const k of [].concat(n.set)) this.f[k] = 1; this.refresh(); }
@@ -440,6 +443,29 @@ export class Game {
   async play_rubyfish(s) { const t0 = this.t; await UI.say('', 'Meanwhile, Ruby has the forest to herself. The strawberry lake is full of slow pink fish, and nobody is watching. Skim the eight rings, low over the water and the striped trees.'); this.sound.sfx('roar');
     await this.fly({ solo: 1, rings: s.rings, start: [-40, this.W.height(-40, 138) + 9, 138], land: [s.at[0], s.at[1] + 4] }); const secs = Math.round(this.t - t0);
     return { score: -secs, cinders: Math.max(1, 6 - secs / 20), fmt: (v) => -v + ' seconds', text: `Eight rings in ${secs} seconds, and a chin dripping pink.` }; }
+  // ── sound that follows the place: theme by location, beds of wind / water / fire, footsteps by surface ──
+  updateSound(dt, mx, my) {
+    const W = this.W, p = this.player, S = this.sound; if ((this.sndT = (this.sndT || 0) - dt) <= 0) { this.sndT = 0.4;
+      const under = (this.kL ?? 1) < 0.8, mood = this.playS ? 'play' : W.name === 'ember' && under ? 'palace' : this.S.world; if (S.mood !== mood && !this.inCut) S.mood = mood;
+      const q = this.riding ? this.ruby : p, near = (list, r) => { let b = 1e9; for (const c of list) b = Math.min(b, Math.hypot(c[0] - q.x, c[1] - q.z) - (c[2] || 0)); return Math.max(0, 1 - Math.max(0, b) / r); };
+      const waters = W.sea ? [[q.x, q.z, 0]] : W.name === 'sugar' ? [[-32, 124, 10], [-116, 20, 18], [84, -66, 15], [0, 23, 2.5], [170, q.z, 4]] : [[150, q.z, 4]];
+      const fires = [...(W.torches || []).filter((t) => t.lit && this.nightNow()).map((t) => [t.x, t.z]), ...(W.glows || []).map((g) => [g[0], g[2]]), ...[...this.lits.values()].map((m) => [m.position.x, m.position.z])];
+      S.ambient('water', near(waters, 26) * 0.11); S.ambient('fire', this.zone?.room ? 0.05 : near(fires, 12) * 0.1); S.ambient('wind', this.zone?.room ? 0 : this.riding ? 0.16 : 0.03 + Math.min(0.1, Math.max(0, p.y - 8) * 0.004)); }
+    if (!this.riding && !this.mode?.startsWith?.('sl') && p.ground && !this.busy && Math.hypot(mx, my) > 0.2) { if ((this.stepT = (this.stepT || 0) - dt) <= 0) { this.stepT = p.who === 'kim' || p.model.userData.fast ? 0.27 : 0.33; const stone = this.zone || (W.name === 'ember' && (Math.hypot(p.x, p.z + 30) < 64 || Math.abs(p.x) < 26)) || (W.name === 'sugar' && Math.hypot(p.x, p.z - 16) < 24); S.step(stone ? 'stone' : W.name === 'sugar' && p.z < -100 ? 'snow' : 'grass'); } } else this.stepT = 0.1;
+  }
+  // ── real light from the nearest fires: lit torches, hearths, braziers, chandeliers ──
+  updateLamps(dt) {
+    const W = this.W, p = this.riding ? this.ruby : this.player, night = this.nightNow(), under = (this.kL ?? 1) < 0.8, src = [];
+    if (!W.sea && !this.zone && this.S.opt.fx !== false && (night || under)) { for (const t of W.torches || []) if (t.lit) src.push([t.x, t.y + 0.4, t.z, t.pink ? 0xff8ab8 : 0xffa040, 34]); for (const g of W.glows || []) if (under || g[4]) src.push([g[0], g[1], g[2], g[3] || 0xffb060, 30]); for (const [, m] of this.lits) src.push([m.position.x, m.position.y, m.position.z, 0xffa040, 38]); }
+    src.sort((a, b) => Math.hypot(a[0] - p.x, a[2] - p.z) - Math.hypot(b[0] - p.x, b[2] - p.z));
+    this.lamps.forEach((l, i) => { const s = src[i], d = s ? Math.hypot(s[0] - p.x, s[2] - p.z) : 99, want = s && d < 34 ? s[4] * (0.85 + 0.15 * Math.sin(this.t * 9 + i * 2)) : 0; if (s && d < 34) { l.position.set(s[0], s[1], s[2]); l.color.set(s[3]); } l.intensity = lerp(l.intensity, want, Math.min(1, dt * 6)); });
+  }
+  // ── weather: snow over the Ice Cream Mountains, petals over Sugarland, ash-flecks near the volcano ──
+  updateWeather(dt) {
+    const W = this.W, p = this.riding ? this.ruby : this.player, F = (this.falls ||= {}); if (!F.snow) { F.snow = makeFall(0xffffff, 520, 1, 2.2, 1.4); F.petal = makeFall(0xffb8d4, 240, 1.5, 0.9, 2.2); F.ash = makeFall(0x4a3a3a, 260, 0.9, 1.1, 1.6); for (const m of Object.values(F)) { m.visible = false; this.scene.add(m); } }
+    const fx = this.S.opt.fx !== false && !this.zone && !W.sea, want = { snow: fx && W.name === 'sugar' ? smooth(-84, -112, p.z) : 0, petal: fx && W.name === 'sugar' && p.z > -80 && p.z < 104 ? 0.85 : 0, ash: fx && W.name === 'ember' ? smooth(-88, -130, p.z) : 0 };
+    for (const k in F) { const u = F[k].material.uniforms; u.uAmt.value = lerp(u.uAmt.value, want[k], Math.min(1, dt * 1.2)); F[k].visible = u.uAmt.value > 0.02; if (F[k].visible) u.uCam.value.set(p.x, p.y, p.z); }
+  }
   // ── torches: after dark, every unlit torch can be lit with Amber's (or Kim's) flame ──
   nightNow() { return this.S.time === 'night' || this.S.time === 'dusk'; }
   markTorches() { const W = this.W; if (!W.torches || W.torchGroup) return; W.torchGroup = new THREE.Group(); for (const t of W.torches) { t.m = new THREE.Mesh(GEO.cone, mat(t.pink ? 0xff8ab8 : 0xffa030, true)); t.m.position.set(t.x, t.y + 0.45, t.z); t.m.scale.set(0.3, 0.9, 0.3); t.m.visible = false; const c = new THREE.Mesh(GEO.cone, mat(t.pink ? 0xffd0e4 : 0xffe08a, true)); c.scale.set(0.5, 0.6, 0.5); c.position.y = -0.2; t.m.add(c); W.torchGroup.add(t.m); } W.group.add(W.torchGroup); }
@@ -549,7 +575,7 @@ export class Game {
     // people
     for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < 7 && !this.riding && n.id !== 'warden1' && n.id !== 'warden2') n.tyaw = Math.atan2(p.x - n.x, p.z - n.z); n.yaw += wrap((n.tyaw ?? n.yaw) - n.yaw) * Math.min(1, dt * 5); n.model.rotation.y = n.yaw; this.poseNpc(n); n.model.visible = d < 110; if (d < 55) { n.model.userData.pose = this.busy && d < 6 ? 'talk' : null; animPerson(n.model, dt, !!n.walk); } }
     if (this.comp) this.updateComp(dt);
-    this.updateRuby(dt); this.updateFire(dt); this.updateTorches(dt); this.updateTira(dt); this.updateHint(dt);
+    this.updateRuby(dt); this.updateFire(dt); this.updateTorches(dt); this.updateLamps(dt); this.updateWeather(dt); this.updateSound(dt, mx, my); this.updateTira(dt); this.updateHint(dt);
     for (const t of this.things) if (t.prop) t.prop.rotation.y += dt * (t.def.prop === 'turtle' || t.def.prop === 'cat' ? 0 : 1.2);
     for (const [, m] of this.lits) { const s = 1 + Math.sin(this.t * 9 + m.position.x) * 0.15; m.scale.y = (m.scale.x < 0.5 ? 0.8 : 1.3) * s; }
     for (let i = this.sparks.length - 1; i >= 0; i--) { const m = this.sparks[i], u = m.userData, a = m.geometry.attributes.position; u.age += dt; for (let j = 0; j < a.count; j++) a.setXYZ(j, a.getX(j) + u.vel[j * 3] * dt, a.getY(j) + u.vel[j * 3 + 1] * dt, a.getZ(j) + u.vel[j * 3 + 2] * dt); a.needsUpdate = true; m.material.opacity = 0.9 * (1 - u.age / u.life); if (u.age > u.life) { this.scene.remove(m); this.sparks.splice(i, 1); } }

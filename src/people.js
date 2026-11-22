@@ -49,6 +49,8 @@ function animate(u, body, cl) {
   u.A = { idle: 'Idle', walk: 'Walk', jog: 'Run', sit: 'Idle', air: 'Idle', talk: 'Idle', cast: 'Interact' }; u.cast = () => u.once('Interact');
   u.play('Idle', 0); u.mixer.update(Math.random() * 3);
 }
+// hang a piece from a pivot at its top so it can swing behind a moving body
+function swing(u, y, mesh, amp) { const pv = new THREE.Group(), inn = new THREE.Group(); pv.position.y = y; mesh.position.y -= y; inn.add(mesh); pv.add(inn); (u.sway ||= []).push([inn, amp]); return pv; }
 function extras(L, on, lady) {
   if (L.apron) on('Abdomen', part(GEO.box, L.apron, 0, lady ? 0.98 : 1.02, lady ? 0.17 : 0.165, lady ? 0.3 : 0.27, lady ? 0.6 : 0.46, 0.03));
   if (L.flower) { const fl = new THREE.Group(); for (let i = 0; i < 5; i++) { const a = (i / 5) * 6.283; fl.add(part(GEO.sph, L.flower, 0, Math.sin(a) * 0.026, Math.cos(a) * 0.026, 0.008, 0.02, 0.02)); } fl.add(part(GEO.sph, 0xf2a93b, 0.004, 0, 0, 0.01, 0.014, 0.014)); fl.position.set(0.118, 1.76, 0.03); on('Head', fl); } // a small blossom tucked above the ear
@@ -73,14 +75,14 @@ function makeLady(L) {
     sk.add(tier(L.top, 0.66, 0.25), tier(L.trim || 0xffffff, 0.56, 0.275), tier(skirt, 0.34, 0.3), tier(L.trim || 0xffffff, 0.25, 0.32), tier(L.top, 0.1, 0.335), part(GEO.sph, L.trim || 0xffffff, 0, 1.06, 0.12, 0.07, 0.045, 0.04)); }
   else sk.add(part(GEO.frustum, skirt, 0, long ? 0.56 : 0.6, 0, long ? 0.34 : 0.45, long ? 1.08 : 0.98, long ? 0.34 : 0.45));
   if (L.tiers) { /* tiers carry their own trim */ } else if (!long) sk.add(part(GEO.frustum, L.trim || 0xffffff, 0, 0.19, 0, 0.52, 0.2, 0.52), part(GEO.frustum, skirt, 0, 0.36, 0, 0.49, 0.2, 0.49)); else if (L.trim) sk.add(part(GEO.frustum, L.trim, 0, 0.07, 0, 0.37, 0.11, 0.37)); if (long && L.accent) sk.add(part(GEO.frustum, L.accent, 0, 0.2, 0, 0.36, 0.16, 0.36)); on('Hips', sk);
-  if (L.cape) on('Chest', long ? cape(L.cape, 1.46, 0.5, 0.36) : cape(L.cape, 1.46, 0.78, 0.33));
+  if (L.cape) on('Chest', swing(u, 1.46, long ? cape(L.cape, 1.46, 0.5, 0.36) : cape(L.cape, 1.46, 0.78, 0.33), 0.2));
   if (L.collar) on('Chest', collar(L.collar, 1.45));
   if (L.crown) on('Head', part(GEO.cyl, 0xe9b949, 0, 1.9, 0.02, 0.11, 0.08, 0.11));
   if (L.hairLong > 1) { // waist-length waves down the back and two locks over the shoulders; lies over the cape when she wears one
     const hg = new THREE.Group(), out = (y) => (L.cape ? 0.21 + (1.46 - y) * 0.2 : 0.12 + (1.46 - y) * 0.06);
     for (const [x, y, sx, sy] of [[0, 1.3, 0.17, 0.3], [-0.09, 1.08, 0.1, 0.3], [0.09, 1.05, 0.1, 0.3], [0, 0.92, 0.11, 0.27], [-0.13, 1.26, 0.07, 0.26], [0.13, 1.24, 0.07, 0.27], [-0.05, 0.8, 0.06, 0.16], [0.07, 0.78, 0.055, 0.15]]) hg.add(part(GEO.sph, L.hair, x, y, -out(y), sx, sy, 0.065));
     for (const s of [-1, 1]) hg.add(part(GEO.sph, L.hair, s * 0.125, 1.36, 0.075, 0.042, 0.19, 0.045), part(GEO.sph, L.hair, s * 0.13, 1.22, 0.1, 0.035, 0.1, 0.04));
-    on('Chest', hg); }
+    on('Chest', swing(u, 1.46, hg, 0.13)); }
   extras(L, on, true); animate(u, body, clips.lady);
   const h = (L.h || 1) * (L.style === 'child' ? 0.62 : 1); g.scale.setScalar(h); u.h = h; u.fast = L.style === 'girl' || L.style === 'child';
   return g;
@@ -104,7 +106,7 @@ function makeMan(L) {
     o.material = mat(c); };
   const { body, on } = assemble(g, bodyName, headName, paint, pack);
   if (elder) { const sk = new THREE.Group(); sk.add(part(GEO.frustum, L.skirt || shade(top, 0.75), 0, 0.55, 0, 0.36, 1.06, 0.36)); if (L.trim) sk.add(part(GEO.frustum, L.trim, 0, 0.07, 0, 0.39, 0.11, 0.39)); on('Hips', sk); }
-  const cp = king ? L.cape || shade(top, 0.7) : pack ? 0 : L.cape; if (cp) on('Chest', cape(cp, 1.5, king ? 0.3 : 0.55, king ? 0.4 : 0.34));
+  const cp = king ? L.cape || shade(top, 0.7) : pack ? 0 : L.cape; if (cp) on('Chest', swing(u, 1.5, cape(cp, 1.5, king ? 0.3 : 0.55, king ? 0.4 : 0.34), 0.16));
   if (L.collar) on('Chest', collar(L.collar, 1.5));
   if (L.crown && !king) on('Head', part(GEO.cyl, 0xe9b949, 0, 1.9, 0.02, 0.11, 0.08, 0.11));
   if (guard) g.add(part(GEO.cyl, 0x6b4a2a, 0.46, 1.15, 0.1, 0.022, 2.3, 0.022), part(GEO.cone, 0xcfd3d6, 0.46, 2.4, 0.1, 0.06, 0.22, 0.06));
@@ -116,4 +118,5 @@ export function animRig(p, dt, moving) {
   const u = p.userData; if (u.busyT > 0) { u.busyT -= dt; if (u.busyT <= 0 && u.one) { u.one.fadeOut(0.2); if (u.cur && u.actions[u.cur]) u.actions[u.cur].setEffectiveWeight(1); } }
   const A = u.A; u.play(u.pose === 'sit' ? A.sit : u.pose === 'air' ? A.air : moving ? (u.fast ? A.jog : A.walk) : u.pose === 'talk' ? A.talk : A.idle);
   u.mixer.update(dt);
+  if (u.sway) { u.st = (u.st || 0) + dt; for (const [g, amp] of u.sway) { const want = moving ? amp * (u.fast ? 1.5 : 1) * (1 + 0.28 * Math.sin(u.st * 7.5)) : amp * 0.1 * Math.sin(u.st * 1.4); g.rotation.x += (want - g.rotation.x) * Math.min(1, dt * 5); g.rotation.z = Math.sin(u.st * 3.1) * (moving ? 0.035 : 0.012); } }
 }
