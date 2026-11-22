@@ -80,12 +80,12 @@ The four paintings in `public/art` are the authors' own concept art.
 
 - A storybook finish: soft ink outlines (`src/ink.js`), firelight from the nearest torches and hearths, snow, petals and ash, swaying capes and hair.
 
-## What would take it further
+## Sculpted characters
 
-The world, Ruby and the cake houses are assembled from simple shapes in code, and the people are recoloured free models.
-The largest remaining step up in quality is authored 3D art: sculpted and rigged models of Amber, Kim and Ruby from the
-character sheet (`docs/art`), custom animation (sitting, sleeping, hugging, facial expression), and modelled hero buildings.
-Those need a 3D artist; the code already loads `.glb` models, so they can be dropped in when they exist.
+Amber (in her gown and in Madame Praline's coat), Kim, the King, Ruby and Tira are sculpted 3D models in `public/models/hero`,
+generated with Meshy from turnaround paintings of the authors' character art, then rigged and animated there
+(idle, walk, run, sit, sleep, talk, cast, dance, wave). Ruby and Tira are unrigged; the game flaps Ruby's wings in a shader.
+The other townsfolk still use the Quaternius packs, and buildings are assembled in code.
 
 ## Models and credits
 
@@ -93,6 +93,7 @@ All third-party art is CC0 (public domain):
 
 - Quaternius — Ultimate Modular Women, Ultimate Modular Men, Medieval Village MegaKit, Stylized Nature MegaKit.
 - Poly Haven — ground, plaster, roof-tile and wood textures.
+- Meshy — the sculpted hero characters (generated from the authors' own art).
 
 The cut-scene portraits and backdrops were generated from the authors' own character sheet (`docs/art`).
 Voices and the three realm themes in `public/music` are generated with ElevenLabs; assignments are in `tools/cast-voices.sh`.

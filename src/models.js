@@ -1,7 +1,7 @@
 // Procedural characters, the dragon, critters and small props.
 import * as THREE from 'three';
 import { GEO, part, mat } from './kit.js';
-import { peopleReady, makeRig, animRig } from './people.js';
+import { peopleReady, makeRig, animRig, getHero, heroStatic } from './people.js';
 
 export function makePerson(L) { return peopleReady() ? makeRig(L) : makeSimple(L); }
 
@@ -56,6 +56,11 @@ export function animPerson(p, dt, moving) {
 
 const RUBY = new THREE.MeshBasicMaterial({ color: 0xff2238 });
 export function makeDragon(accent) {
+  if (!accent && getHero('ruby')) { // the sculpted Ruby: wings flap in the vertex shader, hinged where they leave the body
+    const g = new THREE.Group(), u = (g.userData = { t: 0, heroRuby: true, flap: { value: 0.9 } }), m = heroStatic('ruby', 15); m.position.y = -1.75; g.add(m); u.body = m;
+    m.traverse((o) => { if (!o.isMesh) return; o.geometry.computeBoundingBox(); const bb = o.geometry.boundingBox, cx = (bb.min.x + bb.max.x) / 2, hw = (bb.max.x - bb.min.x) / 2; o.material = o.material.clone(); o.frustumCulled = false;
+      o.material.onBeforeCompile = (sh) => { sh.uniforms.uFlap = u.flap; sh.vertexShader = 'uniform float uFlap;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>\n{ float dx = transformed.x - (${cx.toFixed(4)}); float d = max(0.0, abs(dx) - ${(hw * 0.2).toFixed(4)}); float k = smoothstep(0.0, ${(hw * 0.12).toFixed(4)}, d); float a = uFlap * k; transformed.y += d * sin(a); transformed.x = (${cx.toFixed(4)}) + sign(dx) * (min(abs(dx), ${(hw * 0.2).toFixed(4)}) + d * cos(a)); }`); }; o.material.customProgramCacheKey = () => 'rubyflap'; });
+    return g; }
   const g = new THREE.Group(), u = (g.userData = { t: 0 });
   const ruby = accent ? new THREE.MeshBasicMaterial({ color: accent }) : RUBY; u.ruby = ruby; u.base = new THREE.Color(accent || 0xff2238);
   const bk = 0x191214, P = (geo, x, y, z, sx, sy, sz, c = bk) => part(geo, c, x, y, z, sx, sy, sz);
@@ -99,6 +104,7 @@ export function makeDragon(accent) {
 }
 export function animDragon(d, dt, flying) {
   const u = d.userData; u.t += dt;
+  if (u.heroRuby) { const want = flying ? Math.sin(u.t * 4.4) * 0.55 : 0.5 + Math.sin(u.t * 1.2) * 0.05; u.flap.value += (want - u.flap.value) * Math.min(1, dt * (flying ? 30 : 3)); u.body.position.y = -1.75 + (flying ? Math.sin(u.t * 4.4 + 1.2) * 0.25 : Math.sin(u.t * 1.2) * 0.04); return; }
   const f = flying ? Math.sin(u.t * 4.2) * 0.55 : 0.9 + Math.sin(u.t * 1.3) * 0.04;
   u.wingL.rotation.z = -f; u.wingR.rotation.z = f;
   const sx = flying ? 1 : 0.55; u.wingL.scale.set(-sx, 1, 1); u.wingR.scale.set(sx, 1, 1);
@@ -108,6 +114,7 @@ export function animDragon(d, dt, flying) {
 
 export function makeCritter(kind) {
   const g = new THREE.Group();
+  if (kind === 'tira' && getHero('tira')) { const t = heroStatic('tira', 0.5); g.add(t); return g; }
   if (kind === 'tira') { g.add(part(GEO.sph, 0x6b4630, 0, 0.15, -0.02, 0.15, 0.14, 0.2), part(GEO.sph, 0xf3e3cf, 0, 0.11, 0.06, 0.11, 0.09, 0.13), part(GEO.sph, 0x6b4630, 0, 0.27, 0.15, 0.12, 0.11, 0.11), part(GEO.sph, 0xf3e3cf, 0, 0.245, 0.215, 0.075, 0.065, 0.06), part(GEO.cone, 0x6b4630, -0.075, 0.4, 0.13, 0.04, 0.11, 0.04), part(GEO.cone, 0x6b4630, 0.075, 0.4, 0.13, 0.04, 0.11, 0.04), part(GEO.sph, 0x1a1210, -0.045, 0.29, 0.245, 0.017, 0.02, 0.012), part(GEO.sph, 0x1a1210, 0.045, 0.29, 0.245, 0.017, 0.02, 0.012), part(GEO.sph, 0xf2a0b0, 0, 0.255, 0.272, 0.014, 0.011, 0.01), part(GEO.sph, 0x6b4630, 0, 0.2, -0.22, 0.05, 0.06, 0.07)); for (const [x, z] of [[-0.08, 0.1], [0.08, 0.1], [-0.09, -0.1], [0.09, -0.1]]) g.add(part(GEO.sph, 0xf3e3cf, x, 0.03, z, 0.04, 0.03, 0.05)); g.traverse((o) => { if (o.isMesh) o.castShadow = true; }); }
   else if (kind === 'sprite') { g.add(part(GEO.sph, 0xffffff, 0, 0.2, 0, 0.18, 0.18, 0.22), part(GEO.cone, 0xffffff, -0.1, 0.5, 0.05, 0.05, 0.3, 0.05), part(GEO.cone, 0xffffff, 0.1, 0.5, 0.05, 0.05, 0.3, 0.05), part(GEO.sph, 0xbfe8ff, -0.2, 0.32, -0.05, 0.16, 0.2, 0.03, true), part(GEO.sph, 0xbfe8ff, 0.2, 0.32, -0.05, 0.16, 0.2, 0.03, true)); }
   else if (kind === 'turtle') { g.add(part(GEO.sph, 0xbfe3a0, 0, 0.22, 0, 0.42, 0.24, 0.48), part(GEO.sph, 0xfff3d0, 0, 0.34, 0, 0.28, 0.16, 0.32), part(GEO.sph, 0xbfe3a0, 0, 0.44, 0, 0.14, 0.08, 0.16), part(GEO.sph, 0xf5e3a0, 0, 0.22, 0.5, 0.14, 0.13, 0.16), part(GEO.sph, 0xf5e3a0, -0.36, 0.1, 0.26, 0.14, 0.05, 0.1), part(GEO.sph, 0xf5e3a0, 0.36, 0.1, 0.26, 0.14, 0.05, 0.1)); }

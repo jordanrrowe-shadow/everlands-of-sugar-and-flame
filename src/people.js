@@ -5,15 +5,20 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { GEO, part, mat } from './kit.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
-const loader = new GLTFLoader(), src = {}, clips = { lady: {}, man: {} };
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder), src = {}, clips = { lady: {}, man: {} };
+// Sculpted hero models (generated from the authors' character art): Amber, Kim and the King are rigged and animated; Ruby and Tira are statues the game moves itself.
+const hero = {}, HEROES = ['amber', 'amber-coat', 'kim', 'king', 'ruby', 'tira'], HERO_OF = { Amber: 'amber', Kim: 'kim', 'The King': 'king' };
+export const getHero = (n) => hero[n];
+export function heroStatic(n, size) { const h = hero[n]; if (!h) return null; const m = h.scene.clone(true), box = new THREE.Box3().setFromObject(m), sz = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3()), k = size / Math.max(sz.x, sz.y, sz.z), g = new THREE.Group(); m.position.set(-c.x * k, -box.min.y * k, -c.z * k); m.scale.multiplyScalar(k); g.add(m); g.userData.size = sz.multiplyScalar(k); m.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material.envMapIntensity = 0.5; o.material.metalness = 0; o.material.roughness = 0.85; } }); return g; }
 const LADIES = ['Formal', 'Witch'], MEN = ['King', 'Farmer', 'Adventurer', 'Worker', 'Suit', 'Casual'];
 let ready = false, loading = null;
 export const peopleReady = () => ready;
 export function loadPeople() {
   const get = (dir, n, kind) => loader.loadAsync(`models/${dir}/${n}.glb`).then((g) => { src[n] = g.scene; for (const c of g.animations) clips[kind][c.name] = clips[kind][c.name] || c; });
   if (!loading) loading = Promise.all([...LADIES.map((n) => get('umw', n, 'lady')), ...MEN.map((n) => get('men', n, 'man'))])
-    .then(() => { ready = true; }).catch((e) => { console.warn('character models unavailable, using simple figures', e?.message); });
+    .then(() => { ready = true; return Promise.all(HEROES.map((n) => loader.loadAsync(`models/hero/${n}.glb`).then((g) => { for (const c of g.animations) if (/Walk|Run/.test(c.name)) for (const t of c.tracks) if (/Hips\.position$/.test(t.name)) for (let i = 0; i < t.values.length; i += 3) { t.values[i] = t.values[0]; t.values[i + 2] = t.values[2]; } hero[n] = { scene: g.scene, clips: Object.fromEntries(g.animations.map((c) => [c.name, c])) }; }).catch((e) => console.warn('hero model missing', n, e?.message)))); }).catch((e) => { console.warn('character models unavailable, using simple figures', e?.message); });
   return loading;
 }
 const MALE = /King|Ashlock|Aldren|Steward|Boy|Orin|Brand|Tafford|Marsh|Guard|Warden|Attendant|Baker|Confectioner|Merchant|Seller|Balloonist|Archivist|^Traveller$/;
@@ -59,7 +64,17 @@ function extras(L, on, lady) {
 }
 export function makeRig(L) {
   const male = L.style === 'man' || L.style === 'guard' || (L.style !== 'woman' && L.style !== 'girl' && MALE.test(L.name || ''));
+  let hk = HERO_OF[L.name]; if (hk === 'amber' && L.collar) hk = 'amber-coat'; if (hk && hero[hk]) return makeHero(L, hk);
   return male ? makeMan(L) : makeLady(L);
+}
+function makeHero(L, key) {
+  const g = new THREE.Group(), u = (g.userData = { rig: true, hero: key, t: 0 }), H = hero[key], body = SkeletonUtils.clone(H.scene); g.add(body);
+  body.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; o.material.envMapIntensity = 0.45; o.material.metalness = 0; o.material.roughness = 0.85; } });
+  const cl = H.clips, has = (n, d) => (cl[n] ? n : d); animate(u, body, cl);
+  u.A = { idle: 'Idle', walk: has('Walking_Woman', has('Casual_Walk', 'Idle')), jog: has('Run_02', has('Casual_Walk', 'Idle')), sit: has('Chair_Sit_Idle_F', has('Chair_Sit_Idle_M', 'Idle')), air: 'Idle', talk: has('Talk_with_Hands_Open', has('Talk_with_Right_Hand_Open', 'Idle')), cast: has('mage_soell_cast', 'Big_Wave_Hello'), sleep: has('Sleep_Normally', 'Idle'), dance: has('Joyful_Dance_with_Hand_Sway', 'Idle') };
+  u.cast = () => u.once(u.A.cast); u.cur = null; u.play('Idle', 0);
+  const h = (L.h || 1) * (key === 'kim' ? 1.07 : key === 'king' ? 1.15 : 1.12); g.scale.setScalar(h); u.h = h; u.fast = key !== 'king';
+  return g;
 }
 function makeLady(L) {
   const g = new THREE.Group(), u = (g.userData = { rig: true, t: 0 }), elder = L.style === 'woman' || L.style === 'elder' || !!L.gown, base = elder ? 'Witch' : 'Formal';
@@ -130,7 +145,7 @@ function makeMan(L) {
 }
 export function animRig(p, dt, moving) {
   const u = p.userData; if (u.busyT > 0) { u.busyT -= dt; if (u.busyT <= 0 && u.one) { u.one.fadeOut(0.2); if (u.cur && u.actions[u.cur]) u.actions[u.cur].setEffectiveWeight(1); } }
-  const A = u.A; u.play(u.pose === 'sit' ? A.sit : u.pose === 'air' ? A.air : moving ? (u.fast ? A.jog : A.walk) : u.pose === 'talk' ? A.talk : A.idle);
+  const A = u.A; if (u.fixedPose && A[u.fixedPose]) u.play(A[u.fixedPose]); else u.play(u.pose === 'sit' ? A.sit : u.pose === 'air' ? A.air : moving ? (u.fast ? A.jog : A.walk) : u.pose === 'talk' ? A.talk : A.idle);
   u.mixer.update(dt);
   if (u.sway) { u.st = (u.st || 0) + dt; for (const [g, amp] of u.sway) { const want = moving ? amp * (u.fast ? 1.5 : 1) * (1 + 0.28 * Math.sin(u.st * 7.5)) : amp * 0.1 * Math.sin(u.st * 1.4); g.rotation.x += (want - g.rotation.x) * Math.min(1, dt * 5); g.rotation.z = Math.sin(u.st * 3.1) * (moving ? 0.035 : 0.012); } }
 }
