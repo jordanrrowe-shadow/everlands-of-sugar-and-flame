@@ -1,7 +1,7 @@
 // The game core: state, world loading, player + dragon control, NPCs, the script runner, saves.
 import * as THREE from 'three';
 import { buildEmber, buildSugar, buildSea, SKY } from './worlds.js';
-import { makePerson, animPerson, makeDragon, animDragon, makeProp, makeRing } from './models.js';
+import { makePerson, animPerson, makeDragon, animDragon, makeProp, makeRing, sprite } from './models.js';
 import { GEO, mat, part, rnd, smooth } from './kit.js';
 import { U, makeGrass, makeMotes, makeClouds, makeFall } from './gfx.js';
 import { InkPass } from './ink.js';
@@ -468,6 +468,23 @@ export class Game {
     const fx = this.S.opt.fx !== false && !this.zone && !W.sea, want = { snow: fx && W.name === 'sugar' ? smooth(-84, -112, p.z) : 0, petal: fx && W.name === 'sugar' && p.z > -80 && p.z < 104 ? 0.85 : 0, ash: fx && W.name === 'ember' ? smooth(-88, -130, p.z) : 0 };
     for (const k in F) { const u = F[k].material.uniforms; u.uAmt.value = lerp(u.uAmt.value, want[k], Math.min(1, dt * 1.2)); F[k].visible = u.uAmt.value > 0.02; if (F[k].visible) u.uCam.value.set(p.x, p.y, p.z); }
   }
+  // ── small painted life: turtles at Chocolate Lake, leaping fish and lilies on Strawberry Lake, butterflies, ember sprites ──
+  updateLife(dt) {
+    const W = this.W, t = this.t; if (W.sea) return;
+    if (!W.life) { const L = (W.life = { g: new THREE.Group(), turtles: [], fish: [], fl: [] }), add = (s) => (L.g.add(s), s); W.group.add(L.g);
+      if (W.name === 'sugar') { for (let i = 0; i < 5; i++) L.turtles.push({ s: add(sprite('turtle', 1.2 + (i % 3) * 0.25)), a: i * 1.3, r: 20.5 + (i % 2) * 1.6, sp: 0.03 + i * 0.006 });
+        for (let i = 0; i < 4; i++) L.fish.push({ s: add(sprite('fish', 1.1)), a: i * 1.7, r: 3 + i * 1.6, ph: i * 2.3 });
+        for (const [x, z, sz] of [[-36, 121, 1.6], [-28, 127, 1.3], [-33, 130, 1.5], [-26, 120, 1.2], [80, -62, 1.5], [88, -70, 1.3], [84, -60, 1.2]]) { const s = add(sprite('lily', sz)); s.position.set(x, W.height(x, z) + 0.28, z); }
+        for (let i = 0; i < 9; i++) L.fl.push({ s: add(sprite('butterfly', 0.5)), ph: i * 1.9, ox: Math.cos(i * 2.4) * (6 + i), oz: Math.sin(i * 2.4) * (6 + i) }); }
+      else for (let i = 0; i < 8; i++) L.fl.push({ s: add(sprite('ember', 0.55)), ph: i * 1.9, ox: Math.cos(i * 2.4) * (5 + i * 1.5), oz: Math.sin(i * 2.4) * (5 + i * 1.5), ember: 1 }); }
+    const L = W.life, p = this.player; L.g.visible = !this.zone;
+    for (const q of L.turtles) { q.a += dt * q.sp; const x = -116 + Math.cos(q.a) * q.r, z = 20 + Math.sin(q.a) * q.r; q.s.position.set(x, Math.max(-1.95, W.height(x, z)) + Math.abs(Math.sin(t * 2 + q.a * 9)) * 0.05, z); }
+    for (const q of L.fish) { const cyc = (t * 0.22 + q.ph) % 1, up = cyc < 0.22 ? Math.sin(cyc / 0.22 * Math.PI) : 0, a = q.a + Math.floor(t * 0.22 + q.ph) * 2.1; q.s.visible = up > 0; q.s.position.set(-32 + Math.cos(a) * q.r + cyc * 3, W.height(-32, 124) + 0.1 + up * 1.5, 124 + Math.sin(a) * q.r); q.s.material.rotation = (0.5 - cyc / 0.22) * 1.2; if (up > 0 && cyc < 0.02 && Math.hypot(p.x + 32, p.z - 124) < 30 && !q.sp) { q.sp = 1; this.puff(q.s.position.x, q.s.position.y, q.s.position.z, 0xffc8dc, 8, 0.5, 1.4, 0.6); } if (!up) q.sp = 0; }
+    const night = this.nightNow(); for (const q of L.fl) { const on = q.ember ? night || (this.kL ?? 1) < 0.8 : !night; q.s.visible = on; if (!on) continue; const cx = q.ember ? (Math.hypot(p.x, p.z - 86) < 60 ? 0 : p.x) : p.x, cz = q.ember ? (Math.hypot(p.x, p.z - 86) < 60 ? 86 : p.z) : p.z, x = cx + q.ox + Math.sin(t * 0.5 + q.ph) * 3, z = cz + q.oz + Math.cos(t * 0.4 + q.ph * 1.3) * 3; q.s.position.set(x, W.height(x, z) + (q.ember ? 2.4 : 1.2) + Math.sin(t * 1.7 + q.ph) * 0.7, z); q.s.scale.setScalar((q.ember ? 0.55 : 0.5) * (0.85 + 0.15 * Math.sin(t * (q.ember ? 3 : 11) + q.ph))); }
+    // painted sky band
+    if (!this.skyBand) { const tl = new THREE.TextureLoader(), mk = (n) => { const x = tl.load(`art/sky-${n}.jpg`); x.colorSpace = THREE.SRGBColorSpace; x.wrapS = THREE.RepeatWrapping; return x; }; this.skyTex = { sugar: mk('sugar'), ember: mk('ember') }; this.skyBand = new THREE.Mesh(new THREE.SphereGeometry(1300, 40, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), new THREE.MeshBasicMaterial({ map: this.skyTex.ember, side: THREE.BackSide, fog: false, depthWrite: false, transparent: true, opacity: 0 })); this.skyBand.renderOrder = -1; this.scene.add(this.skyBand); }
+    { const b = this.skyBand, tm = this.S.time, want = W.name === 'sugar' ? (tm === 'day' || tm === 'dawn' ? 0.85 : tm === 'dusk' ? 0.4 : 0.08) : (tm === 'night' ? 0.1 : tm === 'day' ? 0.6 : 0.8); if (b.material.map !== this.skyTex[W.name]) { b.material.map = this.skyTex[W.name]; b.material.needsUpdate = true; } b.material.opacity = lerp(b.material.opacity, this.zone?.room ? 0 : want, Math.min(1, dt * 2)); b.position.copy(this.cam.position); b.position.y -= 40; b.rotation.y = t * 0.004; }
+  }
   toast(t) { UI.tip('✦ ' + t, 3.5); this.sound.sfx('ring'); }
   updatePin(dt) { // a bobbing gold marker over whatever the action button would act on
     if (!this.pin) { this.pin = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd24a).multiplyScalar(2), fog: false })); this.pin.scale.set(1, 1.5, 1); this.scene.add(this.pin); }
@@ -583,7 +600,7 @@ export class Game {
     // people
     for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < 7 && !this.riding && n.id !== 'warden1' && n.id !== 'warden2') n.tyaw = Math.atan2(p.x - n.x, p.z - n.z); n.yaw += wrap((n.tyaw ?? n.yaw) - n.yaw) * Math.min(1, dt * 5); n.model.rotation.y = n.yaw; this.poseNpc(n); n.model.visible = d < 110; if (d < 55) { n.model.userData.pose = this.busy && d < 6 ? 'talk' : null; animPerson(n.model, dt, !!n.walk); } }
     if (this.comp) this.updateComp(dt);
-    this.updateRuby(dt); this.updateFire(dt); this.updateTorches(dt); this.updateLamps(dt); this.updateWeather(dt); this.updatePin(dt); if ((this.mapT = (this.mapT || 0) - dt) <= 0) { this.mapT = 0.12; discover(this, dt); const mc = document.getElementById('mini'); mc.style.display = this.zone || this.W.sea ? 'none' : ''; if (!this.zone && !this.W.sea) drawMini(mc, this); } this.updateSound(dt, mx, my); this.updateTira(dt); this.updateHint(dt);
+    this.updateRuby(dt); this.updateFire(dt); this.updateTorches(dt); this.updateLamps(dt); this.updateWeather(dt); this.updatePin(dt); this.updateLife(dt); if ((this.mapT = (this.mapT || 0) - dt) <= 0) { this.mapT = 0.12; discover(this, dt); const mc = document.getElementById('mini'); mc.style.display = this.zone || this.W.sea ? 'none' : ''; if (!this.zone && !this.W.sea) drawMini(mc, this); } this.updateSound(dt, mx, my); this.updateTira(dt); this.updateHint(dt);
     for (const t of this.things) if (t.prop) t.prop.rotation.y += dt * (t.def.prop === 'turtle' || t.def.prop === 'cat' ? 0 : 1.2);
     for (const [, m] of this.lits) { const s = 1 + Math.sin(this.t * 9 + m.position.x) * 0.15; m.scale.y = (m.scale.x < 0.5 ? 0.8 : 1.3) * s; }
     for (let i = this.sparks.length - 1; i >= 0; i--) { const m = this.sparks[i], u = m.userData, a = m.geometry.attributes.position; u.age += dt; for (let j = 0; j < a.count; j++) a.setXYZ(j, a.getX(j) + u.vel[j * 3] * dt, a.getY(j) + u.vel[j * 3 + 1] * dt, a.getZ(j) + u.vel[j * 3 + 2] * dt); a.needsUpdate = true; m.material.opacity = 0.9 * (1 - u.age / u.life); if (u.age > u.life) { this.scene.remove(m); this.sparks.splice(i, 1); } }

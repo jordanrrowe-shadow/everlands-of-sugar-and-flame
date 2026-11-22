@@ -85,9 +85,13 @@ The four paintings in `public/art` are the authors' own concept art.
 Amber (in her gown and in Madame Praline's coat), Kim, the King, Ruby and Tira are sculpted 3D models in `public/models/hero`,
 generated with Meshy from turnaround paintings of the authors' character art, then rigged and animated there
 (idle, walk, run, sit, sleep, talk, cast, dance, wave). Ruby and Tira are unrigged; the game flaps Ruby's wings in a shader.
-Scenery in `public/models/props` is sculpted the same way: cake houses, Emberland timber houses, market stalls, the syrup
+Grandma Lava, Smorella, Tafford, Madame Praline and Lord Ashlock are sculpted and animated too.
+Scenery in `public/models/props` is sculpted the same way (including the First Flame monument and festival stage): cake houses, Emberland timber houses, market stalls, the syrup
 fountain, the queen's statue, Ruby's cave, candy and lollipop trees, braziers. The other townsfolk still use the Quaternius
 packs; the palace, the confectionery, terrain and water are built in code.
+
+- Painted ground tiles (`public/tex/painted_*`), a painted sky band and painted creature sprites (`public/art/sprite`) were generated for this game.
+- The mini-map and journal map (`src/map.js`) show places once you have been there.
 
 ## Models and credits
 

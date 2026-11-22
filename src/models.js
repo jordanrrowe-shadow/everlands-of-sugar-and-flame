@@ -112,8 +112,13 @@ export function animDragon(d, dt, flying) {
   const b = 0.55 + 0.45 * Math.sin(u.t * 1.25); u.ruby.color.copy(u.base).multiplyScalar(0.7 + 1.5 * b);
 }
 
+// painted creatures: flat sprites that always face the camera, standing on their bottom edge
+const sprTex = {}, sprLoader = new THREE.TextureLoader();
+export function sprite(name, size = 1) { const t = (sprTex[name] ||= (() => { const x = sprLoader.load(`art/sprite/${name}.webp`); x.colorSpace = THREE.SRGBColorSpace; return x; })()); const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, alphaTest: 0.35, transparent: false })); s.center.set(0.5, 0.04); s.scale.setScalar(size); return s; }
 export function makeCritter(kind) {
   const g = new THREE.Group();
+  if (kind === 'turtle') { g.add(sprite('turtle', 1.5)); return g; }
+  if (kind === 'cat') { g.add(sprite('cat', 1.3)); return g; }
   if (kind === 'tira' && getHero('tira')) { const t = heroStatic('tira', 0.5); g.add(t); return g; }
   if (kind === 'tira') { g.add(part(GEO.sph, 0x6b4630, 0, 0.15, -0.02, 0.15, 0.14, 0.2), part(GEO.sph, 0xf3e3cf, 0, 0.11, 0.06, 0.11, 0.09, 0.13), part(GEO.sph, 0x6b4630, 0, 0.27, 0.15, 0.12, 0.11, 0.11), part(GEO.sph, 0xf3e3cf, 0, 0.245, 0.215, 0.075, 0.065, 0.06), part(GEO.cone, 0x6b4630, -0.075, 0.4, 0.13, 0.04, 0.11, 0.04), part(GEO.cone, 0x6b4630, 0.075, 0.4, 0.13, 0.04, 0.11, 0.04), part(GEO.sph, 0x1a1210, -0.045, 0.29, 0.245, 0.017, 0.02, 0.012), part(GEO.sph, 0x1a1210, 0.045, 0.29, 0.245, 0.017, 0.02, 0.012), part(GEO.sph, 0xf2a0b0, 0, 0.255, 0.272, 0.014, 0.011, 0.01), part(GEO.sph, 0x6b4630, 0, 0.2, -0.22, 0.05, 0.06, 0.07)); for (const [x, z] of [[-0.08, 0.1], [0.08, 0.1], [-0.09, -0.1], [0.09, -0.1]]) g.add(part(GEO.sph, 0xf3e3cf, x, 0.03, z, 0.04, 0.03, 0.05)); g.traverse((o) => { if (o.isMesh) o.castShadow = true; }); }
   else if (kind === 'sprite') { g.add(part(GEO.sph, 0xffffff, 0, 0.2, 0, 0.18, 0.18, 0.22), part(GEO.cone, 0xffffff, -0.1, 0.5, 0.05, 0.05, 0.3, 0.05), part(GEO.cone, 0xffffff, 0.1, 0.5, 0.05, 0.05, 0.3, 0.05), part(GEO.sph, 0xbfe8ff, -0.2, 0.32, -0.05, 0.16, 0.2, 0.03, true), part(GEO.sph, 0xbfe8ff, 0.2, 0.32, -0.05, 0.16, 0.2, 0.03, true)); }

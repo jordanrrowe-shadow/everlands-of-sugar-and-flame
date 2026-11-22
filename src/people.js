@@ -73,6 +73,10 @@ function makeHero(L, key) {
   const cl = H.clips, has = (n, d) => (cl[n] ? n : d); animate(u, body, cl);
   u.A = { idle: 'Idle', walk: has('Walking_Woman', has('Casual_Walk', 'Idle')), jog: has('Run_02', has('Casual_Walk', 'Idle')), sit: has('Chair_Sit_Idle_F', has('Chair_Sit_Idle_M', 'Idle')), air: 'Idle', talk: has('Talk_with_Hands_Open', has('Talk_with_Right_Hand_Open', 'Idle')), cast: has('mage_soell_cast', 'Big_Wave_Hello'), sleep: has('Sleep_Normally', 'Idle'), dance: has('Joyful_Dance_with_Hand_Sway', 'Idle') };
   u.cast = () => u.once(u.A.cast); u.cur = null; u.play('Idle', 0);
+  if (L.cape && key === 'amber') { // her flying cape: hangs from the shoulders over the gown and swings as she moves
+    const c = new THREE.Group(), shell = cape(L.cape, 1.3, 0.36, 0.4); c.add(shell); const hem = new THREE.Mesh(new THREE.CylinderGeometry(0.405, 0.41, 0.07, 14, 1, true, Math.PI - 1.3, 2.6), cloth(0xe9b949)); hem.position.y = 0.39; hem.scale.set(1.22, 1, 1); c.add(hem);
+    for (const sx of [-1, 1]) c.add(part(GEO.sph, 0xe9b949, sx * 0.15, 1.27, 0.06, 0.03, 0.03, 0.022));
+    const pv = swing(u, 1.3, c, 0.17); pv.position.z = -0.05; g.add(pv); g.updateMatrixWorld(true); const sp = body.getObjectByName('Spine') || body.getObjectByName('Spine01'); if (sp) sp.attach(pv); pv.traverse((o) => { if (o.isMesh) o.castShadow = true; }); }
   const h = HERO_H[key] || 1.1; g.scale.setScalar(h); u.h = h; u.fast = /amber|kim/.test(key);
   return g;
 }
