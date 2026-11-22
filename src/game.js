@@ -33,7 +33,7 @@ export class Game {
     const sp = []; for (let i = 0; i < 500; i++) { const a = Math.random() * 6.28, e = Math.random() * 1.3 + 0.15; sp.push(Math.cos(a) * Math.cos(e) * 1400, Math.sin(e) * 1400, Math.sin(a) * Math.cos(e) * 1400); }
     const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3)); this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 2.4, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.9 })); this.scene.add(this.stars);
     this.player = { x: 0, y: 0, z: 0, vy: 0, yaw: 0, ground: true, who: 'amber', model: null, lookKey: '' };
-    this.comp = null; this.camYaw = Math.PI; this.camPitch = 0.32; this.camDist = 7.5;
+    this.comp = null; this.camYaw = Math.PI; this.camPitch = 0.26; this.camDist = 7.5;
     this.ruby = { model: makeDragon(), x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0, state: 'hidden', t: 0, speed: 0 }; this.ruby.model.rotation.order = 'YXZ'; this.ruby.model.visible = false; this.scene.add(this.ruby.model);
     this.flame = new THREE.Mesh(GEO.sph, new THREE.MeshBasicMaterial({ color: 0xffc040, transparent: true, opacity: 0.95 })); this.flame.visible = false; this.scene.add(this.flame);
     this.flameLight = new THREE.PointLight(0xffa040, 0, 14); this.scene.add(this.flameLight);
@@ -99,7 +99,7 @@ export class Game {
   }
   H(x, z) { return this.W.height(x, z); }
   place(x, z) { const p = this.player; p.x = x; p.z = z; p.y = this.H(x, z); p.vy = 0; p.ground = true; }
-  faceCam(to) { const W = this.W, p = this.player, t = to || this.chapter.face || (W.name === 'sea' ? [0, -50] : W.name === 'ember' ? [0, -30] : [0, 20]); this.camYaw = Math.atan2(t[0] - p.x, t[1] - p.z) || 0; this.camPitch = 0.3; p.yaw = p.tyaw = this.camYaw; this.camSnap = 2; }
+  faceCam(to) { const W = this.W, p = this.player, t = to || this.chapter.face || (W.name === 'sea' ? [0, -50] : W.name === 'ember' ? [0, -30] : [0, 20]); this.camYaw = Math.atan2(t[0] - p.x, t[1] - p.z) || 0; this.camPitch = 0.26; p.yaw = p.tyaw = this.camYaw; this.camSnap = 2; }
   pt(at) { if (Array.isArray(at)) return at; if (at === 'player') return [this.player.x, this.player.z]; return this.W.P[at]; }
 
   // ───────── people ─────────
@@ -358,7 +358,7 @@ export class Game {
   }
   interact(dt) {
     const p = this.player, f = this.f, W = this.W; let best = null, bd = 1e9;
-    for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z) - 3.3; if (d < 0 && d < bd && n.def.talk) { best = n; bd = d; } }
+    for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z) - 3.3; if (d < 0 && d < bd && n.def.talk && (typeof n.def.talk !== 'function' || n.def.talk(f, this))) { best = n; bd = d; } }
     let flameT = null, anyFlame = false; const cmp = this.comp;
     for (const t of this.things) {
       const d = t.def; let q = d.kimTalk ? (cmp ? [cmp.x, cmp.z] : null) : d.at === 'player' ? [p.x, p.z] : W.P[d.at]; if (!q) continue; const dist = Math.hypot(p.x - q[0], p.z - q[1]);

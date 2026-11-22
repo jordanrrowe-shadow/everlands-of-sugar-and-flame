@@ -94,7 +94,7 @@ export function buildEmber() {
   const perch = [];
   [[-52, -52, 24], [52, -58, 27], [-58, -8, 19], [58, -6, 21], [-34, -78, 30, 0], [34, -78, 30, 0], [0, -66, 15, 0]].forEach(([x, z, h, d], i) => { const top = tower(x, z, h, i > 3 ? 5 : 4.2, d !== 0); if (i < 2) perch.push([x, top, z]); });
   k.box(0, PL.h + 9, -84, 62, 5, 3, IV); k.box(0, PL.h + 14, -84, 64, 0.6, 3.6, GOLD); // gate wall arch
-  for (const s of [-1, 1]) { k.box(s * 36, 2, -90, 62, 12, 2.4, IV, { c2: 0xfff4e0 }); box(s * 36 - 31, s * 36 + 31, -91.6, -88.4); }
+  for (const s of [-1, 1]) { k.box(s * 82, 2, -90, 154, 12, 2.4, IV, { c2: 0xfff4e0 }); box(s * 82 - 77, s * 82 + 77, -91.6, -88.4); }
   lamp(-4.4, -88); lamp(4.4, -88);
   // king's chamber
   const ky = PL.h; for (const [x, z] of [[-6, -28], [6, -28], [-6, -42], [6, -42]]) pillar(x, z, 6.5, 0.55);
