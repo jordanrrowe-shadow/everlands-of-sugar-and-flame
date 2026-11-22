@@ -8,6 +8,7 @@ You play Amber, princess of Emberland, across all 17 chapters, with a free-roam 
 - **iPhone:** open the site in Safari → Share → **Add to Home Screen**. It then launches full-screen like an app and works offline after the first load. Landscape is best.
 - **Controls (touch):** left thumb moves, drag the right side to look. **◆** talks / examines, **▲** jumps, **✦** is your flame, **♪** is the ruby whistle. While riding Ruby: left thumb steers, **»** flies faster, **▽** lands.
 - **Controls (keyboard):** WASD move, mouse-drag or Z/X look, E talk, Space jump, F flame, Q whistle, Shift faster, L land, J journal.
+- **Stuck?** The **?** button shows the current hint and draws a glowing trail (with a beam of light at the end) to the next person or place.
 - **Saving:** automatic, on the device, after every conversation and discovery. The journal (❖) holds the current goal, everything people have told you, keepsakes, chapter replay and settings.
 
 ## Design

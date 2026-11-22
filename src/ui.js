@@ -127,7 +127,7 @@ export function initJournal(G) {
   const close = () => { show(j, false); G.paused = false; };
   const sync = () => j.querySelectorAll('nav button[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
   j.querySelectorAll('nav button[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; sync(); render(); }));
-  $('jClose').addEventListener('click', close); $('menuBtn').addEventListener('click', open); $('goal').addEventListener('click', open);
+  $('jClose').addEventListener('click', close); $('menuBtn').addEventListener('click', open); $('hintBtn').addEventListener('click', () => G.showHint()); $('goal').addEventListener('click', open);
   j.addEventListener('click', (e) => { if (e.target === j) close(); });
   return { open, close, toggle: () => (j.classList.contains('hide') ? open() : close()) };
 }

@@ -312,6 +312,51 @@ export class Game {
     if (Math.floor(this.medT / 1.7) > (this.medN || 0)) { this.medN = Math.floor(this.medT / 1.7); S.hp = Math.min(3, S.hp + 1); this.sound.sfx('chime'); UI.setHearts(S.hp, true, true); this.puff(p.x, p.y + 1, p.z, 0xffd060, 30, 2.4, 1.6, 1.2); }
     if (S.hp >= 3) { this.medN = 0; this.endMed(); this.bark(['Amber', 'There. Warm again.']); this.save(); }
   }
+  // ── Hint trail: find what advances the current step and draw a glowing path to it ──
+  hintTarget() {
+    const st = this.curStep(); if (!st) return null; const flag = st.until, ch = this.chapter, seen = new Set(), f = this.f;
+    const has = (n, d = 0) => { if (!n || d > 14 || typeof n === 'string') return false; if (typeof n === 'function') return n.toString().includes(flag);
+      if (Array.isArray(n)) return n.some((x) => has(x, d + 1));
+      if (typeof n === 'object') { if ([].concat(n.set || []).includes(flag) || n.lit === flag) return true; if (typeof n.go === 'string' && !seen.has(n.go)) { seen.add(n.go); if (has(ch.scripts?.[n.go], d + 1)) return true; } return Object.values(n).some((v) => (typeof v === 'object' || typeof v === 'function') && has(v, d + 1)); }
+      return false; };
+    const live = (src) => { try { return typeof src === 'function' ? src(f, this) : src; } catch (e) { return null; } };
+    const c = [], p = this.player;
+    for (const t of this.things) { const d = t.def; if (d.at === 'player') continue; const q = this.pt(d.at); if (q) c.push({ x: q[0], z: q[1], src: d.script, label: d.label }); }
+    for (const n of this.npcs) if (n.def.talk) { const sc = live(n.def.talk); if (sc) c.push({ x: n.x, z: n.z, src: n.def.talk, now: sc, label: n.name }); }
+    if (this.ruby?.model.visible && !this.riding && this.ruby.state === 'idle') c.push({ x: this.ruby.x, z: this.ruby.z, src: null, label: 'Ruby', ruby: 1 });
+    const near = (l) => l.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z))[0];
+    const sure = c.filter((k) => { seen.clear(); return has(k.now || live(k.src)); }); if (sure.length) return near(sure);
+    const maybe = c.filter((k) => { seen.clear(); return has(k.src); }); if (maybe.length) return near(maybe);
+    return c.length ? near(c) : null;
+  }
+  findPath(x0, z0, x1, z1) { // A* over a coarse grid, using the same colliders the player bumps into
+    const C = 1.6, pad = 36, minX = Math.min(x0, x1) - pad, minZ = Math.min(z0, z1) - pad, nx = Math.ceil((Math.abs(x1 - x0) + pad * 2) / C), nz = Math.ceil((Math.abs(z1 - z0) + pad * 2) / C);
+    if (nx * nz > 90000) return null; const b = this.W.bounds, blocked = new Int8Array(nx * nz);
+    const free = (i, j) => { if (i < 0 || j < 0 || i >= nx || j >= nz) return false; const k = i + j * nx; if (!blocked[k]) { const x = minX + i * C, z = minZ + j * C, q = this.collide(x, z, 0.55); blocked[k] = x < b[0] || x > b[1] || z < b[2] || z > b[3] || Math.hypot(q[0] - x, q[1] - z) > 0.05 ? 2 : 1; } return blocked[k] === 1; };
+    const cell = (x, z) => [Math.round((x - minX) / C), Math.round((z - minZ) / C)], [si, sj] = cell(x0, z0), [gi, gj] = cell(x1, z1), S = si + sj * nx;
+    const g = new Float32Array(nx * nz).fill(1e9), from = new Int32Array(nx * nz).fill(-1), open = [[0, S]], done = new Uint8Array(nx * nz); g[S] = 0; let best = S, bestH = 1e9, n = 0;
+    while (open.length && n++ < 30000) { let m = 0; for (let k = 1; k < open.length; k++) if (open[k][0] < open[m][0]) m = k; const cur = open.splice(m, 1)[0][1]; if (done[cur]) continue; done[cur] = 1;
+      const ci = cur % nx, cj = (cur / nx) | 0, h = Math.hypot(ci - gi, cj - gj); if (h < bestH) { bestH = h; best = cur; } if (h < 1.6) break;
+      for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { if (!di && !dj) continue; const i = ci + di, j = cj + dj; if (!free(i, j) && !(i === gi && j === gj)) continue; if (di && dj && (!free(ci + di, cj) || !free(ci, cj + dj))) continue;
+        const k = i + j * nx, c = g[cur] + (di && dj ? 1.414 : 1); if (c < g[k]) { g[k] = c; from[k] = cur; open.push([c + Math.hypot(i - gi, j - gj), k]); } } }
+    const pts = []; for (let k = best; k >= 0; k = from[k]) pts.push([minX + (k % nx) * C, minZ + ((k / nx) | 0) * C]); pts.reverse(); if (bestH < 2.5) pts.push([x1, z1]); pts[0] = [x0, z0]; return pts;
+  }
+  showHint() {
+    if (this.busy || this.paused || !this.started) return; const st = this.curStep(), p = this.player; if (st?.hint) UI.tip(st.hint, 9);
+    if (this.riding || this.flying || this.mode) return; const t = this.hintTarget(); if (!t) { if (this.canWhistle()) UI.tip('Try the ruby whistle. ♪', 6); return; }
+    if (!this.trail) { const m = new THREE.InstancedMesh(GEO.sph, new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd870).multiplyScalar(2.2), transparent: true, opacity: 0.95, depthWrite: false }), 260); m.frustumCulled = false; const beam = part(GEO.cyl, 0xffe08a, 0, 0, 0, 0.16, 9, 0.16, true); beam.material = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd870).multiplyScalar(1.8), transparent: true, opacity: 0.55, depthWrite: false }); this.trail = { m, beam, pts: [] }; }
+    const tr = this.trail; tr.t = 16; tr.target = t; tr.re = 0; this.scene.add(tr.m, tr.beam); this.sound.sfx('chime');
+  }
+  updateHint(dt) {
+    const tr = this.trail; if (!tr || tr.t <= 0) return; const p = this.player, t = tr.target, d = Math.hypot(t.x - p.x, t.z - p.z); tr.t -= dt;
+    if (tr.t <= 0 || d < 3 || this.riding || this.inCut) { tr.t = 0; this.scene.remove(tr.m, tr.beam); return; }
+    if ((tr.re -= dt) <= 0) { tr.re = 1.5; const path = this.findPath(p.x, p.z, t.x, t.z) || [[p.x, p.z], [t.x, t.z]], pts = []; let carry = 1.2;
+      for (let i = 1; i < path.length; i++) { const [ax, az] = path[i - 1], [bx, bz] = path[i], L = Math.hypot(bx - ax, bz - az); for (let s = carry; s < L; s += 1.15) pts.push([ax + (bx - ax) * s / L, az + (bz - az) * s / L]); carry = (carry - L) % 1.15; if (carry < 0) carry += 1.15; }
+      tr.pts = pts.slice(0, 260); tr.beam.position.set(t.x, this.H(t.x, t.z) + 4.5, t.z); }
+    const M = this._hm || (this._hm = new THREE.Matrix4()), fade = Math.min(1, tr.t / 1.5); tr.m.count = tr.pts.length;
+    tr.pts.forEach(([x, z], i) => { const s = (0.07 + 0.09 * Math.max(0, Math.sin(i * 0.55 - this.t * 6))) * fade; M.makeScale(s, s, s); M.setPosition(x, this.H(x, z) + 0.28, z); tr.m.setMatrixAt(i, M); });
+    tr.m.instanceMatrix.needsUpdate = true; tr.beam.material.opacity = (0.35 + 0.2 * Math.sin(this.t * 4)) * fade;
+  }
   updateFire(dt) {
     const p = this.player; if (this.inv > 0) { this.inv -= dt; p.model.visible = this.rail ? false : this.inv <= 0 || Math.floor(this.t * 12) % 2 === 0; }
     const hostile = !this.busy && !this.riding && !this.rail && p.who === 'amber' && this.fireOK();
@@ -385,7 +430,7 @@ export class Game {
     // people
     for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < 7 && !this.riding && n.id !== 'warden1' && n.id !== 'warden2') n.tyaw = Math.atan2(p.x - n.x, p.z - n.z); n.yaw += wrap((n.tyaw ?? n.yaw) - n.yaw) * Math.min(1, dt * 5); n.model.rotation.y = n.yaw; n.model.visible = d < 110; if (d < 55) { n.model.userData.pose = this.busy && d < 6 ? 'talk' : null; animPerson(n.model, dt, false); } }
     if (this.comp) this.updateComp(dt);
-    this.updateRuby(dt); this.updateFire(dt);
+    this.updateRuby(dt); this.updateFire(dt); this.updateHint(dt);
     for (const t of this.things) if (t.prop) t.prop.rotation.y += dt * (t.def.prop === 'turtle' || t.def.prop === 'cat' ? 0 : 1.2);
     for (const [, m] of this.lits) { const s = 1 + Math.sin(this.t * 9 + m.position.x) * 0.15; m.scale.y = (m.scale.x < 0.5 ? 0.8 : 1.3) * s; }
     for (let i = this.sparks.length - 1; i >= 0; i--) { const m = this.sparks[i], u = m.userData, a = m.geometry.attributes.position; u.age += dt; for (let j = 0; j < a.count; j++) a.setXYZ(j, a.getX(j) + u.vel[j * 3] * dt, a.getY(j) + u.vel[j * 3 + 1] * dt, a.getZ(j) + u.vel[j * 3 + 2] * dt); a.needsUpdate = true; m.material.opacity = 0.9 * (1 - u.age / u.life); if (u.age > u.life) { this.scene.remove(m); this.sparks.splice(i, 1); } }
