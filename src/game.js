@@ -6,6 +6,7 @@ import { GEO, mat, part, rnd } from './kit.js';
 import { U, makeGrass, makeMotes, makeClouds } from './gfx.js';
 import { loadPack, WORLD_PACKS } from './assets.js';
 import { loadPeople } from './people.js';
+import { spokenLine } from './story/speak.js';
 import { CAST, CODEX } from './story/cast.js';
 import p1 from './story/part1.js'; import p2 from './story/part2.js'; import p3 from './story/part3.js';
 import * as UI from './ui.js';
@@ -175,7 +176,7 @@ export class Game {
       if (!n) continue;
       if (typeof n === 'string') { this.sound.sfx('page'); await UI.say('', n); continue; }
       if (Array.isArray(n)) { this.sound.sfx('page'); this.speaker(n[0]); this.voice(n[0], n[1]); await UI.say(n[0], n[1]); this.voiceEl?.pause(); continue; }
-      if (n.c) { for (;;) { const i = await UI.choose(n.c.map((o) => ({ t: o[0] }))); const o = n.c[i]; if (o[1]?.length) await this.exec(o[1]); if (!n.retry || o[2]) break; } continue; }
+      if (n.c) { for (;;) { const i = await UI.choose(n.c.map((o) => ({ t: o[0] }))); const o = n.c[i]; await this.speakChoice(o[0]); if (o[1]?.length) await this.exec(o[1]); if (!n.retry || o[2]) break; } continue; }
       if (n.hub) { await this.hub(n); continue; }
       if (n.if !== undefined && (n.then || n.else)) { await this.exec(this.cond(n.if) ? n.then || [] : n.else || []); continue; }
       if (n.set) { for (const k of [].concat(n.set)) this.f[k] = 1; this.refresh(); }
@@ -203,12 +204,14 @@ export class Game {
       const opts = n.hub.filter((t) => this.cond(t.if) && !(t.once && this.f[hash(t.q)])), exitOk = this.cond(n.need);
       if (!opts.length) break;
       const list = opts.map((t) => ({ t: t.q, cls: this.f[hash(t.q)] ? 'seen' : '' })); if (exitOk) list.push({ t: n.exit || 'Goodbye.', cls: 'exit' });
-      const i = await UI.choose(list); if (i >= opts.length) break;
-      this.f[hash(opts[i].q)] = 1; await this.exec(opts[i].a); if (opts[i].end) break;
+      const i = await UI.choose(list); if (i >= opts.length) { await this.speakChoice(n.exit || 'Goodbye.'); break; }
+      this.f[hash(opts[i].q)] = 1; await this.speakChoice(opts[i].q, opts[i].a); await this.exec(opts[i].a); if (opts[i].end) break;
     }
   }
   // Recorded voice lines: public/voice/<id>.mp3, listed in public/voice/index.json (see tools/voices.mjs).
   voice(name, text) { if (!this.S.opt.sound) return; if (!this.voiceSet) { this.voiceSet = new Set(); fetch('voice/index.json').then((r) => r.json()).then((a) => (this.voiceSet = new Set(a))).catch(() => {}); return; } const id = hash(name + '|' + text); if (!this.voiceSet.has(id)) return; const a = (this.voiceEl = this.voiceEl || new Audio()); a.src = 'voice/' + id + '.mp3'; a.play().catch(() => {}); }
+  // The reply you tap is spoken aloud by the character you are playing (unless it is a silent action or thought).
+  async speakChoice(text, next) { const who = this.player.who === 'kim' ? 'Kim' : 'Amber', sp = spokenLine(text, who); if (!sp) return; const first = Array.isArray(next) && next.find((x) => x && typeof x !== 'object' || Array.isArray(x)); if (Array.isArray(first) && first[0] === sp[0] && first[1].startsWith(sp[1].slice(0, 24))) return; this.sound.sfx('page'); this.voice(sp[0], sp[1]); await UI.say(sp[0], sp[1]); this.voiceEl?.pause(); }
   speaker(name) { const n = this.npcs.find((x) => x.name === name); if (n) { n.face(this.player.x, this.player.z); if (!this.riding) this.player.tyaw = Math.atan2(n.x - this.player.x, n.z - this.player.z); } }
   bark(line) { if (typeof line === 'string') UI.bark('', line); else UI.bark(line[0], line[1]); }
 

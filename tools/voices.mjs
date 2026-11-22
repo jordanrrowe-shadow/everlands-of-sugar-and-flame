@@ -5,10 +5,17 @@ import fs from 'node:fs';
 import p1 from '../src/story/part1.js'; import p2 from '../src/story/part2.js'; import p3 from '../src/story/part3.js';
 const hash = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return 'h' + (h >>> 0).toString(36); };
 const voices = Object.fromEntries(process.argv.slice(2).map((a) => a.split('=')));
-const lines = new Map(), fake = new Proxy({}, { get: () => 1 });
-const walk = (n) => { if (!n) return; if (typeof n === 'function') { for (const f of [{}, fake]) try { walk(n(f, { f, tmp: {} })); } catch { /* needs live game */ } return; }
-  if (Array.isArray(n)) { if (n.length === 2 && typeof n[0] === 'string' && typeof n[1] === 'string' && voices[n[0]]) lines.set(hash(n[0] + '|' + n[1]), n); else n.forEach(walk); return; }
-  if (typeof n === 'object') Object.values(n).forEach(walk); };
+import { spokenLine } from '../src/story/speak.js';
+const lines = new Map(); let who = 'Amber';
+const addLine = (sp) => { if (sp && voices[sp[0]] && /[A-Za-z]/.test(sp[1])) lines.set(hash(sp[0] + '|' + sp[1]), sp); };
+// Story functions branch on flags, so call each with every combination of the flags it reads.
+const callAll = (fn) => { const seen = new Set(); const probe = (vals) => new Proxy({}, { get: (_, k) => { if (typeof k === 'string') seen.add(k); return vals[k]; } });
+  const run = (vals) => { for (const watch of [true, false]) { try { const f = probe(vals); walk(fn(f, { f, tmp: { watch }, S: { ch: 1 } })); } catch { /* needs the live game */ } try { walk(fn({ f: probe(vals), tmp: { watch }, S: { ch: 1 } })); } catch { /* not that shape */ } } };
+  run({}); const all = new Proxy({}, { get: () => 1 }); try { walk(fn(all, { f: all, tmp: {}, S: { ch: 1 } })); } catch { /* ignore */ }
+  const names = [...seen].slice(0, 10); for (let m = 0; m < 1 << names.length; m++) { const v = {}; names.forEach((n, i) => { if (m >> i & 1) v[n] = 1; }); run(v); } };
+const walk = (n) => { if (!n) return; if (typeof n === 'function') return callAll(n);
+  if (Array.isArray(n)) { if (n.length === 2 && typeof n[0] === 'string' && typeof n[1] === 'string') addLine(n); else if (n.length >= 2 && n.length <= 3 && typeof n[0] === 'string' && Array.isArray(n[1])) { addLine(spokenLine(n[0], who)); walk(n[1]); } else n.forEach(walk); return; }
+  if (typeof n === 'object') { if (typeof n.n === 'number' && n.steps) who = n.n === 13 ? 'Kim' : 'Amber'; if (n.hub) { for (const t of n.hub) addLine(spokenLine(t.q, who)); addLine(spokenLine(n.exit || 'Goodbye.', who)); } for (const [k, v] of Object.entries(n)) if (k !== 'tick' && k !== 'canWhistle' && k !== 'companion' && k !== 'ruby' && k !== 'meter' && k !== 'as' && k !== 'if' && k !== 'need') walk(v); } };
 walk([p1, p2, p3]);
 const dir = new URL('../public/voice/', import.meta.url).pathname; fs.mkdirSync(dir, { recursive: true });
 console.log(lines.size, 'lines,', [...lines.values()].reduce((a, l) => a + l[1].length, 0), 'characters');
