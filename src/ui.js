@@ -26,8 +26,8 @@ export function initInput(canvas) {
   const up = (e) => { if (e.pointerId === moveId) { moveId = null; input.mx = input.my = 0; setKnob(0, 0); stick.style.left = stick.style.top = stick.style.bottom = ''; } if (e.pointerId === lookId) lookId = null; };
   canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
   const btn = (id, name, hold) => { const b = $(id); b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); input.pressed.add(name); if (hold) input[hold] = true; b.classList.add('down'); }); const off = () => { if (hold) input[hold] = false; b.classList.remove('down'); }; b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('pointerleave', off); };
-  btn('bAct', 'act'); btn('bJump', 'jump'); btn('bFlame', 'flameTap', 'flame'); btn('bWhistle', 'whistle'); btn('bBoost', 'boostTap', 'boost'); btn('bLand', 'land');
-  const map = { KeyE: 'act', Enter: 'act', Space: 'jump', KeyQ: 'whistle', KeyL: 'land', KeyJ: 'journal', Escape: 'journal' };
+  btn('bAct', 'act'); btn('bJump', 'jump'); btn('bFlame', 'flameTap', 'flame'); btn('bWhistle', 'whistle'); btn('bBoost', 'boostTap', 'boost'); btn('bLand', 'land'); btn('bMed', 'med');
+  const map = { KeyE: 'act', Enter: 'act', Space: 'jump', KeyQ: 'whistle', KeyL: 'land', KeyJ: 'journal', Escape: 'journal', KeyM: 'med' };
   addEventListener('keydown', (e) => { if (e.repeat) return; input.keys.add(e.code); if (map[e.code]) input.pressed.add(map[e.code]); if (e.code === 'Space' || e.code === 'Enter') input.pressed.add('tap'); if (e.code === 'KeyF') input.flame = true; if (e.code.startsWith('Shift')) input.boost = true; if (/^Digit[1-9]$/.test(e.code)) input.pressed.add('choice' + e.code.slice(5)); });
   addEventListener('keyup', (e) => { input.keys.delete(e.code); if (e.code === 'KeyF') input.flame = false; if (e.code.startsWith('Shift')) input.boost = false; });
   addEventListener('blur', () => { input.keys.clear(); input.flame = input.boost = false; });
@@ -85,8 +85,9 @@ export function qte(label) { return new Promise((res) => { const q = $('qte'), b
 // ───────── HUD ─────────
 export function setGoal(chap, text, pulse) { $('chap').textContent = chap; $('goalText').textContent = text; if (pulse) { const g = $('goal'); g.classList.remove('pulse'); void g.offsetWidth; g.classList.add('pulse'); } }
 export function setMeter(type, v) { const m = $('meter'); show(m, !!type); if (!type) return; m.classList.toggle('heat', type === 'heat'); $('meterLabel').textContent = type === 'cold' ? (v < 0.3 ? 'Shivering' : 'Cold') : (v < 0.3 ? 'Far too hot' : 'Too warm'); $('meterFill').style.width = Math.round(v * 100) + '%'; }
+export function setHearts(n, show, hurt) { const h = $('hearts'); showB(h, show); if (!show) return; if (h.children.length !== 3) h.innerHTML = '<i></i><i></i><i></i>'; [...h.children].forEach((e, i) => e.classList.toggle('off', i >= n)); if (hurt) { h.classList.remove('hurt'); void h.offsetWidth; h.classList.add('hurt'); } }
 export function setAct(label) { const b = $('bAct'); show(b, !!label); if (label && b.textContent !== label) b.textContent = label; }
-export function setButtons(o) { showB($('bJump'), o.jump); showB($('bFlame'), o.flame); $('bFlame').classList.toggle('kim', !!o.kim); showB($('bWhistle'), o.whistle); showB($('bBoost'), o.boost); showB($('bLand'), o.land); }
+export function setButtons(o) { showB($('bJump'), o.jump); showB($('bFlame'), o.flame); $('bFlame').classList.toggle('kim', !!o.kim); showB($('bWhistle'), o.whistle); showB($('bBoost'), o.boost); showB($('bLand'), o.land); showB($('bMed'), o.med); }
 export function playUI(on) { show($('hud'), on); show($('controls'), on); }
 export function controlsVisible(on) { show($('controls'), on); }
 
@@ -102,6 +103,7 @@ export function initJournal(G) {
       if (st?.hint) h += hintShown ? `<div class="hintBox">${esc(st.hint)}</div>` : `<button class="btn" id="jHint">I’m stuck. Give me a nudge</button>`;
       h += `<h3>What people have told you</h3>` + (S.leads.length ? `<ul>${S.leads.slice().reverse().map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : '<p><i>Nothing yet. Talk to people, and ask them things.</i></p>');
       h += `<h3>Carrying</h3><p>${Object.keys(S.items).filter((k) => S.items[k]).map((k) => ITEMS[k] || k).join(' · ') || '<i>Nothing but your own name and a wish to be liked.</i>'}</p>`;
+      if (S.sparks) h += `<h3>Fire bending</h3><p>Cinders gathered: <b>${S.sparks}</b>. Tap ✦ for a fire bolt, hold ✦ near something to light it, or hold and release for a flare. Ash wisps and frost puffs fight back: you have three flames, and ❋ Meditate rekindles them when you are somewhere quiet.</p>`;
       h += `<h3>How to play</h3><p>Left thumb moves. Drag the right side to look around. ◆ talks to people and examines things. There are no map markers. Listen to what people say; your leads are kept here.</p>`;
     } else if (tab === 'keeps') {
       for (const [id, c] of Object.entries(CODEX)) h += S.codex.includes(id) ? `<div class="keep"><b>${esc(c.title)}</b><br>${esc(c.text)}${c.img ? `<img src="/art/${c.img}.jpg" alt="">` : ''}</div>` : `<div class="keep locked">A keepsake not yet found…</div>`;

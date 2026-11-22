@@ -65,3 +65,10 @@ npm run build
 Add `?ch=7` to the URL to jump straight to a chapter while testing.
 
 The four paintings in `public/art` are the authors' own concept art.
+
+## Graphics
+
+- Ground materials are photo-scanned PBR textures from [Poly Haven](https://polyhaven.com) (CC0), blended per zone in `src/gfx.js`
+  and tinted by the game's own palette. Buildings and props get a triplanar plaster/stone grain from the same source.
+- Soft sun shadows, sky-lit reflections, animated water, wind-blown instanced grass, drifting embers, a procedural cloud deck and bloom.
+- "Shadows & glow" in the journal settings turns the heavier effects off; resolution also scales down automatically if the frame rate drops.

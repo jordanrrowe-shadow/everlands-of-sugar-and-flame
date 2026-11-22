@@ -27,7 +27,8 @@ export function makePerson(L) {
     g.add(p); if (sx < 0) u.armL = p; else u.armR = p;
   }
   g.add(part(GEO.sph, skin, 0, 1.64, 0, 0.21, 0.22, 0.21));
-  g.add(part(GEO.sph, 0x2a1a14, -0.08, 1.66, 0.19, 0.025, 0.035, 0.02), part(GEO.sph, 0x2a1a14, 0.08, 1.66, 0.19, 0.025, 0.035, 0.02));
+  for (const sx of [-1, 1]) g.add(part(GEO.sph, 0xffffff, sx * 0.078, 1.665, 0.178, 0.04, 0.048, 0.03), part(GEO.sph, L.eye || 0x4a2a1a, sx * 0.078, 1.662, 0.2, 0.026, 0.034, 0.016), part(GEO.sph, 0x140c0a, sx * 0.078, 1.662, 0.209, 0.013, 0.018, 0.01), part(GEO.sph, 0xf2a0a0, sx * 0.13, 1.6, 0.15, 0.04, 0.025, 0.02), part(GEO.sph, L.hair, sx * 0.078, 1.722, 0.185, 0.045, 0.01, 0.02));
+  g.add(part(GEO.sph, 0xc8566a, 0, 1.565, 0.19, 0.035, 0.012, 0.015), part(GEO.sph, skin, 0, 1.62, 0.21, 0.02, 0.025, 0.02), part(GEO.cyl, skin, 0, 1.44, 0, 0.07, 0.1, 0.07));
   g.add(part(GEO.sph, L.hair, 0, 1.71, -0.04, 0.235, 0.22, 0.235));
   if (L.hairLong) { g.add(part(GEO.sph, L.hair, 0, 1.3, -0.2, 0.26, 0.5, 0.14)); g.add(part(GEO.sph, L.hair, -0.2, 1.42, -0.06, 0.09, 0.3, 0.1), part(GEO.sph, L.hair, 0.2, 1.42, -0.06, 0.09, 0.3, 0.1)); }
   else if (L.style === 'woman' || L.style === 'elder') g.add(part(GEO.sph, L.hair, 0, 1.84, -0.1, 0.12, 0.11, 0.12));
@@ -68,7 +69,7 @@ export function makeDragon(accent) {
   const tri = [[0, 2, 3], [0, 3, 4], [0, 4, 5], [0, 5, 1]], arr = [];
   for (const t of tri) for (const i of t) arr.push(...V[i]);
   wingGeo.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); wingGeo.computeVertexNormals();
-  const wm = new THREE.MeshLambertMaterial({ color: 0x3a1418, side: THREE.DoubleSide, flatShading: true });
+  const wm = new THREE.MeshStandardMaterial({ color: 0x3a1418, side: THREE.DoubleSide, roughness: 0.55 });
   for (const sx of [-1, 1]) {
     const w = new THREE.Group(); w.position.set(sx * 0.8, 0.7, 0.6); w.scale.x = sx;
     w.add(new THREE.Mesh(wingGeo, wm));
@@ -85,7 +86,7 @@ export function animDragon(d, dt, flying) {
   u.wingL.rotation.z = -f; u.wingR.rotation.z = f;
   const sx = flying ? 1 : 0.55; u.wingL.scale.set(-sx, 1, 1); u.wingR.scale.set(sx, 1, 1);
   u.head.rotation.x = Math.sin(u.t * 0.9) * 0.06;
-  const b = 0.55 + 0.45 * Math.sin(u.t * 1.25); u.ruby.color.copy(u.base).multiplyScalar(0.45 + 0.75 * b);
+  const b = 0.55 + 0.45 * Math.sin(u.t * 1.25); u.ruby.color.copy(u.base).multiplyScalar(0.7 + 1.5 * b);
 }
 
 export function makeCritter(kind) {
