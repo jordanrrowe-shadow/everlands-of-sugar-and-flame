@@ -93,7 +93,14 @@ const ch13 = {
     { id: 'linen', at: 'linen', if: 'c13_fire', talk: ['A boy carrying linens points the way without being asked, staring at her hair.', ['Linen Boy', 'The king’s rooms? Back along the arcade and west. The stairs on the left are shorter! Wait by the big pillar if the regent’s in there. Everybody does.'], { lead: 'Linen boy: back along the arcade, then west to the big pillar outside the king’s door.' }] },
   ],
   things: [
-    { id: 'lost', at: 't1', auto: 9, if: (f) => !f.c13_lost, script: ['Warmth comes up through the soles of her boots and out of the walls. She pulls off her other glove, pushes both into her pouch beside Tira, who is panting, and goes on bare-handed, with the bracelet swinging loose on her wrist.', { set: 'c13_lost' }] },
+    { id: 'lost', at: 't1', auto: 9, if: (f) => !f.c13_lost, script: [
+      { cut: [{ bg: 'balcony' }, { kim: 'shy' },
+        'Warmth comes up through the soles of her boots and out of the walls. She pulls off her other glove, pushes both into her pouch beside Tira, who is panting, and goes on bare-handed, with the bracelet swinging loose on her wrist.',
+        [K, 'Everything here is warm. Even the stone is warm.'],
+        [K, 'I don’t know where I’m going, Tira. I’m not certain I know where I have come from, either.'],
+        { kim: 'amazed' }, 'Below the arcade, the lamps of Emberland are being lit, one street at a time, until the whole valley glows.',
+        { kim: 'smile' }, [K, 'It is beautiful, though. Nobody told me it would be beautiful.']] },
+      { set: 'c13_lost' }] },
     { id: 'window', at: 'long_window', label: 'Lean on the warm sill', if: (f) => f.c13_water && !f.c13_window, script: [
       'Roofs of red tile step down toward a harbor, and between them run thin bright streams of lava, crossed by little bridges. A child runs with a ribbon of flame trailing behind like a kite.',
       'It does not look like a place that sinks boats. It looks like somewhere she would have wanted to visit.',
@@ -343,12 +350,15 @@ const ch17 = {
       'Blue fire, then green, gold, white, pink, violet — and red. The flames intertwine without consuming one another. They become a great turning crown of light, vast enough to be seen from villages across Emberland. Many fires, one celebration.',
       'Cheers roll from the valleys. The king lifts his face into the colored light, and Amber sees tears shining in his eyes.', { set: 'c17_flame' }] },
     { id: 'end', at: 'player', kimTalk: 1, label: 'Stand with Kim', if: (f) => f.c17_flame && !f.c17_end, script: [
-      [K, 'I never thought anything was missing from my life. I had Mum and Dad, Grandma Lava, Marsh, Tira. I had everything.'], [A, 'And you still do.'],
-      [K, 'Yes. I just didn’t know there was more to discover. A whole other place. And you.'],
-      [A, 'I used to think I’d have to do everything alone.'], [K, 'Well, that’s unfortunate.'], [A, 'Why?'], [K, 'Because you’re rather stuck with me now.'],
-      'One had crossed the sea looking for friendship. The other had crossed it looking for the beginning of her story. Both had found more than they expected.',
-      'Neither had been looking for a sister. But somehow, across two kingdoms and an entire sea, they had found one.',
-      'And above them, the dragons kept the night bright.', { codex: 'sisters' }, { set: 'c17_end' }] },
+      { cut: [{ bg: 'flames' }, { amber: 'smile' }, { kim: 'smile' },
+        [K, 'I never thought anything was missing from my life. I had Mum and Dad, Grandma Lava, Marsh, Tira. I had everything.'], [A, 'And you still do.'],
+        { kim: 'amazed' }, [K, 'Yes. I just didn’t know there was more to discover. A whole other place. And you.'],
+        { amber: 'worried' }, [A, 'I used to think I’d have to do everything alone.'],
+        { kim: 'smile' }, [K, 'Well, that’s unfortunate.'], [A, 'Why?'],
+        { kim: 'laugh' }, [K, 'Because you’re rather stuck with me now.'],
+        { amber: 'laugh' }, 'One had crossed the sea looking for friendship. The other had crossed it looking for the beginning of her story. Both had found more than they expected.',
+        { amber: 'smile' }, { kim: 'smile' }, 'Neither had been looking for a sister. But somehow, across two kingdoms and an entire sea, they had found one.',
+        'And above them, the dragons kept the night bright.'] }, { codex: 'sisters' }, { set: 'c17_end' }] },
   ],
 };
 

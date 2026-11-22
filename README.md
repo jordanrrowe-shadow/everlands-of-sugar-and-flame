@@ -42,6 +42,7 @@ A script is an array. Each entry is one of:
 - `{ hub: [{ q, a: [script], if?, once? }], exit, need? }` ask-about-topics conversation
 - `{ set: 'flag' }` · `{ if: cond, then: [...], else: [...] }` · `{ go: 'namedScript' }`
 - `{ lead: 'journal text' }` · `{ give | take: 'item' }` · `{ codex: 'id' }`
+- `{ cut: [...] }` an illustrated cut scene: `{ bg: 'room' }` sets the backdrop, `{ amber: 'smile' }` / `{ kim: null }` shows or hides a portrait, plain lines are spoken or narrated (see `src/cut.js`; art in `public/art/cut`)
 - `{ time: 'day|dusk|night|dawn' }` · `{ tp: 'point' }` · `{ fade: 'caption' }` · `{ img: 'art-name' }`
 - `{ ruby: 'arrive|leave|at', at }` · `{ fly: { rings, barks, world?, land? } }` · `{ qte: 'label' }` · `{ fx: 'name' }` · `{ mini: 'sled|balloon' }`
 
@@ -80,4 +81,5 @@ All third-party art is CC0 (public domain):
 - Quaternius — Ultimate Modular Women, Ultimate Modular Men, Medieval Village MegaKit, Stylized Nature MegaKit.
 - Poly Haven — ground, plaster, roof-tile and wood textures.
 
+The cut-scene portraits and backdrops were generated from the authors' own character sheet (`docs/art`).
 Voices and the three realm themes in `public/music` are generated with ElevenLabs; assignments are in `tools/cast-voices.sh`.

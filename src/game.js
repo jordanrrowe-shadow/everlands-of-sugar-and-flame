@@ -6,6 +6,7 @@ import { GEO, mat, part, rnd } from './kit.js';
 import { U, makeGrass, makeMotes, makeClouds } from './gfx.js';
 import { loadPack, WORLD_PACKS } from './assets.js';
 import { loadPeople } from './people.js';
+import { playCut } from './cut.js';
 import { spokenLine } from './story/speak.js';
 import { CAST, CODEX } from './story/cast.js';
 import p1 from './story/part1.js'; import p2 from './story/part2.js'; import p3 from './story/part3.js';
@@ -54,7 +55,7 @@ export class Game {
     UI.initInput(canvas); this.journal = UI.initJournal(this);
     addEventListener('resize', () => this.resize()); addEventListener('orientationchange', () => setTimeout(() => this.resize(), 250)); this.resize();
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.save(); });
-    this.last = performance.now(); const loop = (now) => { requestAnimationFrame(loop); const raw = (now - this.last) / 1000, dt = Math.min(0.05, raw); this.last = now; if (!this.paused && this.started && !navigator.webdriver) { this.ft = (this.ft || 0.016) * 0.97 + raw * 0.03; this.ftT = (this.ftT || 0) + raw; if (this.ftT > 4) { this.ftT = 0; const rs = this.resScale || 1; if (this.ft > 0.04 && rs > 0.55) { this.resScale = rs - 0.15; this.resize(); } else if (this.ft < 0.02 && rs < 1) { this.resScale = Math.min(1, rs + 0.1); this.resize(); } } } for (let i = 0; i < (this.warp || 1); i++) this.update(dt); if (this.noRender) return; if (this.S.opt.fx !== false) this.composer.render(dt); else this.renderer.render(this.scene, this.cam); }; requestAnimationFrame(loop);
+    this.last = performance.now(); const loop = (now) => { requestAnimationFrame(loop); const raw = (now - this.last) / 1000, dt = Math.min(0.05, raw); this.last = now; if (!this.paused && this.started && !navigator.webdriver) { this.ft = (this.ft || 0.016) * 0.97 + raw * 0.03; this.ftT = (this.ftT || 0) + raw; if (this.ftT > 4) { this.ftT = 0; const rs = this.resScale || 1; if (this.ft > 0.04 && rs > 0.55) { this.resScale = rs - 0.15; this.resize(); } else if (this.ft < 0.02 && rs < 1) { this.resScale = Math.min(1, rs + 0.1); this.resize(); } } } for (let i = 0; i < (this.warp || 1); i++) this.update(dt); if (this.noRender || this.inCut) return; if (this.S.opt.fx !== false) this.composer.render(dt); else this.renderer.render(this.scene, this.cam); }; requestAnimationFrame(loop);
   }
   get f() { return this.S.flags; }
   get chapter() { return this.chapters[this.S.ch - 1]; }
@@ -177,6 +178,7 @@ export class Game {
       if (typeof n === 'string') { this.sound.sfx('page'); await UI.say('', n); continue; }
       if (Array.isArray(n)) { this.sound.sfx('page'); this.speaker(n[0]); this.voice(n[0], n[1]); await UI.say(n[0], n[1]); this.voiceEl?.pause(); continue; }
       if (n.c) { for (;;) { const i = await UI.choose(n.c.map((o) => ({ t: o[0] }))); const o = n.c[i]; await this.speakChoice(o[0]); if (o[1]?.length) await this.exec(o[1]); if (!n.retry || o[2]) break; } continue; }
+      if (n.cut) { UI.closeDialog(); this.inCut = true; try { await playCut(n.cut, this); } finally { this.inCut = false; } continue; }
       if (n.hub) { await this.hub(n); continue; }
       if (n.if !== undefined && (n.then || n.else)) { await this.exec(this.cond(n.if) ? n.then || [] : n.else || []); continue; }
       if (n.set) { for (const k of [].concat(n.set)) this.f[k] = 1; this.refresh(); }
