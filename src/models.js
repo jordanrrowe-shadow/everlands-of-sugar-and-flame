@@ -1,0 +1,110 @@
+// Procedural characters, the dragon, critters and small props.
+import * as THREE from 'three';
+import { GEO, part, mat } from './kit.js';
+
+export function makePerson(L) {
+  const g = new THREE.Group(), u = (g.userData = { t: Math.random() * 6 });
+  const skirted = L.style === 'girl' || L.style === 'woman' || L.style === 'elder';
+  const skin = L.skin || 0xf0c8a8;
+  if (skirted) {
+    const long = L.style !== 'girl';
+    g.add(part(GEO.frustum, L.skirt, 0, long ? 0.5 : 0.62, 0, long ? 0.42 : 0.56, long ? 1.0 : 0.78, long ? 0.42 : 0.56));
+    if (L.style === 'girl') { // layered ruffles
+      g.add(part(GEO.frustum, L.trim || 0xffffff, 0, 0.3, 0, 0.62, 0.22, 0.62));
+      g.add(part(GEO.frustum, L.skirt, 0, 0.46, 0, 0.6, 0.2, 0.6));
+      u.legL = part(GEO.box, 0xf5e6d8, -0.1, 0.12, 0, 0.1, 0.26, 0.12); u.legR = part(GEO.box, 0xf5e6d8, 0.1, 0.12, 0, 0.1, 0.26, 0.12); g.add(u.legL, u.legR);
+    }
+  } else {
+    for (const sx of [-1, 1]) { const p = new THREE.Group(); p.position.set(sx * 0.12, 0.82, 0); p.add(part(GEO.box, L.legs || 0x554433, 0, -0.41, 0, 0.17, 0.82, 0.2)); g.add(p); if (sx < 0) u.legL = p; else u.legR = p; }
+  }
+  g.add(part(GEO.cyl, L.top, 0, 1.18, 0, 0.24, 0.56, 0.19));
+  if (L.trim && L.style !== 'girl') g.add(part(GEO.box, L.trim, 0, 1.18, 0.185, 0.08, 0.5, 0.03));
+  if (L.style === 'girl') g.add(part(GEO.box, L.trim || 0xffffff, 0, 1.1, 0.19, 0.2, 0.3, 0.03));
+  if (L.apron) g.add(part(GEO.box, L.apron, 0, 0.92, 0.2, 0.34, 0.6, 0.04));
+  for (const sx of [-1, 1]) {
+    const p = new THREE.Group(); p.position.set(sx * 0.31, 1.4, 0);
+    p.add(part(GEO.box, L.sleeve || L.top, 0, -0.26, 0, 0.12, 0.52, 0.13), part(GEO.sph, skin, 0, -0.56, 0, 0.07, 0.07, 0.07));
+    g.add(p); if (sx < 0) u.armL = p; else u.armR = p;
+  }
+  g.add(part(GEO.sph, skin, 0, 1.64, 0, 0.21, 0.22, 0.21));
+  g.add(part(GEO.sph, 0x2a1a14, -0.08, 1.66, 0.19, 0.025, 0.035, 0.02), part(GEO.sph, 0x2a1a14, 0.08, 1.66, 0.19, 0.025, 0.035, 0.02));
+  g.add(part(GEO.sph, L.hair, 0, 1.71, -0.04, 0.235, 0.22, 0.235));
+  if (L.hairLong) { g.add(part(GEO.sph, L.hair, 0, 1.3, -0.2, 0.26, 0.5, 0.14)); g.add(part(GEO.sph, L.hair, -0.2, 1.42, -0.06, 0.09, 0.3, 0.1), part(GEO.sph, L.hair, 0.2, 1.42, -0.06, 0.09, 0.3, 0.1)); }
+  else if (L.style === 'woman' || L.style === 'elder') g.add(part(GEO.sph, L.hair, 0, 1.84, -0.1, 0.12, 0.11, 0.12));
+  if (L.flower) g.add(part(GEO.sph, L.flower, 0.2, 1.8, 0.06, 0.07, 0.07, 0.05));
+  if (L.crown) g.add(part(GEO.cyl, 0xe9b949, 0, 1.9, 0, 0.17, 0.1, 0.17));
+  if (L.glasses) g.add(part(GEO.box, 0x333333, 0, 1.66, 0.2, 0.3, 0.03, 0.02));
+  if (L.cape) { const c = part(GEO.box, L.cape, 0, 0.98, -0.22, 0.56, 0.95, 0.05); c.rotation.x = 0.12; g.add(c); }
+  if (L.collar) g.add(part(GEO.sph, L.collar, 0, 1.44, 0, 0.3, 0.1, 0.26));
+  if (L.style === 'guard') { g.add(part(GEO.cyl, 0x6b4a2a, 0.42, 1.2, 0.1, 0.025, 2.3, 0.025), part(GEO.cone, 0xcfd3d6, 0.42, 2.45, 0.1, 0.07, 0.24, 0.07)); }
+  if (L.tira) { g.add(part(GEO.box, 0xc9a0dc, -0.36, 0.95, 0.05, 0.18, 0.26, 0.26)); const t = makeCritter('tira'); t.position.set(-0.36, 1.1, 0.05); t.scale.setScalar(0.6); g.add(t); }
+  const h = (L.h || 1) * (L.style === 'child' ? 0.68 : 1); g.scale.setScalar(h); u.h = h;
+  return g;
+}
+export function animPerson(p, dt, moving) {
+  const u = p.userData; u.t += dt * (moving ? 10 : 2);
+  const a = moving ? Math.sin(u.t) * 0.7 : Math.sin(u.t) * 0.04;
+  if (u.armL) { u.armL.rotation.x = a; u.armR.rotation.x = -a; }
+  if (u.legL) { if (u.legL.isGroup) { u.legL.rotation.x = -a; u.legR.rotation.x = a; } else { u.legL.position.z = -a * 0.14; u.legR.position.z = a * 0.14; } }
+}
+
+const RUBY = new THREE.MeshBasicMaterial({ color: 0xff2238 });
+export function makeDragon(accent) {
+  const g = new THREE.Group(), u = (g.userData = { t: 0 });
+  const ruby = accent ? new THREE.MeshBasicMaterial({ color: accent }) : RUBY; u.ruby = ruby; u.base = new THREE.Color(accent || 0xff2238);
+  const bk = 0x191214, P = (geo, x, y, z, sx, sy, sz, c = bk) => part(geo, c, x, y, z, sx, sy, sz);
+  const R = (x, y, z, s) => { const m = new THREE.Mesh(GEO.sph, ruby); m.position.set(x, y, z); m.scale.setScalar(s); return m; };
+  g.add(P(GEO.sph, 0, 0, 0, 1.15, 1.0, 2.5));
+  for (let i = 0; i < 6; i++) { const t = i / 5; g.add(P(GEO.sph, 0, 0.4 + t * 1.9, 2.0 + t * 2.3, 0.72 - t * 0.3, 0.72 - t * 0.3, 0.8 - t * 0.2)); g.add(R(0, 1.05 + t * 1.95, 1.85 + t * 2.25, 0.2 - t * 0.06)); }
+  const head = new THREE.Group(); head.position.set(0, 2.45, 4.6); u.head = head; g.add(head);
+  head.add(P(GEO.box, 0, 0, 0, 0.75, 0.55, 0.9), P(GEO.box, 0, -0.1, 0.75, 0.5, 0.36, 0.9));
+  for (const sx of [-1, 1]) { const h = P(GEO.cone, sx * 0.28, 0.35, -0.45, 0.1, 0.7, 0.1); h.rotation.x = -1.0; head.add(h); head.add(part(GEO.sph, 0xffc93a, sx * 0.39, 0.08, 0.2, 0.07, 0.09, 0.1, true)); g.add(R(sx * 0.95, 0.5, 1.1, 0.26), R(sx * 1.05, 0.3, 0.2, 0.2)); }
+  for (let i = 0; i < 9; i++) { const t = i / 8; g.add(P(GEO.sph, 0, -0.1 - t * 0.5, -2.2 - t * 5.2, 0.7 - t * 0.6, 0.6 - t * 0.5, 0.9)); if (i % 2 === 0) g.add(R(0, 0.45 - t * 0.9, -2.2 - t * 5.2, 0.16 - t * 0.1)); }
+  const tip = new THREE.Mesh(GEO.cone, ruby); tip.position.set(0, -0.6, -8); tip.scale.set(0.25, 0.8, 0.25); tip.rotation.x = -Math.PI / 2; g.add(tip);
+  for (const [x, z] of [[-0.9, 1.4], [0.9, 1.4], [-0.9, -1.4], [0.9, -1.4]]) g.add(P(GEO.box, x, -1.0, z, 0.4, 1.2, 0.5));
+  const wingGeo = new THREE.BufferGeometry();
+  const V = [[0, 0, 0.9], [0, 0, -1.8], [5.6, 0.7, 1.4], [6.6, 0.3, -0.5], [4.6, 0, -2.6], [2.3, 0, -2.9]];
+  const tri = [[0, 2, 3], [0, 3, 4], [0, 4, 5], [0, 5, 1]], arr = [];
+  for (const t of tri) for (const i of t) arr.push(...V[i]);
+  wingGeo.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); wingGeo.computeVertexNormals();
+  const wm = new THREE.MeshLambertMaterial({ color: 0x3a1418, side: THREE.DoubleSide, flatShading: true });
+  for (const sx of [-1, 1]) {
+    const w = new THREE.Group(); w.position.set(sx * 0.8, 0.7, 0.6); w.scale.x = sx;
+    w.add(new THREE.Mesh(wingGeo, wm));
+    const bone = P(GEO.cyl, 2.8, 0.35, 1.15, 0.09, 5.7, 0.09); bone.rotation.z = -Math.PI / 2 + 0.12; bone.rotation.y = -0.09; w.add(bone);
+    for (const [x, y, z] of [[5.6, 0.7, 1.4], [6.6, 0.3, -0.5], [4.6, 0, -2.6], [3.4, 0.5, 1.2]]) w.add(R(x, y, z, 0.17));
+    g.add(w); if (sx < 0) u.wingL = w; else u.wingR = w;
+  }
+  return g;
+}
+export function animDragon(d, dt, flying) {
+  const u = d.userData; u.t += dt;
+  const f = flying ? Math.sin(u.t * 4.2) * 0.55 : 0.9 + Math.sin(u.t * 1.3) * 0.04;
+  u.wingL.rotation.z = -f; u.wingR.rotation.z = f;
+  const sx = flying ? 1 : 0.55; u.wingL.scale.set(-sx, 1, 1); u.wingR.scale.set(sx, 1, 1);
+  u.head.rotation.x = Math.sin(u.t * 0.9) * 0.06;
+  const b = 0.55 + 0.45 * Math.sin(u.t * 1.25); u.ruby.color.copy(u.base).multiplyScalar(0.45 + 0.75 * b);
+}
+
+export function makeCritter(kind) {
+  const g = new THREE.Group();
+  if (kind === 'tira') { g.add(part(GEO.sph, 0x6b4630, 0, 0.14, 0, 0.16, 0.14, 0.22), part(GEO.sph, 0xf3e3cf, 0, 0.2, 0.18, 0.11, 0.1, 0.1), part(GEO.cone, 0x6b4630, -0.07, 0.34, 0.16, 0.04, 0.12, 0.04), part(GEO.cone, 0x6b4630, 0.07, 0.34, 0.16, 0.04, 0.12, 0.04)); }
+  else if (kind === 'sprite') { g.add(part(GEO.sph, 0xffffff, 0, 0.2, 0, 0.18, 0.18, 0.22), part(GEO.cone, 0xffffff, -0.1, 0.5, 0.05, 0.05, 0.3, 0.05), part(GEO.cone, 0xffffff, 0.1, 0.5, 0.05, 0.05, 0.3, 0.05), part(GEO.sph, 0xbfe8ff, -0.2, 0.32, -0.05, 0.16, 0.2, 0.03, true), part(GEO.sph, 0xbfe8ff, 0.2, 0.32, -0.05, 0.16, 0.2, 0.03, true)); }
+  else if (kind === 'turtle') { g.add(part(GEO.sph, 0xbfe3a0, 0, 0.22, 0, 0.42, 0.24, 0.48), part(GEO.sph, 0xfff3d0, 0, 0.34, 0, 0.28, 0.16, 0.32), part(GEO.sph, 0xbfe3a0, 0, 0.44, 0, 0.14, 0.08, 0.16), part(GEO.sph, 0xf5e3a0, 0, 0.22, 0.5, 0.14, 0.13, 0.16), part(GEO.sph, 0xf5e3a0, -0.36, 0.1, 0.26, 0.14, 0.05, 0.1), part(GEO.sph, 0xf5e3a0, 0.36, 0.1, 0.26, 0.14, 0.05, 0.1)); }
+  else if (kind === 'cat') { g.add(part(GEO.cyl, 0xd98a2b, 0, 0.12, 0, 0.5, 0.24, 0.5), part(GEO.sph, 0xffffff, 0, 0.3, 0, 0.36, 0.22, 0.32), part(GEO.sph, 0xffffff, 0.2, 0.42, 0.16, 0.15, 0.14, 0.14), part(GEO.cone, 0xffffff, 0.14, 0.58, 0.16, 0.05, 0.1, 0.05), part(GEO.cone, 0xffffff, 0.27, 0.58, 0.16, 0.05, 0.1, 0.05)); }
+  return g;
+}
+export function makeProp(name) {
+  const g = new THREE.Group();
+  if (name === 'flask') g.add(part(GEO.cyl, 0x8a5a3a, 0, 0.2, 0, 0.12, 0.3, 0.08), part(GEO.cyl, 0xd9b36a, 0, 0.4, 0, 0.05, 0.1, 0.05));
+  else if (name === 'bun') g.add(part(GEO.sph, 0xd9963a, 0, 0.14, 0, 0.18, 0.12, 0.18), part(GEO.sph, 0xf5d68a, 0, 0.2, 0, 0.12, 0.06, 0.12));
+  else if (name === 'purse') g.add(part(GEO.sph, 0x8e1b2c, 0, 0.14, 0, 0.14, 0.14, 0.14), part(GEO.sph, 0xe9b949, 0, 0.3, 0, 0.05, 0.05, 0.05));
+  else if (name === 'spyglass') { const m = part(GEO.cyl, 0xc9a04a, 0, 0.12, 0, 0.05, 0.5, 0.05); m.rotation.z = Math.PI / 2; g.add(m); }
+  else if (name === 'herbs') g.add(part(GEO.cone, 0x7fc98a, 0, 0.25, 0, 0.25, 0.5, 0.25), part(GEO.sph, 0xbfa0e8, 0, 0.5, 0, 0.1, 0.1, 0.1));
+  else if (name === 'sapling') { for (const x of [-0.4, 0.4]) g.add(part(GEO.cyl, 0xb9774a, x, 0.15, 0, 0.2, 0.3, 0.2), part(GEO.cyl, 0xffffff, x, 0.8, 0, 0.05, 1.0, 0.05), part(GEO.cyl, 0xe23a4a, x, 0.6, 0, 0.055, 0.14, 0.055), part(GEO.cyl, 0xe23a4a, x, 1.0, 0, 0.055, 0.14, 0.055), part(GEO.sph, 0x9fe0b0, x, 1.4, 0, 0.25, 0.2, 0.25)); }
+  else if (name === 'pouch') g.add(part(GEO.sph, 0xc9a0dc, 0, 0.2, 0, 0.25, 0.2, 0.2), part(GEO.box, 0xfff1d6, 0, 0.36, 0, 0.3, 0.05, 0.22));
+  else if (name === 'turtle' || name === 'cat' || name === 'sprite') return makeCritter(name);
+  return g;
+}
+// ring to fly through
+export function makeRing(color = 0xffb347) { const m = new THREE.Mesh(new THREE.TorusGeometry(7, 0.35, 6, 28), new THREE.MeshBasicMaterial({ color, fog: false, transparent: true, opacity: 0.9 })); return m; }

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Everlands">
+<meta name="theme-color" content="#3a1620">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="icon" href="/icon-180.png">
+<title>The Everlands: Of Sugar and Flame</title>
+<link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" class="hide">
+  <button id="goal"><b id="chap"></b><span id="goalText"></span></button>
+  <div id="meter" class="hide"><span id="meterLabel"></span><div><i id="meterFill"></i></div></div>
+  <button id="menuBtn" aria-label="Journal">❖</button>
+</div>
+<div id="bark"></div>
+<div id="tip" class="hide"></div>
+
+<div id="controls" class="hide">
+  <div id="stick"><i></i></div>
+  <button id="bAct" class="hide"></button>
+  <div id="btns">
+    <button id="bWhistle" class="rb hide">♪<small>Whistle</small></button>
+    <button id="bFlame" class="rb hide">✦<small>Flame</small></button>
+    <button id="bLand" class="rb hide">▽<small>Land</small></button>
+    <button id="bBoost" class="rb hide">»<small>Faster</small></button>
+    <button id="bJump" class="rb">▲<small>Jump</small></button>
+  </div>
+</div>
+
+<div id="dialog" class="hide"><div id="dName"></div><div id="dText"></div><div id="dChoices"></div><div id="dNext">▾</div></div>
+<div id="qte" class="hide"><button id="qteBtn"></button></div>
+<div id="img" class="hide"><img alt=""><p>Tap to continue</p></div>
+<div id="fade"><div id="fadeText"></div></div>
+<div id="card" class="hide"><small id="cardNum"></small><h1 id="cardTitle"></h1><p id="cardQuote"></p></div>
+
+<div id="journal" class="hide">
+  <div id="jBox">
+    <nav><button data-tab="quest" class="on">Journal</button><button data-tab="keeps">Keepsakes</button><button data-tab="chapters">Chapters</button><button data-tab="settings">Settings</button><button id="jClose">✕</button></nav>
+    <section id="jBody"></section>
+  </div>
+</div>
+
+<div id="title">
+  <div id="titleInner">
+    <small>THE EVERLANDS</small>
+    <h1>Of Sugar and Flame</h1>
+    <p class="by">from the book by Elisa Espinosa Ruiz</p>
+    <div id="titleBtns"><button id="tContinue" class="hide">Continue</button><button id="tNew">New Story</button></div>
+    <p id="loading">Lighting the hearths…</p>
+    <p class="hint">On iPhone: tap Share → “Add to Home Screen” to play full-screen. Best held sideways.</p>
+  </div>
+</div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

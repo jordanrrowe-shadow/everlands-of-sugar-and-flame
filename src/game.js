@@ -1,0 +1,382 @@
+// The game core: state, world loading, player + dragon control, NPCs, the script runner, saves.
+import * as THREE from 'three';
+import { buildEmber, buildSugar, buildSea, SKY } from './worlds.js';
+import { makePerson, animPerson, makeDragon, animDragon, makeProp, makeRing } from './models.js';
+import { GEO, mat } from './kit.js';
+import { CAST, CODEX } from './story/cast.js';
+import p1 from './story/part1.js'; import p2 from './story/part2.js'; import p3 from './story/part3.js';
+import * as UI from './ui.js';
+import { Sound } from './audio.js';
+
+const KEY = 'everlands.save.v1', BUILD = { ember: buildEmber, sugar: buildSugar, sea: buildSea };
+const TIPS = {
+  flame: 'Hold ✦ Flame (or F) while standing close.', whistle: 'Tap ♪ Whistle (or Q).', stealth: 'Stay in the shadow. Cross only while the wardens face each other.',
+  fly: 'Steer with the left thumb. Fly through the glowing rings. » flies faster.', bounce: 'Jump onto a low marshmallow. Each bounce carries you higher.', asruby: 'Tonight you are Ruby. Climb to the circle.',
+};
+const lerp = (a, b, t) => a + (b - a) * t, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+const hash = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return 'h' + (h >>> 0).toString(36); };
+const wait = (s) => new Promise((r) => setTimeout(r, s * 1000));
+
+export class Game {
+  constructor(canvas) {
+    this.chapters = [...p1, ...p2, ...p3];
+    this.S = this.blank(); this.tmp = {}; this.busy = 0; this.paused = true; this.t = 0; this.worlds = {}; this.npcs = []; this.things = []; this.inside = new Set(); this.lits = new Map(); this.rings = []; this.fxs = [];
+    this.sound = new Sound();
+    const r = (this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }));
+    r.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    this.scene = new THREE.Scene(); this.scene.fog = new THREE.FogExp2(0xffffff, 0.003);
+    this.cam = new THREE.PerspectiveCamera(58, 1, 0.3, 1800);
+    this.hemi = new THREE.HemisphereLight(0xffffff, 0x886655, 1); this.sun = new THREE.DirectionalLight(0xffffff, 1); this.sun.position.set(-0.5, 1, 0.4); this.scene.add(this.hemi, this.sun);
+    const dome = new THREE.SphereGeometry(1500, 24, 12); dome.setAttribute('color', new THREE.BufferAttribute(new Float32Array(dome.attributes.position.count * 3), 3));
+    this.dome = new THREE.Mesh(dome, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })); this.scene.add(this.dome);
+    const sp = []; for (let i = 0; i < 500; i++) { const a = Math.random() * 6.28, e = Math.random() * 1.3 + 0.15; sp.push(Math.cos(a) * Math.cos(e) * 1400, Math.sin(e) * 1400, Math.sin(a) * Math.cos(e) * 1400); }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3)); this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 2.4, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.9 })); this.scene.add(this.stars);
+    this.player = { x: 0, y: 0, z: 0, vy: 0, yaw: 0, ground: true, who: 'amber', model: null, lookKey: '' };
+    this.comp = null; this.camYaw = Math.PI; this.camPitch = 0.32; this.camDist = 7.5;
+    this.ruby = { model: makeDragon(), x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0, state: 'hidden', t: 0, speed: 0 }; this.ruby.model.rotation.order = 'YXZ'; this.ruby.model.visible = false; this.scene.add(this.ruby.model);
+    this.flame = new THREE.Mesh(GEO.sph, new THREE.MeshBasicMaterial({ color: 0xffc040, transparent: true, opacity: 0.95 })); this.flame.visible = false; this.scene.add(this.flame);
+    this.flameLight = new THREE.PointLight(0xffa040, 0, 14); this.scene.add(this.flameLight);
+    this.spark = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), new THREE.MeshBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.9, fog: false })); this.sparks = [];
+    UI.initInput(canvas); this.journal = UI.initJournal(this);
+    addEventListener('resize', () => this.resize()); this.resize();
+    document.addEventListener('visibilitychange', () => { if (document.hidden) this.save(); });
+    this.last = performance.now(); const loop = (now) => { requestAnimationFrame(loop); const dt = Math.min(0.05, (now - this.last) / 1000); this.last = now; for (let i = 0; i < (this.warp || 1); i++) this.update(dt); this.renderer.render(this.scene, this.cam); }; requestAnimationFrame(loop);
+  }
+  get f() { return this.S.flags; }
+  get chapter() { return this.chapters[this.S.ch - 1]; }
+  get W() { return this.worlds[this.S.world]; }
+  blank() { return { ch: 1, max: 1, flags: {}, leads: [], items: {}, codex: [], vis: {}, world: 'ember', time: 'day', pos: null, opt: { sound: true, invert: false, fast: false } }; }
+  resize() { const w = innerWidth, h = innerHeight; this.renderer.setSize(w, h, false); this.cam.aspect = w / h; this.cam.fov = w < h ? 72 : 58; this.cam.updateProjectionMatrix(); }
+
+  // ───────── saving ─────────
+  hasSave() { try { return !!localStorage.getItem(KEY); } catch { return false; } }
+  save() { if (this.busy || !this.started) return; const p = this.player; this.S.pos = this.riding ? null : [p.x, p.z, this.camYaw]; try { localStorage.setItem(KEY, JSON.stringify(this.S)); } catch { /* private mode */ } }
+  load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.ch) { this.S = Object.assign(this.blank(), s); return true; } } catch { /* ignore */ } return false; }
+  erase() { try { localStorage.removeItem(KEY); } catch { /* ignore */ } }
+  applyOptions() { this.sound.setOn(this.S.opt.sound); this.save(); }
+
+  // ───────── start / chapters ─────────
+  async begin(fresh) {
+    this.sound.unlock();
+    if (!fresh && this.load()) { this.started = true; this.sound.setOn(this.S.opt.sound); await this.enterWorld(this.S.world, this.S.time); this.lastStep = this.curStep(); const sp = this.S.pos || this.W.P[this.chapter.spawn] || [0, 0]; this.place(sp[0], sp[1]); if (sp[2] !== undefined) this.camYaw = sp[2]; this.refresh(); UI.playUI(true); this.paused = false; this.showGoal(); await UI.fade(false); }
+    else { const opt = this.S.opt; this.S = this.blank(); this.S.opt = opt; this.started = true; await this.startChapter(1); }
+  }
+  baseline(n) { const f = {}, it = {}; if (n >= 3) it.whistle = 1; if (n === 3) it.spyglass = 1; if (n >= 11 && n <= 14) it.stillbloom = 1; if (n >= 5 && n <= 12) f.coat = 1; if (n >= 13) f.coatOff = 1; if (n >= 8 && n <= 10) f.rideSugar = 1; return [f, it]; }
+  async startChapter(n) {
+    this.busy++; this.paused = true; await UI.fade(true); UI.closeDialog();
+    const S = this.S, ch = this.chapters[n - 1]; S.ch = n; S.max = Math.max(S.max, n); [S.flags, S.items] = this.baseline(n); S.leads = []; S.vis = {}; this.tmp = {}; this.inside.clear();
+    if (this.riding) this.unride(null, true); this.ruby.state = 'hidden'; this.ruby.model.visible = false; this.meterV = 1; this.clearRings(); this.clearFx(); this.fogOverride = null; this.rubyAt = null;
+    await this.enterWorld(ch.world, ch.time); this.lastStep = this.curStep();
+    const who = this.whoNow(); const sp = this.W.P[who === 'kim' && ch.spawnKim ? ch.spawnKim : ch.spawn]; this.place(sp[0], sp[1]); this.faceCam();
+    this.refresh(); if (this.comp) this.placeComp();
+    UI.playUI(false); this.sound.sfx('chapter');
+    await UI.card(n > 17 ? 'EPILOGUE' : 'CHAPTER ' + n, ch.title, ch.intro);
+    this.sound.unlock(); UI.playUI(true); this.busy--; this.paused = false; this.showGoal(true); this.save(); await UI.fade(false);
+  }
+  curStep() { const st = this.chapter.steps; for (const s of st) if (!this.f[s.until]) return s; return null; }
+  showGoal(pulse) { const st = this.curStep(), n = this.S.ch; UI.setGoal(n > 17 ? 'Epilogue' : `Chapter ${n} · ${this.chapter.title}`, st ? st.goal : '', pulse); }
+  async checkStep() {
+    const st = this.curStep(); if (st === this.lastStep) return; this.lastStep = st;
+    if (!st) { if (this.S.ch >= this.chapters.length) return; await wait(0.6); if (this.S.ch === 17) await this.ending(); return this.startChapter(this.S.ch + 1); }
+    this.sound.sfx('chime'); this.showGoal(true);
+  }
+  async ending() { this.busy++; await UI.fade(true, 'The End'); await wait(2.4); UI.playUI(false); await UI.card('THE EVERLANDS', 'Of Sugar and Flame', 'From the book by Elisa Espinosa Ruiz.\n\nBoth kingdoms are yours to wander now. Whistle for Ruby anywhere.'); this.busy--; }
+
+  // ───────── world / sky ─────────
+  async enterWorld(name, time) {
+    if (!this.worlds[name]) { this.worlds[name] = BUILD[name](); await wait(0); }
+    for (const k in this.worlds) { const g = this.worlds[k].group; if (k === name) this.scene.add(g); else this.scene.remove(g); }
+    this.S.world = name; this.clearNpcs(); this.inside.clear(); this.setTime(time || this.S.time);
+    this.sound.mood = name;
+  }
+  setTime(time) {
+    this.S.time = time; const p = (SKY[this.S.world] || SKY.ember)[time] || SKY[this.S.world].day, top = new THREE.Color(p[0]), bot = new THREE.Color(p[1]);
+    const pos = this.dome.geometry.attributes.position, col = this.dome.geometry.attributes.color, c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) { const t = clamp(pos.getY(i) / 900 + 0.08, 0, 1); c.copy(bot).lerp(top, Math.pow(t, 0.7)); col.setXYZ(i, c.r, c.g, c.b); } col.needsUpdate = true;
+    this.scene.fog.color.set(p[2]); this.baseFog = p[3]; this.sun.color.set(p[4]); this.sun.intensity = p[5] * 1.5; this.hemi.color.set(p[6]).lerp(new THREE.Color(0xffffff), 0.45); this.hemi.groundColor.set(p[2]).multiplyScalar(0.7); this.hemi.intensity = time === 'night' ? 1.25 : 1.7;
+    this.stars.visible = time === 'night'; this.sound.night = time === 'night';
+  }
+  H(x, z) { return this.W.height(x, z); }
+  place(x, z) { const p = this.player; p.x = x; p.z = z; p.y = this.H(x, z); p.vy = 0; p.ground = true; }
+  faceCam(to) { const W = this.W, p = this.player, t = to || this.chapter.face || (W.name === 'sea' ? [0, -50] : W.name === 'ember' ? [0, -30] : [0, 20]); this.camYaw = Math.atan2(t[0] - p.x, t[1] - p.z) || 0; this.camPitch = 0.3; p.yaw = p.tyaw = this.camYaw; this.camSnap = 2; }
+  pt(at) { if (Array.isArray(at)) return at; if (at === 'player') return [this.player.x, this.player.z]; return this.W.P[at]; }
+
+  // ───────── people ─────────
+  cond(c) { if (c === undefined || c === null) return true; if (typeof c === 'string') return c[0] === '!' ? !this.f[c.slice(1)] : !!this.f[c]; if (Array.isArray(c)) return c.every((x) => this.cond(x)); return !!c(this.f, this); }
+  look(id) {
+    const f = this.f, L = { ...CAST[id] };
+    if (id === 'amber') { if (f.coat && !f.coatOff) Object.assign(L, { top: 0xfff1d6, skirt: 0xfbe6c2, trim: 0xe9b949, collar: 0xffffff, cape: 0, sleeve: 0xfff1d6 }); if (f.c17_cape) L.cape = 0; }
+    if (id === 'kim') { L.tira = 1; if (f.c17_cape) L.cape = 0xa3182c; }
+    return L;
+  }
+  whoNow() { const a = this.chapter.as; return (typeof a === 'function' ? a(this.f) : a) || 'amber'; }
+  clearNpcs() { for (const n of this.npcs) this.scene.remove(n.model); this.npcs = []; if (this.comp) { this.scene.remove(this.comp.model); this.comp = null; } }
+  npc(id) { return this.npcs.find((n) => n.id === id); }
+  refresh() {
+    const ch = this.chapter, f = this.f, W = this.W, p = this.player;
+    // player identity + outfit
+    const who = this.whoNow(), key = who + JSON.stringify(this.look(who));
+    if (p.lookKey !== key) { const old = p.model, parent = old?.parent || this.scene; if (old) parent.remove(old); p.model = makePerson(this.look(who)); if (old) { p.model.position.copy(old.position); p.model.rotation.copy(old.rotation); } parent.add(p.model); p.lookKey = key; if (p.who !== who && this.started) { const sp = W.P[who === 'kim' ? ch.spawnKim || ch.spawn : ch.spawn]; if (sp && this.lastWho) this.place(sp[0], sp[1]); } p.who = who; this.lastWho = who; }
+    // NPCs
+    const defs = (ch.npcsByWorld ? ch.npcsByWorld[W.name] || [] : ch.npcs || []).filter((d) => W.P[d.at] && this.cond(d.if));
+    const want = new Map(defs.map((d) => [d.id + '@' + d.at, d]));
+    this.npcs = this.npcs.filter((n) => { const lk = JSON.stringify(this.look(n.id)); if (want.has(n.key) && n.lk === lk) { n.def = want.get(n.key); want.delete(n.key); return true; } this.scene.remove(n.model); return false; });
+    for (const [k, d] of want) { const [x, z] = W.P[d.at], L = this.look(d.id), n = { key: k, id: d.id, def: d, x, z, y: this.H(x, z), yaw: 0, model: makePerson(L), name: L.name, lk: JSON.stringify(L), face(tx, tz) { this.tyaw = Math.atan2(tx - this.x, tz - this.z); } }; n.yaw = n.tyaw = Math.atan2(p.x - x, p.z - z); n.model.position.set(x, n.y, z); this.scene.add(n.model); this.npcs.push(n); }
+    // companion
+    const cid = !this.riding && typeof ch.companion === 'function' ? ch.companion(f) : null, clk = cid ? JSON.stringify(this.look(cid)) : '';
+    if ((this.comp?.id || null) !== cid || (this.comp && this.comp.lk !== clk)) { const old = this.comp; if (old) this.scene.remove(old.model); this.comp = null; if (cid) { this.comp = { id: cid, lk: clk, model: makePerson(this.look(cid)), x: old ? old.x : p.x - 1.5, z: old ? old.z : p.z - 1.5, y: 0, yaw: 0 }; this.scene.add(this.comp.model); if (!old) this.placeComp(); } }
+    // Ruby at rest
+    if (!this.riding && this.ruby.state !== 'arrive' && this.ruby.state !== 'leave' && this.ruby.state !== 'council') { const at = typeof ch.ruby === 'function' ? ch.ruby(f) : null, pt = (at && W.P[at]) || this.rubyAt; if (pt) { if (this.ruby.state !== 'idle' || this.ruby.at !== pt) this.rubyRest(pt); } else if (this.ruby.state === 'idle') { this.ruby.state = 'hidden'; this.ruby.model.visible = false; } }
+    // things
+    for (const t of this.things) if (t.prop) { this.scene.remove(t.prop); t.prop = null; }
+    this.things = (ch.things || []).filter((t) => (t.at === 'player' || W.P[t.at]) && this.cond(t.if) && !(t.once && f['t_' + t.id])).map((t) => ({ def: t, prop: null }));
+    for (const t of this.things) if (t.def.prop) { const [x, z] = W.P[t.def.at]; t.prop = makeProp(t.def.prop); t.prop.position.set(x, this.H(x, z) + (t.def.prop === 'turtle' ? -0.1 : ['flask', 'bun', 'purse', 'spyglass'].includes(t.def.prop) ? 0.9 : 0), z); this.scene.add(t.prop); }
+    // lit hearths / torches
+    for (const t of ch.things || []) if (t.lit && W.P[t.at]) { const on = !!f[t.lit], have = this.lits.get(t.id); if (on && !have) { const [x, z] = W.P[t.at], m = new THREE.Mesh(GEO.cone, mat(who === 'kim' ? 0xff8ab8 : 0xffb030, true)); const torch = t.at[0] === 't'; m.position.set(x, this.H(x, z) + (torch ? 2.9 : 1.9), z); m.scale.set(torch ? 0.3 : 0.6, torch ? 0.8 : 1.3, torch ? 0.3 : 0.6); this.scene.add(m); this.lits.set(t.id, m); } else if (!on && have) { this.scene.remove(have); this.lits.delete(t.id); } }
+    for (const [id, m] of this.lits) if (!(ch.things || []).some((t) => t.id === id && W.P[t.at])) { this.scene.remove(m); this.lits.delete(id); }
+    this.meter = typeof ch.meter === 'function' ? ch.meter(f) : null; if (!this.meter) { this.meterV = 1; UI.setMeter(null); }
+  }
+  placeComp() { const c = this.comp, p = this.player; c.x = p.x - Math.sin(this.camYaw) * 1.6 + 1; c.z = p.z - Math.cos(this.camYaw) * 1.6; c.y = this.H(c.x, c.z); }
+  rubyRest(pt) { const r = this.ruby; r.state = 'idle'; r.at = pt; r.x = pt[0]; r.z = pt[1]; r.y = this.H(r.x, r.z) + 1.7; r.pitch = r.bank = 0; r.yaw = Math.atan2(this.player.x - r.x, this.player.z - r.z); r.model.visible = true; }
+
+  // ───────── the script runner ─────────
+  async run(script) {
+    if (!script) return; this.busy++; UI.setAct(null); UI.controlsVisible(!!this.riding && false);
+    try { await this.exec(typeof script === 'function' ? script(this) : script); } catch (e) { console.error('script error', e); }
+    UI.closeDialog(); this.busy--; if (!this.busy) { UI.controlsVisible(true); this.refresh(); await this.checkStep(); this.save(); }
+  }
+  async exec(list) {
+    for (const n of list) {
+      if (!n) continue;
+      if (typeof n === 'string') { this.sound.sfx('page'); await UI.say('', n); continue; }
+      if (Array.isArray(n)) { this.sound.sfx('page'); this.speaker(n[0]); await UI.say(n[0], n[1]); continue; }
+      if (n.c) { for (;;) { const i = await UI.choose(n.c.map((o) => ({ t: o[0] }))); const o = n.c[i]; if (o[1]?.length) await this.exec(o[1]); if (!n.retry || o[2]) break; } continue; }
+      if (n.hub) { await this.hub(n); continue; }
+      if (n.if !== undefined && (n.then || n.else)) { await this.exec(this.cond(n.if) ? n.then || [] : n.else || []); continue; }
+      if (n.set) { for (const k of [].concat(n.set)) this.f[k] = 1; this.refresh(); }
+      if (n.lead && !this.S.leads.includes(n.lead)) { this.S.leads.push(n.lead); UI.tip('✎ Noted in your journal.', 3); }
+      if (n.give) { this.S.items[n.give] = 1; }
+      if (n.take) { delete this.S.items[n.take]; }
+      if (n.codex && !this.S.codex.includes(n.codex)) { this.S.codex.push(n.codex); this.sound.sfx('chime'); UI.tip('Keepsake found: ' + CODEX[n.codex].title, 4); }
+      if (n.time) { await UI.fade(true); this.setTime(n.time); await UI.fade(false); }
+      if (n.tp) { const pt = this.pt(n.tp); if (pt) { this.place(pt[0], pt[1]); if (this.comp) this.placeComp(); } }
+      if (n.fade !== undefined) { UI.closeDialog(); await UI.fade(true, n.fade); await wait(n.fade ? 2.2 : 0.3); await UI.fade(false); }
+      if (n.img) { UI.closeDialog(); await UI.image(n.img); }
+      if (n.tip) UI.tip(TIPS[n.tip] || n.tip, 9);
+      if (n.go) await this.exec(this.chapter.scripts[n.go]);
+      if (n.fn) await n.fn(this);
+      if (n.qte) { UI.closeDialog(); await UI.qte(n.qte); }
+      if (n.fx) await this.fx(n.fx);
+      if (n.ruby) await this.rubyDo(n);
+      if (n.fly) { UI.closeDialog(); await this.fly(n.fly); }
+      if (n.mini) { UI.closeDialog(); await this['mini_' + n.mini](n); }
+      if (n.world) { UI.closeDialog(); await UI.fade(true); await this.enterWorld(n.world, n.time); const pt = this.pt(n.at); this.place(pt[0], pt[1]); this.faceCam(); this.refresh(); if (this.comp) this.placeComp(); await UI.fade(false); }
+    }
+  }
+  async hub(n) {
+    for (;;) {
+      const opts = n.hub.filter((t) => this.cond(t.if) && !(t.once && this.f[hash(t.q)])), exitOk = this.cond(n.need);
+      if (!opts.length) break;
+      const list = opts.map((t) => ({ t: t.q, cls: this.f[hash(t.q)] ? 'seen' : '' })); if (exitOk) list.push({ t: n.exit || 'Goodbye.', cls: 'exit' });
+      const i = await UI.choose(list); if (i >= opts.length) break;
+      this.f[hash(opts[i].q)] = 1; await this.exec(opts[i].a); if (opts[i].end) break;
+    }
+  }
+  speaker(name) { const n = this.npcs.find((x) => x.name === name); if (n) { n.face(this.player.x, this.player.z); if (!this.riding) this.player.tyaw = Math.atan2(n.x - this.player.x, n.z - this.player.z); } }
+  bark(line) { if (typeof line === 'string') UI.bark('', line); else UI.bark(line[0], line[1]); }
+
+  // ───────── Ruby ─────────
+  async rubyDo(n) {
+    const r = this.ruby, pt = n.at ? this.pt(n.at) : null;
+    if (n.ruby === 'at') { this.rubyAt = pt; this.rubyRest(pt); return; }
+    if (n.ruby === 'arrive') { UI.closeDialog(); this.sound.sfx('roar'); const ty = this.H(pt[0], pt[1]) + 1.7; r.model.visible = true; r.state = 'arrive'; const a = this.camYaw + 0.6, sx = pt[0] + Math.sin(a) * 60, sz = pt[1] + Math.cos(a) * 60; r.yaw = Math.atan2(pt[0] - sx, pt[1] - sz); for (let t = 0; t < 1; t += 0.012) { const e = 1 - (1 - t) * (1 - t); r.x = lerp(sx, pt[0], e); r.z = lerp(sz, pt[1], e); r.y = ty + (1 - e) * 34; r.pitch = -(1 - e) * 0.4; await wait(0.016); } this.rubyAt = pt; this.rubyRest(pt); return; }
+    if (n.ruby === 'leave') { UI.closeDialog(); this.sound.sfx('roar'); r.state = 'leave'; for (let t = 0; t < 1; t += 0.014) { r.y += 0.5 + t * 0.6; r.x += Math.sin(r.yaw) * t * 1.4; r.z += Math.cos(r.yaw) * t * 1.4; r.pitch = 0.5; await wait(0.016); } r.state = 'hidden'; r.model.visible = false; this.rubyAt = null; }
+  }
+  mount(solo) {
+    const r = this.ruby, p = this.player; if (this.riding) return; this.riding = true; this.solo = !!solo;
+    if (r.state === 'hidden') { r.x = p.x; r.z = p.z; r.y = p.y + 2; r.yaw = this.camYaw; } r.state = 'ride'; r.model.visible = true; r.speed = 16; r.pitch = 0.25;
+    const comp = this.comp; this.scene.remove(p.model); if (comp) this.scene.remove(comp.model);
+    if (!solo) { r.model.add(p.model); p.model.position.set(0, 0.55, 0.9); p.model.rotation.set(0, 0, 0); p.model.scale.setScalar(1.25); if (comp) { r.model.add(comp.model); comp.model.position.set(0, 0.6, -0.4); comp.model.rotation.set(0, 0, 0); comp.model.scale.setScalar(1.25); this.rideComp = comp; this.comp = null; } }
+    else if (comp) { this.rideComp = comp; this.comp = null; }
+  }
+  unride(at, silent) {
+    const r = this.ruby, p = this.player; if (!this.riding) return; this.riding = false;
+    r.model.remove(p.model); p.model.scale.setScalar(p.model.userData.h); this.scene.add(p.model);
+    if (this.rideComp) { r.model.remove(this.rideComp.model); this.rideComp.model.scale.setScalar(this.rideComp.model.userData.h); this.scene.add(this.rideComp.model); this.comp = this.rideComp; this.rideComp = null; }
+    const pt = at ? this.pt(at) : [r.x, r.z]; this.place(pt[0], pt[1]); if (this.comp) this.placeComp();
+    if (this.solo) { r.state = 'council'; } else if (!silent) { const rp = [pt[0] + 6, pt[1] + 5]; this.rubyAt = rp; this.rubyRest(rp); } this.solo = false; this.clearRings(); this.fogOverride = null; this.camPitch = 0.3;
+  }
+  clearRings() { for (const m of this.rings) this.scene.remove(m); this.rings = []; this.ringI = 0; this.flyDone = null; }
+  async fly(o) {
+    if (o.world) { await UI.fade(true, '', true); await this.enterWorld(o.world, o.time); this.refresh(); }
+    else if (o.time) this.setTime(o.time);
+    const r = this.ruby; this.mount(o.solo); this.clearRings();
+    if (o.start) { r.x = o.start[0]; r.y = o.start[1]; r.z = o.start[2]; }
+    const first = o.rings[0]; r.yaw = Math.atan2(first[0] - r.x, first[2] - r.z); this.camYaw = r.yaw;
+    if (this.W.visitor) { this.W.visitor.visible = !!o.ship; if (o.ship) this.W.visitor.position.set(...o.ship); }
+    if (o.council) this.spawnCouncil(o.rings[o.rings.length - 1]);
+    for (const p of o.rings) { const m = makeRing(o.solo ? 0xff3048 : 0xffc45a); m.position.set(p[0], p[1], p[2]); this.scene.add(m); this.rings.push(m); }
+    for (let i = 0; i < this.rings.length; i++) { const a = i ? o.rings[i - 1] : [r.x, r.y, r.z], b = o.rings[i]; this.rings[i].rotation.y = Math.atan2(b[0] - a[0], b[2] - a[2]); }
+    this.ringI = 0; const f0 = o.fog ?? this.fogOverride ?? this.baseFog, f1 = o.fogTo ?? o.fog ?? f0; this.fogOverride = f0;
+    if (o.world) await UI.fade(false);
+    UI.controlsVisible(true); this.flying = true;
+    await new Promise((res) => { this.flyDone = (i) => { this.sound.sfx('ring'); const b = o.barks?.[i]; if (b) this.bark(b); this.fogOverride = lerp(f0, f1, (i + 1) / o.rings.length); if (i + 1 >= o.rings.length) res(); }; });
+    this.flying = false; UI.controlsVisible(false); this.clearRings();
+    if (o.land) { await UI.fade(true); this.unride(o.land); this.faceCam(); this.refresh(); await UI.fade(false); }
+  }
+  spawnCouncil(c) { this.clearFx(); const cols = [0x3a8cff, 0x30d080, 0xa060ff, 0xff8ac0, 0xf4f4ff, 0xffd040]; this.council = { c: [c[0], c[1] + 6, c[2]], ds: cols.map((col, i) => { const d = makeDragon(col); d.rotation.order = 'YXZ'; this.scene.add(d); return { d, col, a: (i + 1) / 7 * 6.283 }; }) }; }
+  clearFx() { for (const m of this.fxs) this.scene.remove(m); this.fxs = []; if (this.council) { for (const x of this.council.ds) this.scene.remove(x.d); this.council = null; } }
+
+  // ───────── minigames ─────────
+  async mini_sled() {
+    const p = this.player, W = this.W; this.place(0, -156); this.mode = 'sled'; this.sledV = 4; this.camYaw = 0; UI.controlsVisible(true); UI.tip('Lean with the left thumb. The mountain decides the rest.', 5);
+    await new Promise((res) => (this.sledDone = res)); this.mode = null; UI.controlsVisible(false); this.sound.sfx('hit'); this.shake = 0.6; this.puff(p.x, p.y + 1, p.z, 0xffffff, 30); await wait(0.8);
+  }
+  async mini_balloon(n) {
+    const W = this.W, b = W.balloon, p = this.player; await UI.fade(true); W.balloonHold = true; p.model.visible = false; if (this.comp) this.comp.model.visible = false;
+    const x0 = b.position.x, z0 = b.position.z, y0 = b.userData.y; this.rail = { t: 0, dur: 80, f: (t) => { const e = t * t * (3 - 2 * t); b.position.set(x0 + e * 46, y0 + 6 + e * 58, z0 + e * 30); const a = 2.2 + e * 1.3; this.cam.position.set(b.position.x - Math.sin(a) * 15, b.position.y + 7, b.position.z - Math.cos(a) * 15); this.cam.lookAt(b.position.x + Math.sin(a) * 40, b.position.y - 16, b.position.z + Math.cos(a) * 40); } };
+    await UI.fade(false); await this.exec(n.script); await UI.fade(true); this.rail = null; W.balloonHold = false; b.position.set(x0, y0, z0); p.model.visible = true; if (this.comp) this.comp.model.visible = true; await UI.fade(false);
+  }
+  async fx(name) {
+    const p = this.player, S = this.S;
+    if (name === 'boil') { this.sound.sfx('flame'); for (let i = 0; i < 6; i++) { this.puff(-104 - Math.random() * 6, -1.2, 18 + Math.random() * 8, 0xfff4e8, 14, 2, 3); await wait(0.15); } }
+    else if (name === 'bird') { this.sound.sfx('lit'); const m = new THREE.Mesh(GEO.cone, mat(0xffc040, true)); m.scale.set(0.12, 0.3, 0.3); this.scene.add(m); for (let t = 0; t < 1; t += 0.012) { const a = t * 6.283; m.position.set(p.x + Math.sin(a) * 1.4, p.y + 1.8 + Math.sin(t * 9) * 0.2, p.z + Math.cos(a) * 1.4); m.rotation.y = a + 1.57; await wait(0.016); } this.puff(m.position.x, m.position.y, m.position.z, 0xcccccc, 8, 0.4, 1); this.scene.remove(m); }
+    else if (name === 'fogIn') { S.vis.fog = 1; }
+    else if (name === 'ships') { S.vis.ships = 1; this.sound.sfx('roar'); }
+    else if (name === 'hit') { S.vis.hit = 1; this.sound.sfx('hit'); this.shake = 0.9; this.puff(p.x + 4, 1, p.z - 3, 0xffffff, 40, 3, 6); await wait(0.5); }
+    else if (name === 'torches') { this.sound.sfx('flame'); this.shake = 0.25; for (const t of ['t1', 't2', 't3', 't4']) { const q = this.W.P[t]; this.puff(q[0], this.H(q[0], q[1]) + 3, q[1], 0xffa030, 16, 0.5, 4); } }
+    else if (name === 'still') { this.sound.sfx('chime'); const a = this.npc('ashlock'); if (a) this.puff(a.x, a.y + 1.4, a.z, 0xe8f0ff, 60, 1.2, 0.6, 3); }
+    else if (name === 'pinkflame') { this.sound.sfx('lit'); const c = this.comp || p; this.puff(c.x, c.y + 1.5, c.z, 0xff8ab8, 30, 0.4, 1.5, 2.5); }
+    else if (name === 'eternal') await this.eternal();
+  }
+  async eternal() {
+    const C = this.council, r = this.ruby; if (!C) return; this.sound.sfx('roar'); const all = [...C.ds.map((x) => x.col), 0xff2238];
+    for (let i = 0; i < 7; i++) { const src = i < 6 ? C.ds[i].d.position : r.model.position, m = new THREE.Mesh(GEO.cyl, new THREE.MeshBasicMaterial({ color: all[i], transparent: true, opacity: 0.75, fog: false })); m.userData = { i, src }; this.scene.add(m); this.fxs.push(m); this.sound.sfx('lit'); await wait(0.45); }
+    const crown = new THREE.Group(); all.forEach((c, i) => { const t = new THREE.Mesh(new THREE.TorusGeometry(16 + i * 1.6, 0.9, 6, 40), new THREE.MeshBasicMaterial({ color: c, fog: false, transparent: true, opacity: 0.8 })); t.rotation.x = Math.PI / 2 + i * 0.12; crown.add(t); });
+    const core = new THREE.Mesh(GEO.sph, new THREE.MeshBasicMaterial({ color: 0xfff4d0, fog: false, transparent: true, opacity: 0.9 })); core.scale.set(7, 16, 7); crown.add(core); crown.position.set(C.c[0], C.c[1] + 60, C.c[2]); crown.userData.crown = 1; this.scene.add(crown); this.fxs.push(crown);
+    this.sound.sfx('chapter'); await wait(5); await UI.fade(true); this.unride('high_rail'); this.camYaw = Math.atan2(C.c[0] - this.player.x, C.c[2] - this.player.z); this.camPitch = -0.25; this.refresh(); await UI.fade(false);
+  }
+  puff(x, y, z, color, n = 20, spread = 1, rise = 2, life = 1.6) {
+    const pos = new Float32Array(n * 3), vel = []; for (let i = 0; i < n; i++) { pos[i * 3] = x + (Math.random() - 0.5) * spread; pos[i * 3 + 1] = y + Math.random() * spread * 0.5; pos[i * 3 + 2] = z + (Math.random() - 0.5) * spread; vel.push((Math.random() - 0.5) * spread, rise * (0.5 + Math.random()), (Math.random() - 0.5) * spread); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); const m = new THREE.Points(g, new THREE.PointsMaterial({ color, size: 0.5, transparent: true, opacity: 0.9, depthWrite: false })); m.userData = { vel, life, age: 0 }; this.scene.add(m); this.sparks.push(m);
+  }
+
+  // ───────── per-frame ─────────
+  update(dt) {
+    if (!this.started || !this.W) return; if (this.paused) return; this.t += dt; const W = this.W, p = this.player, f = this.f, ch = this.chapter;
+    if (UI.hit('journal')) this.journal.toggle();
+    W.tick?.(this.t, dt, this); if (!this.busy) ch.tick?.(this, dt);
+    const fogT = this.fogOverride ?? (this.S.vis.fog ? 0.05 : this.baseFog); this.scene.fog.density = lerp(this.scene.fog.density, fogT, Math.min(1, dt * 1.5));
+    const free = !this.busy, [mx, my] = free || this.flying || this.mode ? UI.readMove() : [0, 0];
+    const sens = (this.S.opt.fast ? 0.009 : 0.006); this.camYaw -= UI.input.lx * sens; this.camPitch = clamp(this.camPitch + UI.input.ly * sens * 0.8, -0.5, 1.2); UI.input.lx = UI.input.ly = 0;
+    if (UI.input.keys.has('KeyZ')) this.camYaw += dt * 2; if (UI.input.keys.has('KeyX')) this.camYaw -= dt * 2;
+    if (this.riding) this.updateRide(dt, mx, my); else if (this.mode === 'sled') this.updateSled(dt, mx); else this.updateFoot(dt, free ? mx : 0, free ? my : 0, free);
+    // people
+    for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < 7 && !this.riding && n.id !== 'warden1' && n.id !== 'warden2') n.tyaw = Math.atan2(p.x - n.x, p.z - n.z); n.yaw += wrap((n.tyaw ?? n.yaw) - n.yaw) * Math.min(1, dt * 5); n.model.rotation.y = n.yaw; animPerson(n.model, dt, false); }
+    if (this.comp) this.updateComp(dt);
+    this.updateRuby(dt);
+    for (const t of this.things) if (t.prop) t.prop.rotation.y += dt * (t.def.prop === 'turtle' || t.def.prop === 'cat' ? 0 : 1.2);
+    for (const [, m] of this.lits) { const s = 1 + Math.sin(this.t * 9 + m.position.x) * 0.15; m.scale.y = (m.scale.x < 0.5 ? 0.8 : 1.3) * s; }
+    for (let i = this.sparks.length - 1; i >= 0; i--) { const m = this.sparks[i], u = m.userData, a = m.geometry.attributes.position; u.age += dt; for (let j = 0; j < a.count; j++) a.setXYZ(j, a.getX(j) + u.vel[j * 3] * dt, a.getY(j) + u.vel[j * 3 + 1] * dt, a.getZ(j) + u.vel[j * 3 + 2] * dt); a.needsUpdate = true; m.material.opacity = 0.9 * (1 - u.age / u.life); if (u.age > u.life) { this.scene.remove(m); this.sparks.splice(i, 1); } }
+    if (this.council) { const C = this.council; C.ds.forEach((x) => { x.a += dt * 0.35; x.d.position.set(C.c[0] + Math.sin(x.a) * 44, C.c[1] + Math.sin(x.a * 2) * 3, C.c[2] + Math.cos(x.a) * 44); x.d.rotation.y = x.a + Math.PI / 2; x.d.rotation.z = -0.3; animDragon(x.d, dt, true); }); if (this.ruby.state === 'council') { const r = this.ruby; r.ca = (r.ca ?? 0) + dt * 0.35; r.x = C.c[0] + Math.sin(r.ca) * 44; r.z = C.c[2] + Math.cos(r.ca) * 44; r.y = C.c[1]; r.yaw = r.ca + Math.PI / 2; r.bank = -0.3; r.pitch = 0; } }
+    for (const m of this.fxs) { if (m.userData.crown) m.rotation.y += dt * 0.5; else { const s = m.userData.src, C = this.council.c, top = C[1] + 60, hgt = Math.max(1, top - s.y); m.position.set(lerp(s.x, C[0], 0.5), s.y + hgt / 2, lerp(s.z, C[2], 0.5)); m.scale.set(1.2, Math.hypot(hgt, Math.hypot(C[0] - s.x, C[2] - s.z)), 1.2); m.lookAt(C[0], top, C[2]); m.rotateX(Math.PI / 2); } }
+    if (this.rail) { this.rail.t = Math.min(1, this.rail.t + dt / this.rail.dur); this.rail.f(this.rail.t); } else this.updateCam(dt);
+    this.dome.position.copy(this.cam.position); this.stars.position.copy(this.cam.position);
+    if (free && !this.riding && !this.mode) this.interact(dt); else if (!this.riding) UI.setAct(null);
+    this.hudButtons(free);
+    if (this.meter) { this.meterV = Math.max(0.12, (this.meterV ?? 1) - dt / 70); UI.setMeter(this.meter, this.meterV); }
+    if ((this.saveT = (this.saveT || 0) + dt) > 15) { this.saveT = 0; this.save(); }
+  }
+  collide(x, z, r = 0.45) {
+    const W = this.W, b = W.bounds;
+    for (const c of W.circles) { const dx = x - c[0], dz = z - c[1], d = Math.hypot(dx, dz), m = c[2] + r; if (d < m && d > 1e-4) { x = c[0] + dx / d * m; z = c[1] + dz / d * m; } }
+    for (const q of W.boxes) { if (x > q[0] - r && x < q[1] + r && z > q[2] - r && z < q[3] + r) { const l = x - (q[0] - r), rr = (q[1] + r) - x, t = z - (q[2] - r), bb = (q[3] + r) - z, m = Math.min(l, rr, t, bb); if (m === l) x = q[0] - r; else if (m === rr) x = q[1] + r; else if (m === t) z = q[2] - r; else z = q[3] + r; } }
+    const dock = W.name === 'sugar' && Math.abs(z - 100) < 1.5 && x > 150;
+    return [clamp(x, b[0], dock ? 167 : b[1]), dock ? clamp(z, 98.6, 101.4) : clamp(z, b[2], b[3])];
+  }
+  updateFoot(dt, mx, my, free) {
+    const p = this.player, mag = Math.hypot(mx, my); let moving = false;
+    if (mag > 0.12) {
+      const sy = Math.sin(this.camYaw), cy = Math.cos(this.camYaw), slow = this.meter && this.meterV < 0.3 ? 0.8 : 1;
+      const vx = (-cy * mx + sy * -my), vz = (sy * mx + cy * -my), sp = 6.6 * Math.min(1, mag) * slow;
+      let [nx, nz] = this.collide(p.x + vx * sp * dt, p.z + vz * sp * dt);
+      const ok = (x, z) => { const h = this.H(x, z); return p.ground ? h - p.y < 0.85 : h < p.y + 0.3; };
+      if (!ok(nx, nz)) { if (ok(nx, p.z)) nz = p.z; else if (ok(p.x, nz)) nx = p.x; else { nx = p.x; nz = p.z; } }
+      p.x = nx; p.z = nz; p.tyaw = Math.atan2(vx, vz); moving = true;
+      if (Math.abs(UI.input.lx) < 0.5) this.camYaw += wrap(p.tyaw - this.camYaw) * dt * 0.5 * Math.abs(mx);
+    }
+    if (p.tyaw !== undefined) p.yaw += wrap(p.tyaw - p.yaw) * Math.min(1, dt * 12);
+    const h = this.H(p.x, p.z);
+    if (free && UI.hit('jump') && p.ground) { p.vy = 8.6; p.ground = false; }
+    if (!p.ground || p.y > h + 0.05) { p.vy -= 24 * dt; p.y += p.vy * dt; p.ground = false; if (p.y <= h) { const fell = p.vy; p.y = h; p.ground = true; p.vy = 0; if (fell < -3 && this.onBouncer(p.x, p.z)) { p.vy = 13.6; p.ground = false; p.y += 0.02; this.sound.sfx('boing'); } } }
+    else p.y = h;
+    p.model.position.set(p.x, p.y, p.z); p.model.rotation.y = p.yaw; animPerson(p.model, dt, moving && p.ground);
+  }
+  onBouncer(x, z) { for (const b of this.W.bouncers || []) if ((x - b[0]) ** 2 + (z - b[1]) ** 2 < b[2] * b[2]) return true; return false; }
+  updateSled(dt, mx) { const p = this.player; this.sledV = Math.min(27, this.sledV + dt * 9); p.z += this.sledV * dt; p.x = clamp(p.x + mx * 13 * dt, -13, 13); p.y = this.H(p.x, p.z) + 0.2; p.yaw = mx * 0.5; p.model.position.set(p.x, p.y, p.z); p.model.rotation.set(-0.35, p.yaw, 0); if (this.comp) { this.comp.x = p.x + 3.4; this.comp.z = p.z + 4; } if (Math.random() < 0.5) this.puff(p.x, p.y, p.z - 0.5, 0xffffff, 2, 0.6, 1.5, 0.6); if (p.z > -101) { p.model.rotation.set(0, 0, 0); this.sledDone?.(); this.sledDone = null; } }
+  updateComp(dt) {
+    const c = this.comp, p = this.player, tx = p.x - Math.sin(p.yaw) * 1.7 + Math.cos(p.yaw) * 1.1, tz = p.z - Math.cos(p.yaw) * 1.7 - Math.sin(p.yaw) * 1.1, d = Math.hypot(tx - c.x, tz - c.z); let moving = false;
+    if (d > 26) this.placeComp(); else if (d > 1.1) { const sp = Math.min(8.5, 2 + d * 2.2) * dt, [nx, nz] = this.collide(c.x + (tx - c.x) / d * sp, c.z + (tz - c.z) / d * sp, 0.3); if (Math.hypot(nx - c.x, nz - c.z) < sp * 0.3) { c.stuck = (c.stuck || 0) + dt; if (c.stuck > 1.5) { this.placeComp(); c.stuck = 0; } } else c.stuck = 0; c.yaw = Math.atan2(nx - c.x, nz - c.z); c.x = nx; c.z = nz; moving = true; } else c.yaw += wrap(Math.atan2(p.x - c.x, p.z - c.z) - c.yaw) * dt * 4;
+    c.y = this.H(c.x, c.z); c.model.position.set(c.x, c.y, c.z); c.model.rotation.y = c.yaw; animPerson(c.model, dt, moving);
+  }
+  updateRide(dt, mx, my) {
+    const r = this.ruby, W = this.W, inv = this.S.opt.invert ? -1 : 1; let turn = -mx * 1.25, pt = -my * 0.6 * inv;
+    const ring = this.rings[this.ringI];
+    if (ring) { // gentle assist toward the next ring
+      const dx = ring.position.x - r.x, dy = ring.position.y - r.y, dz = ring.position.z - r.z, dh = Math.hypot(dx, dz), want = wrap(Math.atan2(dx, dz) - r.yaw), k = Math.hypot(mx, my) < 0.15 ? 1.4 : 0.35;
+      turn += clamp(want * k, -1, 1); pt += clamp(Math.atan2(dy, dh) - pt, -0.5, 0.5) * (Math.abs(my) < 0.15 ? 1 : 0.3);
+      if (Math.hypot(dx, dy, dz) < 10) { ring.visible = false; const i = this.ringI++; this.puff(ring.position.x, ring.position.y, ring.position.z, 0xffd27a, 26, 8, 2); this.flyDone?.(i); }
+      this.rings.forEach((m, i) => { if (i === this.ringI) { const s = 1 + Math.sin(this.t * 5) * 0.08; m.scale.setScalar(s); m.material.opacity = 0.95; } else m.material.opacity = 0.35; });
+    }
+    r.yaw += turn * dt; r.pitch += (clamp(pt, -0.7, 0.7) - r.pitch) * Math.min(1, dt * 2.5); r.bank += (-turn * 0.5 - r.bank) * Math.min(1, dt * 3);
+    r.speed += ((UI.input.boost ? 40 : 24) - r.speed) * dt * 1.5;
+    const cp = Math.cos(r.pitch); r.x += Math.sin(r.yaw) * cp * r.speed * dt; r.z += Math.cos(r.yaw) * cp * r.speed * dt; r.y += Math.sin(r.pitch) * r.speed * dt;
+    const floor = (W.sea ? 0 : Math.max(W.name === 'ember' ? -1 : -2, W.height(r.x, r.z))) + 5; if (r.y < floor) { r.y = floor; r.pitch = Math.max(r.pitch, 0.05); } r.y = Math.min(r.y, 190);
+    if (!this.flying && !this.busy) { // free roaming
+      if (W.edge && (Math.abs(r.x) > W.edge + 60 || Math.abs(r.z) > W.edge + 60) && this.chapter.free) this.cross();
+      else if (W.edge && !this.chapter.free && Math.hypot(r.x, r.z - 100) > 130) r.yaw += wrap(Math.atan2(-r.x, 100 - r.z) - r.yaw) * dt * 1.5;
+      if (UI.hit('land') && this.canLand()) { this.unride(); this.refresh(); this.save(); }
+    }
+    this.camYaw += wrap(r.yaw - this.camYaw) * Math.min(1, dt * 2.2);
+  }
+  canLand() { const r = this.ruby, W = this.W; if (W.sea || r.y - W.height(r.x, r.z) > 16) return false; const b = W.bounds; if (r.x < b[0] || r.x > b[1] || r.z < b[2] || r.z > b[3]) return false; const [cx, cz] = this.collide(r.x, r.z, 2); if (Math.hypot(cx - r.x, cz - r.z) > 0.5) return false; return this.chapter.free || Math.hypot(r.x, r.z - 140) < 34; }
+  async cross() { this.busy++; const to = this.S.world === 'ember' ? 'sugar' : 'ember'; await UI.fade(true, to === 'sugar' ? 'Across the sea, to Sugarland' : 'Across the sea, to Emberland', true); await this.enterWorld(to, 'day'); const r = this.ruby; r.x = 215; r.z = 40; r.y = 60; r.yaw = -Math.PI / 2; this.camYaw = r.yaw; this.refresh(); await wait(1.2); await UI.fade(false); this.busy--; }
+  updateRuby(dt) {
+    const r = this.ruby; if (!r.model.visible) return; const fly = r.state !== 'idle';
+    r.model.position.set(r.x, r.y, r.z); r.model.rotation.set(-r.pitch, r.yaw, r.bank); animDragon(r.model, dt, fly);
+    if (r.state === 'idle') { r.yaw += wrap(Math.atan2(this.player.x - r.x, this.player.z - r.z) - r.yaw) * dt * 0.8; }
+  }
+  updateCam(dt) {
+    const p = this.player, r = this.ruby; let tx, ty, tz, dist, pitch = this.camPitch;
+    if (this.riding) { tx = r.x; ty = r.y + 2.5; tz = r.z; dist = 21; pitch = 0.22 - r.pitch * 0.5 + (this.camPitch - 0.3) * 0.5; }
+    else { tx = p.x; ty = p.y + 1.55; tz = p.z; dist = this.mode === 'sled' ? 9 : this.camDist; if (this.mode === 'sled') { this.camYaw = 0; pitch = 0.42; } }
+    const cp = Math.cos(pitch); let cx = tx - Math.sin(this.camYaw) * cp * dist, cy = ty + Math.sin(pitch) * dist, cz = tz - Math.cos(this.camYaw) * cp * dist;
+    const gh = this.W.height(cx, cz) + 0.6; if (cy < gh) cy = gh;
+    if (this.shake > 0) { this.shake -= dt; cx += (Math.random() - 0.5) * this.shake; cy += (Math.random() - 0.5) * this.shake; }
+    const k = this.camSnap > 0 ? 1 : Math.min(1, dt * 10); if (this.camSnap > 0) this.camSnap--; this.cam.position.set(lerp(this.cam.position.x, cx, k), lerp(this.cam.position.y, cy, k), lerp(this.cam.position.z, cz, k)); this.cam.lookAt(tx, ty, tz);
+  }
+  interact(dt) {
+    const p = this.player, f = this.f, W = this.W; let best = null, bd = 1e9;
+    for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z) - 3.3; if (d < 0 && d < bd && n.def.talk) { best = n; bd = d; } }
+    let flameT = null, anyFlame = false; const cmp = this.comp;
+    for (const t of this.things) {
+      const d = t.def; let q = d.kimTalk ? (cmp ? [cmp.x, cmp.z] : null) : d.at === 'player' ? [p.x, p.z] : W.P[d.at]; if (!q) continue; const dist = Math.hypot(p.x - q[0], p.z - q[1]);
+      if (d.auto) { const inZone = dist < d.auto && (!d.high || p.y > this.H(q[0], q[1]) - 0.8); if (inZone && !this.inside.has(d.id)) { this.inside.add(d.id); if (d.once) f['t_' + d.id] = 1; return this.run(d.script); } if (!inZone) this.inside.delete(d.id); continue; }
+      if (d.flame) { anyFlame = true; if (d.self || dist < 5) flameT = t; continue; }
+      const dd = dist - (d.r || (d.kimTalk ? 4 : 3.2)); if (dd < 0 && dd - 0.5 < bd) { best = t; bd = dd - 0.5; }
+    }
+    this.anyFlame = anyFlame;
+    // flame
+    const fl = UI.input.flame && anyFlame; this.flame.visible = fl; this.flameLight.intensity = fl ? 30 : 0;
+    if (fl) { const hx = p.x + Math.sin(p.yaw) * 0.5, hz = p.z + Math.cos(p.yaw) * 0.5, s = 0.16 + Math.sin(this.t * 20) * 0.03; this.flame.position.set(hx, p.y + 1.25, hz); this.flame.scale.set(s, s * 1.7, s); this.flame.material.color.set(p.who === 'kim' ? 0xff8ab8 : 0xffc040); this.flameLight.position.copy(this.flame.position); if (p.model.userData.armR) p.model.userData.armR.rotation.x = -1.3; this.flameT = (this.flameT || 0) + dt; if (!this.flameS || this.t - this.flameS > 0.5) { this.flameS = this.t; this.sound.sfx('flame'); } if (flameT && this.flameT > 0.8) { this.flameT = 0; this.flame.visible = false; this.flameLight.intensity = 0; this.sound.sfx('lit'); const q = flameT.def.self ? [p.x, p.z] : W.P[flameT.def.at]; this.puff(q[0], this.H(q[0], q[1]) + 1.8, q[1], p.who === 'kim' ? 0xff8ab8 : 0xffb030, 18, 0.6, 2.5); return this.run(flameT.def.script); } } else this.flameT = 0;
+    // whistle
+    if (UI.hit('whistle') && this.canWhistle()) { this.sound.sfx('whistle'); const s = this.chapter.whistle?.(f); if (s) return this.run(s); if (this.freeRide()) return this.run([{ ruby: 'arrive', at: 'player' }, { fn: (g) => { g.mount(); g.ruby.pitch = 0.45; UI.tip('Steer with the left thumb. ▽ Land when you are low over open ground.', 6); } }]); }
+    // talk / examine
+    if (best) { const isNpc = !!best.model && best.key; UI.setAct(isNpc ? 'Talk · ' + best.name : best.def.label); if (UI.hit('act')) { if (isNpc) { const t = best.def.talk, s = typeof t === 'function' ? t(f, this) : t; best.face(p.x, p.z); if (s) return this.run(s); } else return this.run(best.def.script); } }
+    else { UI.setAct(this.ruby.state === 'idle' && this.freeRide() && Math.hypot(p.x - this.ruby.x, p.z - this.ruby.z) < 8 ? 'Ride Ruby' : null); if (UI.hit('act') && this.ruby.state === 'idle' && this.freeRide() && Math.hypot(p.x - this.ruby.x, p.z - this.ruby.z) < 8) { this.mount(); this.ruby.pitch = 0.45; } }
+  }
+  freeRide() { const p = this.player; return p.who === 'amber' && !this.W.sea && (this.chapter.free || (this.f.rideSugar && this.S.world === 'sugar' && Math.hypot(p.x, p.z - 140) < 34)); }
+  canWhistle() { return this.S.items.whistle && this.player.who === 'amber' && !this.riding && (this.chapter.canWhistle?.(this.f) || this.freeRide()); }
+  hudButtons(free) { const on = free || this.flying; UI.setButtons({ jump: on && !this.riding && !this.mode, flame: free && !this.riding && this.anyFlame, kim: this.player.who === 'kim', whistle: free && this.canWhistle(), boost: this.riding && on, land: this.riding && free && !this.flying && this.canLand() }); UI.hit('flameTap'); UI.hit('boostTap'); if (!free) { UI.hit('act'); UI.hit('jump'); UI.hit('whistle'); UI.hit('land'); } }
+}
