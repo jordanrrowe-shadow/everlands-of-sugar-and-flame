@@ -442,7 +442,7 @@ export class Game {
     return { score: -secs, cinders: Math.max(1, 6 - secs / 20), fmt: (v) => -v + ' seconds', text: `Eight rings in ${secs} seconds, and a chin dripping pink.` }; }
   poseNpc(n) { // small stagings: the king lies in his bed, the dancers actually dance
     const pose = n.def.pose || (n.id === 'king' && n.def.at === 'king' ? 'lie' : null); if (!pose) return; const m = n.model, t = this.t;
-    if (pose === 'lie') { m.rotation.set(-Math.PI / 2, 0, 0); m.position.set(n.x, n.y + 1.4, n.z - 2.2); if (!n.fx) { n.fx = part(GEO.box, 0xf6ead8, 0, 0, 0, 2.3, 0.16, 1.05); n.fx.add(part(GEO.box, 0xe2b24a, 0, 0.52, -0.42, 1, 0.3, 0.1)); n.fx.position.set(n.x, n.y + 1.56, n.z - 2.75); this.scene.add(n.fx); m.userData.bed = n.fx; } return; }
+    if (pose === 'lie') { m.rotation.set(-Math.PI / 2, 0, 0); m.position.set(n.x, n.y + 1.4, n.z - 2.2); if (false) { n.fx = part(GEO.box, 0xf6ead8, 0, 0, 0, 2.3, 0.16, 1.05); n.fx.add(part(GEO.box, 0xe2b24a, 0, 0.52, -0.42, 1, 0.3, 0.1)); n.fx.position.set(n.x, n.y + 1.56, n.z - 2.75); this.scene.add(n.fx); m.userData.bed = n.fx; } return; }
     if (pose === 'dance') { const ph = (n.x * 3 + n.z) % 6.28, still = this.busy && Math.hypot(this.player.x - n.x, this.player.z - n.z) < 5;
       if (!n.fx) { n.fx = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.035, 6, 28), mat(0xffa030, true)); m.add(n.fx); n.fx.position.y = 1.15; }
       n.fx.rotation.set(1.1 + Math.sin(t * 3 + ph) * 0.5, t * 5 + ph, 0); if (still) return;

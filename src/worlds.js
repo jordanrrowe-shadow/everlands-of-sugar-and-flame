@@ -53,6 +53,7 @@ export function buildEmber() {
     h = lerp(h, 36, smooth(17, 9, Math.hypot(x - 26, z + 150)));
     for (const [mx, mz, r, ramp, mh] of mounds) h += mh * smooth(r + ramp, r, Math.hypot(x - mx, z - mz));
     h -= smooth(139, 150, x) * 6;
+    h = Math.max(h, 0.5 * smooth(17.6, 16.2, Math.hypot(x, z - 86))); // the Fire Square stands on a low round dais
     return h;
   };
   w.P = {
@@ -113,6 +114,29 @@ export function buildEmber() {
   k.sph(P.glass[0] + 2.2, 1.5, P.glass[1], 0.25, 0xffa0c0, { glow: 1 });
   k.box(0, 0, 99.5, 9, 4.5, 0.3, 0xf3e6cf); k.box(0, 0, 99.9, 9.6, 5, 0.3, 0x6b4a36); box(-5, 5, 99, 100.5);
   for (const p of [P.hearth1, P.hearth2, P.hearth3]) brazier(p[0], p[1]);
+  { // ── the Fire Square: a round dais ringed with fire columns, an inlaid sun, three great hearths and a stage for the shadow screen ──
+    const cx = 0, cz = 86, y = 0.5, ring = (r, t, c) => k.torus(cx, y + 0.03, cz, r, t, c, { rx: Math.PI / 2 });
+    ring(16, 0.22, IV); ring(15.2, 0.1, GOLD); ring(10.5, 0.12, RED); ring(10.1, 0.07, GOLD); ring(4.6, 0.12, GOLD); ring(2.2, 0.09, RED);
+    for (let i = 0; i < 16; i++) { const a = i * 0.3927, long = i % 2 === 0; k.box(cx + Math.sin(a) * (long ? 7.3 : 6.3), y + 0.02, cz + Math.cos(a) * (long ? 7.3 : 6.3), 0.28, 0.05, long ? 5.2 : 3.2, long ? GOLD : RED, { ry: a }); k.cone(cx + Math.sin(a) * (long ? 10.2 : 8.1), y + 0.02, cz + Math.cos(a) * (long ? 10.2 : 8.1), 0.34, 0.06, long ? GOLD : LAVA, { glow: !long }, 4); }
+    for (let i = 0; i < 24; i++) { const a = i * 0.2618; k.box(cx + Math.sin(a) * 12.9, y + 0.02, cz + Math.cos(a) * 12.9, 0.5, 0.05, 1.3, i % 2 ? 0xe2d3b8 : 0xc8632b, { ry: a }); }
+    k.cyl(cx, y, cz, 1.5, 1.5, 0.05, GOLD, {}, 8); k.cone(cx, y + 0.04, cz, 0.9, 0.08, LAVA, { glow: 1 }, 8);
+    // twelve fire columns round the rim, the lane left open to north and south, with swags of flags between
+    const cols = []; for (let i = 0; i < 12; i++) { const a = (i + 0.5) * 0.5236; if (Math.abs(Math.sin(a)) < 0.3) continue; const x = cx + Math.sin(a) * 15.6, z = cz + Math.cos(a) * 15.6; cols.push([x, z, a]);
+      k.cyl(x, y, z, 0.85, 0.95, 0.5, 0xe2d3b8, {}, 10); k.cyl(x, y + 0.5, z, 0.5, 0.6, 6.2, IV, { c2: 0xfff6e6 }, 12); k.cyl(x, y + 6.7, z, 0.85, 0.5, 0.5, GOLD, {}, 12); k.cyl(x, y + 7.2, z, 1.15, 0.7, 0.55, GOLD, {}, 12); k.cone(x, y + 7.6, z, 0.75, 1.9, 0xffa02a, { glow: 1 }); k.cone(x + 0.25, y + 7.6, z, 0.4, 1.2, 0xffd060, { glow: 1 });
+      k.box(x - Math.sin(a) * 0.6, y + 2.6, z - Math.cos(a) * 0.6, 1.1, 3.4, 0.08, RED, { ry: a }); k.box(x - Math.sin(a) * 0.64, y + 4.2, z - Math.cos(a) * 0.64, 0.55, 0.7, 0.08, GOLD, { ry: a }); w.circles.push([x, z, 0.95]); }
+    for (let i = 0; i < cols.length; i++) { const [x0, z0] = cols[i], [x1, z1] = cols[(i + 1) % cols.length]; if (Math.hypot(x1 - x0, z1 - z0) > 9.5) continue; for (let j = 1; j < 8; j++) { const t = j / 8, x = lerp(x0, x1, t), z = lerp(z0, z1, t), sag = Math.sin(t * Math.PI) * 1.1; k.cone(x, y + 6.3 - sag, z, 0.22, 0.5, [RED, GOLD, 0xff8a2a][j % 3], { rx: Math.PI, ry: Math.atan2(x1 - x0, z1 - z0) }, 3); if (j % 2) k.sph(x, y + 5.85 - sag, z, 0.13, 0xffd060, { glow: 1 }); } }
+    // the three great hearths: stepped plinths, gold posts and a tall arch behind each bowl
+    for (const [hx, hz] of [P.hearth1, P.hearth2, P.hearth3]) { const a = Math.atan2(hx - cx, hz - cz), bx = Math.sin(a), bz = Math.cos(a); k.cyl(hx, y, hz, 2.3, 2.5, 0.25, IV, {}, 14); k.cyl(hx, y + 0.25, hz, 1.7, 1.85, 0.25, 0xe2d3b8, {}, 14);
+      for (let i = 0; i < 4; i++) { const q = a + 0.785 + i * 1.571; k.cyl(hx + Math.sin(q) * 1.95, y + 0.25, hz + Math.cos(q) * 1.95, 0.1, 0.12, 1.1, GOLD, {}, 6); k.sph(hx + Math.sin(q) * 1.95, y + 1.45, hz + Math.cos(q) * 1.95, 0.16, LAVA, { glow: 1 }); }
+      for (const s of [-1, 1]) k.cyl(hx + bx * 2.6 + bz * s * 2, y, hz + bz * 2.6 - bx * s * 2, 0.32, 0.38, 5.4, IV, {}, 10); k.box(hx + bx * 2.6, y + 5.4, hz + bz * 2.6, 5, 0.6, 0.8, GOLD, { ry: a }); k.box(hx + bx * 2.6, y + 6, hz + bz * 2.6, 3.4, 0.5, 0.7, IV, { ry: a }); k.sph(hx + bx * 2.6, y + 7, hz + bz * 2.6, 0.6, GOLD, { s: [1, 1.2, 0.4], ry: a }); k.box(hx + bx * 2.75, y + 2.2, hz + bz * 2.75, 2.6, 3, 0.08, RED, { ry: a }); k.cone(hx + bx * 2.68, y + 2.9, hz + bz * 2.68, 0.55, 1.5, GOLD, { ry: a }, 4);
+      w.circles.push([hx + bx * 2.6 + bz * 2, hz + bz * 2.6 - bx * 2, 0.5], [hx + bx * 2.6 - bz * 2, hz + bz * 2.6 + bx * 2, 0.5]); }
+    // the shadow stage: steps, a proscenium with curtains, fire bowls either side
+    k.box(0, y, 98.6, 12, 0.35, 3, IV); k.box(0, y, 97.2, 12.6, 0.18, 0.8, 0xe2d3b8); for (const s of [-1, 1]) { k.cyl(s * 5.6, y, 99.7, 0.5, 0.6, 7, IV, { c2: 0xfff6e6 }, 12); k.cyl(s * 5.6, y + 7, 99.7, 0.9, 0.55, 0.5, GOLD, {}, 12); k.cone(s * 5.6, y + 7.4, 99.7, 0.6, 1.5, 0xffa02a, { glow: 1 }); k.box(s * 4.75, y + 0.35, 99.3, 0.9, 5.8, 0.25, RED, { c2: 0x7a1020 }); w.circles.push([s * 5.6, 99.7, 0.7]); }
+    k.box(0, y + 6.2, 99.7, 12, 0.9, 0.9, GOLD); k.box(0, y + 7.1, 99.7, 8, 0.6, 0.8, IV); k.sph(0, y + 8.2, 99.7, 0.8, GOLD, { s: [1, 1.2, 0.4] }); for (let i = -4; i <= 4; i++) k.cone(i * 1.15, y + 5.9, 99.3, 0.5, 0.7, RED, { rx: Math.PI }, 4);
+    // curved stone benches east and west, fire-lily planters, banner poles at the lane mouths
+    for (const s of [-1, 1]) for (let i = -2; i <= 2; i++) { const a = s * (1.571 + i * 0.2), x = cx + Math.sin(a) * 13, z = cz + Math.cos(a) * 13; k.box(x, y, z, 2.3, 0.5, 0.8, IV, { ry: a + 1.571 }); k.box(x + Math.sin(a) * 0.36, y + 0.5, z + Math.cos(a) * 0.36, 2.3, 0.5, 0.16, 0xe2d3b8, { ry: a + 1.571 }); w.circles.push([x, z, 1]); }
+    for (const [a, r] of [[0.75, 12.2], [-0.75, 12.2], [2.39, 12.2], [-2.39, 12.2]]) { const x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r; k.cyl(x, y, z, 1, 0.8, 0.7, IV, {}, 10); k.cyl(x, y + 0.7, z, 1.1, 1.1, 0.12, GOLD, {}, 10); for (let i = 0; i < 6; i++) { k.cyl(x + Math.cos(i) * 0.5, y + 0.7, z + Math.sin(i) * 0.5, 0.03, 0.03, 0.6, 0x4a6a3a, {}, 4); k.cone(x + Math.cos(i) * 0.5, y + 1.3, z + Math.sin(i) * 0.5, 0.2, 0.5, i % 2 ? 0xe2402c : 0xff8a2a); } w.circles.push([x, z, 1.1]); }
+    for (const [x, z] of [[-4.6, 70.6], [4.6, 70.6]]) { k.cyl(x, 0.2, z, 0.16, 0.2, 8, GOLD, {}, 8); k.box(x + (x < 0 ? -0.9 : 0.9), 5.4, z, 1.6, 2.8, 0.08, RED); k.box(x + (x < 0 ? -0.9 : 0.9), 6.2, z, 0.8, 0.9, 0.1, GOLD); k.sph(x, 8.4, z, 0.3, LAVA, { glow: 1 }); w.circles.push([x, z, 0.4]); } }
   const glassCols = [0xff9a3a, 0xff5a7a, 0xffd24a, 0xff7ad0, 0x7ad0ff, 0xb48aff];
   for (let i = 0; i < 26; i++) { const side = i % 2 ? 1 : -1, row = Math.floor(i / 2), x = side * (34 + (row % 3) * 15 + R() * 3), z = 52 + Math.floor(row / 3) * 14 + R() * 3; if (side > 0 && z < 44) continue; const r1 = R(), r2 = R(), r3 = R(); if (KIT) { const big = i % 3 === 0; kitHouse(sc, k, w, x, z, big ? 8 : 6, big ? 8 : i % 2 ? 8 : 6, side > 0 ? -Math.PI / 2 : Math.PI / 2, glassCols[i % 6]); } else house(x, z, 7 + r1 * 3, 6 + r2 * 3, 4 + r3 * 3, glassCols[i % 6]); }
   if (KIT) { for (const [x, z, r] of [[-20, 54, 0.4], [-21.4, 55.6, 1.2], [23, 62, 0.2], [-22, 80, 2], [24, 86, 1], [25.3, 84.6, 0.3], [116, 46, 0.5], [117.4, 47.2, 1.4], [134, 22, 0]]) { sc.add('Prop_Crate', x, H(x, z), z, r, 0.95); w.circles.push([x, z, 0.7]); } sc.add('Prop_Wagon', 26, H(26, 76), 76, 0.3); w.circles.push([26, 75, 1.6]); sc.add('Prop_Wagon', 106, H(106, 44), 44, 1.9); w.circles.push([106, 44, 1.6]); for (let i = 0; i < 8; i++) sc.add('Prop_WoodenFence_Single', -31, H(-31, 50 + i * 2.06), 50 + i * 2.06, Math.PI / 2); }
