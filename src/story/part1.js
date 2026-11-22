@@ -107,8 +107,13 @@ const ch1 = {
     { id: 'h2', at: 'hearth2', label: 'Cold hearth', flame: 1, if: (f) => f.c1_hearths && !f.h2, lit: 'h2', script: [{ set: 'h2' }, 'Then another, in a window.', { if: all('h1', 'h2', 'h3'), then: [{ go: 'hearthsDone' }] }] },
     { id: 'h3', at: 'hearth3', label: 'Cold hearth', flame: 1, if: (f) => f.c1_hearths && !f.h3, lit: 'h3', script: [{ set: 'h3' }, 'Then a third.', { if: all('h1', 'h2', 'h3'), then: [{ go: 'hearthsDone' }] }] },
     { id: 'look', at: 'window_arch', label: 'Look out over the city', if: 'c1_ashlock', script: [
-      'A thousand friendly flames below the window. Bread, beauty, music, shelter.',
-      [A, 'I wonder whether the walls around Emberland are made of stone at all.'], { set: 'c1_end' }] },
+      { cut: [{ bg: 'balcony' }, { amber: 'smile' },
+        'A thousand friendly flames below the window. Bread, beauty, music, shelter.',
+        [A, 'Nobody down there looks frightening. They look like people making supper.'],
+        { amber: 'worried' }, [A, 'So why is the rest of the world supposed to be afraid of us?'],
+        'The sun slips behind the Dragon Mountains. Far beyond them, where no one will tell her what lies, the sky goes on.',
+        { amber: 'fierce' }, [A, 'I wonder whether the walls around Emberland are made of stone at all.']] },
+      { set: 'c1_end' }] },
   ],
   scripts: { hearthsDone: ['The whole screen glows with hearths. The children cheer for the First Flame, as they always do. Amber cheers with them.', [A, 'Everywhere, fire makes things. Why does anyone see only danger?'], { set: 'c1_dance' }] },
 };
