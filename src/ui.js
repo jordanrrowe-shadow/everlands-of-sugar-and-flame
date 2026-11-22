@@ -112,7 +112,7 @@ export function initJournal(G) {
       for (const c of G.chapters) { const open = c.n <= S.max; h += `<button class="chapRow ${open ? '' : 'locked'} ${c.n === S.ch ? 'cur' : ''}" data-ch="${open ? c.n : ''}"><small>${c.n > 17 ? '∞' : c.n}</small><span>${open ? esc(c.title) : '· · ·'}</span></button>`; }
     } else {
       const o = S.opt;
-      h += `<label><input type="checkbox" id="oSound" ${o.sound ? 'checked' : ''}> Music &amp; sound</label><label><input type="checkbox" id="oInv" ${o.invert ? 'checked' : ''}> Flying: pull back to climb</label><label><input type="checkbox" id="oSens" ${o.fast ? 'checked' : ''}> Faster camera</label><label><input type="checkbox" id="oFx" ${o.fx !== false ? 'checked' : ''}> Shadows &amp; glow (turn off if the game feels slow)</label>`;
+      h += `<label><input type="checkbox" id="oSound" ${o.sound ? 'checked' : ''}> Music &amp; sound</label><label><input type="checkbox" id="oInv" ${o.invert ? 'checked' : ''}> Flying: pull back to climb</label><label><input type="checkbox" id="oSens" ${o.fast ? 'checked' : ''}> Faster camera</label><label><input type="checkbox" id="oFx" ${o.fx !== false ? 'checked' : ''}> Shadows &amp; glow (turn off if the game feels slow)</label><label><input type="checkbox" id="oCape" ${o.cape !== false ? 'checked' : ''}> Amber wears her cape</label>`;
       h += `<h3>Save</h3><p>The story saves itself on this device after every conversation and discovery.</p><button class="btn" id="oTitle">Back to title</button><button class="btn" id="oReset">Erase save…</button>`;
       h += `<h3>About</h3><p><i>The Everlands: Of Sugar and Flame</i>, from the book by Elisa Espinosa Ruiz. Every line of dialogue comes from her pages.</p>`;
     }
@@ -120,7 +120,7 @@ export function initJournal(G) {
     $('jHint')?.addEventListener('click', () => { hintShown = true; render(); });
     body.querySelectorAll('.chapRow').forEach((b) => b.addEventListener('click', () => { const n = +b.dataset.ch; if (!n || n === S.ch) return; if (confirm(`Go to Chapter ${n > 17 ? '∞' : n}? Your progress in the current chapter will restart.`)) { close(); G.startChapter(n, true); } }));
     $('oSound')?.addEventListener('change', (e) => { S.opt.sound = e.target.checked; G.applyOptions(); }); $('oInv')?.addEventListener('change', (e) => { S.opt.invert = e.target.checked; G.save(); }); $('oSens')?.addEventListener('change', (e) => { S.opt.fast = e.target.checked; G.save(); });
-    $('oFx')?.addEventListener('change', (e) => { S.opt.fx = e.target.checked; G.save(); }); $('oTitle')?.addEventListener('click', () => location.reload());
+    $('oFx')?.addEventListener('change', (e) => { S.opt.fx = e.target.checked; G.save(); }); $('oCape')?.addEventListener('change', (e) => { S.opt.cape = e.target.checked; G.save(); G.refresh(); }); $('oTitle')?.addEventListener('click', () => location.reload());
     $('oReset')?.addEventListener('click', () => { if (confirm('Erase all progress on this device?')) { G.erase(); location.reload(); } });
   };
   const open = () => { if (G.busy && dialogOpen()) return; hintShown = false; tab = 'quest'; sync(); show(j); G.paused = true; render(); };

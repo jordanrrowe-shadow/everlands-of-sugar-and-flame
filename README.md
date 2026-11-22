@@ -80,4 +80,4 @@ All third-party art is CC0 (public domain):
 - Quaternius — Ultimate Modular Women, Ultimate Modular Men, Medieval Village MegaKit, Stylized Nature MegaKit.
 - Poly Haven — ground, plaster, roof-tile and wood textures.
 
-Voices are generated with ElevenLabs; assignments are in `tools/cast-voices.sh`.
+Voices and the three realm themes in `public/music` are generated with ElevenLabs; assignments are in `tools/cast-voices.sh`.

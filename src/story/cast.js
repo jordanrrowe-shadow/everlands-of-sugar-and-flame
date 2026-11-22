@@ -1,7 +1,7 @@
 // Who's who. Looks are consumed by models.makePerson().
 // style: 'girl' (dress), 'woman' (long skirt), 'man', 'elder' (robed), 'guard', 'child'
 export const CAST = {
-  amber:   { name: 'Amber', style: 'girl', hair: 0xb5451b, hairLong: 1, skin: 0xf2c9a4, top: 0x8e1b2c, skirt: 0x7a1424, trim: 0xe9b949, cape: 0xa3182c },
+  amber:   { name: 'Amber', style: 'girl', hair: 0xb5451b, hairLong: 1, skin: 0xf2c9a4, top: 0xa3182c, skirt: 0x8e1424, trim: 0xe9b949, gown: 1, accent: 0x1c1416, cape: 0x7a1020 },
   kim:     { name: 'Kim', style: 'girl', hair: 0xf0569a, hairLong: 1, skin: 0xf6d2b8, top: 0xf58ab5, skirt: 0xf7b3cf, trim: 0xfff1d6, flower: 0xfff3c4 },
   // Emberland
   orin:    { name: 'Master Orin', style: 'man', hair: 0xd9a441, skin: 0xe2ad84, top: 0xc8632b, legs: 0x5b3a26, apron: 0xf3e2c2, h: 1.05 },

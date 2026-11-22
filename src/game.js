@@ -131,7 +131,7 @@ export class Game {
   cond(c) { if (c === undefined || c === null) return true; if (typeof c === 'string') return c[0] === '!' ? !this.f[c.slice(1)] : !!this.f[c]; if (Array.isArray(c)) return c.every((x) => this.cond(x)); return !!c(this.f, this); }
   look(id) {
     const f = this.f, L = { ...CAST[id] };
-    if (id === 'amber') { if (f.coat && !f.coatOff) Object.assign(L, { top: 0xfff1d6, skirt: 0xfbe6c2, trim: 0xe9b949, collar: 0xffffff, cape: 0, sleeve: 0xfff1d6 }); if (f.c17_cape) L.cape = 0; }
+    if (id === 'amber') { if (f.coat && !f.coatOff) Object.assign(L, { top: 0xfff1d6, skirt: 0xfbe6c2, trim: 0xe9b949, collar: 0xffffff, cape: 0, sleeve: 0xfff1d6 }); if (f.c17_cape || this.S.opt.cape === false) L.cape = 0; }
     if (id === 'kim') { L.tira = 1; if (f.c17_cape) L.cape = 0xa3182c; }
     return L;
   }

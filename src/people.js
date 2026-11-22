@@ -60,15 +60,15 @@ export function makeRig(L) {
   return male ? makeMan(L) : makeLady(L);
 }
 function makeLady(L) {
-  const g = new THREE.Group(), u = (g.userData = { rig: true, t: 0 }), elder = L.style === 'woman' || L.style === 'elder', base = elder ? 'Witch' : 'Formal';
+  const g = new THREE.Group(), u = (g.userData = { rig: true, t: 0 }), elder = L.style === 'woman' || L.style === 'elder' || !!L.gown, base = elder ? 'Witch' : 'Formal';
   const skirt = L.skirt || L.legs || L.top, dark = shade(skirt, 0.55);
   const paint = (o, pn) => { const mn = o.material.name, head = /Head/.test(pn);
     let c; if (mn === 'Skin') c = L.skin || 0xf0c8a8; else if (mn === 'Hair_Black' || (head && mn === 'Red')) c = L.hair; else if (head && (mn === 'Purple' || mn === 'Gold')) { o.visible = false; return; } else if (head) c = 0x3a2418;
-    else if (/Feet/.test(pn)) c = elder ? skirt : dark; else if (mn === 'Gold') c = L.trim || 0xe9b949; else if (mn === 'LimeGreen' || mn === 'Purple') c = L.top; else c = elder ? skirt : dark;
-    if (/Legs/.test(pn)) { o.visible = false; return; } o.material = mat(c ?? 0x8a6a5a); };
+    else if (/Feet/.test(pn)) c = L.accent || (elder ? skirt : dark); else if (mn === 'Gold') c = L.trim || 0xe9b949; else if (mn === 'LimeGreen' || mn === 'Purple') c = L.top; else c = L.accent || (elder ? skirt : dark);
+    if (/Legs/.test(pn) || (elder && /Feet/.test(pn))) { o.visible = false; return; } o.material = mat(c ?? 0x8a6a5a); };
   const { body, on } = assemble(g, base, L.hairLong && base === 'Formal' ? 'Witch' : null, paint);
   const long = elder, sk = new THREE.Group(); sk.add(part(GEO.frustum, skirt, 0, long ? 0.56 : 0.6, 0, long ? 0.34 : 0.45, long ? 1.08 : 0.98, long ? 0.34 : 0.45));
-  if (!long) sk.add(part(GEO.frustum, L.trim || 0xffffff, 0, 0.19, 0, 0.52, 0.2, 0.52), part(GEO.frustum, skirt, 0, 0.36, 0, 0.49, 0.2, 0.49)); else if (L.trim) sk.add(part(GEO.frustum, L.trim, 0, 0.07, 0, 0.37, 0.11, 0.37)); on('Hips', sk);
+  if (!long) sk.add(part(GEO.frustum, L.trim || 0xffffff, 0, 0.19, 0, 0.52, 0.2, 0.52), part(GEO.frustum, skirt, 0, 0.36, 0, 0.49, 0.2, 0.49)); else if (L.trim) sk.add(part(GEO.frustum, L.trim, 0, 0.07, 0, 0.37, 0.11, 0.37)); if (long && L.accent) sk.add(part(GEO.frustum, L.accent, 0, 0.2, 0, 0.36, 0.16, 0.36)); on('Hips', sk);
   if (L.cape) on('Chest', long ? cape(L.cape, 1.46, 0.5, 0.36) : cape(L.cape, 1.46, 0.78, 0.33));
   if (L.collar) on('Chest', collar(L.collar, 1.45));
   if (L.crown) on('Head', part(GEO.cyl, 0xe9b949, 0, 1.9, 0.02, 0.11, 0.08, 0.11));
