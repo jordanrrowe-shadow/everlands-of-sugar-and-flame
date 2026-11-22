@@ -95,7 +95,7 @@ export function animDragon(d, dt, flying) {
 
 export function makeCritter(kind) {
   const g = new THREE.Group();
-  if (kind === 'tira') { g.add(part(GEO.sph, 0x6b4630, 0, 0.14, 0, 0.16, 0.14, 0.22), part(GEO.sph, 0xf3e3cf, 0, 0.2, 0.18, 0.11, 0.1, 0.1), part(GEO.cone, 0x6b4630, -0.07, 0.34, 0.16, 0.04, 0.12, 0.04), part(GEO.cone, 0x6b4630, 0.07, 0.34, 0.16, 0.04, 0.12, 0.04)); }
+  if (kind === 'tira') { g.add(part(GEO.sph, 0x6b4630, 0, 0.15, -0.02, 0.15, 0.14, 0.2), part(GEO.sph, 0xf3e3cf, 0, 0.11, 0.06, 0.11, 0.09, 0.13), part(GEO.sph, 0x6b4630, 0, 0.27, 0.15, 0.12, 0.11, 0.11), part(GEO.sph, 0xf3e3cf, 0, 0.245, 0.215, 0.075, 0.065, 0.06), part(GEO.cone, 0x6b4630, -0.075, 0.4, 0.13, 0.04, 0.11, 0.04), part(GEO.cone, 0x6b4630, 0.075, 0.4, 0.13, 0.04, 0.11, 0.04), part(GEO.sph, 0x1a1210, -0.045, 0.29, 0.245, 0.017, 0.02, 0.012), part(GEO.sph, 0x1a1210, 0.045, 0.29, 0.245, 0.017, 0.02, 0.012), part(GEO.sph, 0xf2a0b0, 0, 0.255, 0.272, 0.014, 0.011, 0.01), part(GEO.sph, 0x6b4630, 0, 0.2, -0.22, 0.05, 0.06, 0.07)); for (const [x, z] of [[-0.08, 0.1], [0.08, 0.1], [-0.09, -0.1], [0.09, -0.1]]) g.add(part(GEO.sph, 0xf3e3cf, x, 0.03, z, 0.04, 0.03, 0.05)); g.traverse((o) => { if (o.isMesh) o.castShadow = true; }); }
   else if (kind === 'sprite') { g.add(part(GEO.sph, 0xffffff, 0, 0.2, 0, 0.18, 0.18, 0.22), part(GEO.cone, 0xffffff, -0.1, 0.5, 0.05, 0.05, 0.3, 0.05), part(GEO.cone, 0xffffff, 0.1, 0.5, 0.05, 0.05, 0.3, 0.05), part(GEO.sph, 0xbfe8ff, -0.2, 0.32, -0.05, 0.16, 0.2, 0.03, true), part(GEO.sph, 0xbfe8ff, 0.2, 0.32, -0.05, 0.16, 0.2, 0.03, true)); }
   else if (kind === 'turtle') { g.add(part(GEO.sph, 0xbfe3a0, 0, 0.22, 0, 0.42, 0.24, 0.48), part(GEO.sph, 0xfff3d0, 0, 0.34, 0, 0.28, 0.16, 0.32), part(GEO.sph, 0xbfe3a0, 0, 0.44, 0, 0.14, 0.08, 0.16), part(GEO.sph, 0xf5e3a0, 0, 0.22, 0.5, 0.14, 0.13, 0.16), part(GEO.sph, 0xf5e3a0, -0.36, 0.1, 0.26, 0.14, 0.05, 0.1), part(GEO.sph, 0xf5e3a0, 0.36, 0.1, 0.26, 0.14, 0.05, 0.1)); }
   else if (kind === 'cat') { g.add(part(GEO.cyl, 0xd98a2b, 0, 0.12, 0, 0.5, 0.24, 0.5), part(GEO.sph, 0xffffff, 0, 0.3, 0, 0.36, 0.22, 0.32), part(GEO.sph, 0xffffff, 0.2, 0.42, 0.16, 0.15, 0.14, 0.14), part(GEO.cone, 0xffffff, 0.14, 0.58, 0.16, 0.05, 0.1, 0.05), part(GEO.cone, 0xffffff, 0.27, 0.58, 0.16, 0.05, 0.1, 0.05)); }
@@ -110,7 +110,7 @@ export function makeProp(name) {
   else if (name === 'herbs') g.add(part(GEO.cone, 0x7fc98a, 0, 0.25, 0, 0.25, 0.5, 0.25), part(GEO.sph, 0xbfa0e8, 0, 0.5, 0, 0.1, 0.1, 0.1));
   else if (name === 'sapling') { for (const x of [-0.4, 0.4]) g.add(part(GEO.cyl, 0xb9774a, x, 0.15, 0, 0.2, 0.3, 0.2), part(GEO.cyl, 0xffffff, x, 0.8, 0, 0.05, 1.0, 0.05), part(GEO.cyl, 0xe23a4a, x, 0.6, 0, 0.055, 0.14, 0.055), part(GEO.cyl, 0xe23a4a, x, 1.0, 0, 0.055, 0.14, 0.055), part(GEO.sph, 0x9fe0b0, x, 1.4, 0, 0.25, 0.2, 0.25)); }
   else if (name === 'pouch') g.add(part(GEO.sph, 0xc9a0dc, 0, 0.2, 0, 0.25, 0.2, 0.2), part(GEO.box, 0xfff1d6, 0, 0.36, 0, 0.3, 0.05, 0.22));
-  else if (name === 'turtle' || name === 'cat' || name === 'sprite') return makeCritter(name);
+  else if (name === 'turtle' || name === 'cat' || name === 'sprite' || name === 'tira') return makeCritter(name);
   return g;
 }
 // ring to fly through

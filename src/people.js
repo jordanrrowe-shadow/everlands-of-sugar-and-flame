@@ -67,11 +67,20 @@ function makeLady(L) {
     else if (/Feet/.test(pn)) c = L.accent || (elder ? skirt : dark); else if (mn === 'Gold') c = L.trim || 0xe9b949; else if (mn === 'LimeGreen' || mn === 'Purple') c = L.top; else c = L.accent || (elder ? skirt : dark);
     if (/Legs/.test(pn) || (elder && /Feet/.test(pn))) { o.visible = false; return; } o.material = mat(c ?? 0x8a6a5a); };
   const { body, on } = assemble(g, base, L.hairLong && base === 'Formal' ? 'Witch' : null, paint);
-  const long = elder, sk = new THREE.Group(); sk.add(part(GEO.frustum, skirt, 0, long ? 0.56 : 0.6, 0, long ? 0.34 : 0.45, long ? 1.08 : 0.98, long ? 0.34 : 0.45));
-  if (!long) sk.add(part(GEO.frustum, L.trim || 0xffffff, 0, 0.19, 0, 0.52, 0.2, 0.52), part(GEO.frustum, skirt, 0, 0.36, 0, 0.49, 0.2, 0.49)); else if (L.trim) sk.add(part(GEO.frustum, L.trim, 0, 0.07, 0, 0.37, 0.11, 0.37)); if (long && L.accent) sk.add(part(GEO.frustum, L.accent, 0, 0.2, 0, 0.36, 0.16, 0.36)); on('Hips', sk);
+  const long = elder, sk = new THREE.Group();
+  if (L.tiers) { // a slim layered dress: three tiers falling from the waist, cream ruffles between
+    const tier = (c, yBot, r) => part(GEO.frustum, c, 0, (1.1 + yBot) / 2, 0, r, 1.1 - yBot, r);
+    sk.add(tier(L.top, 0.66, 0.25), tier(L.trim || 0xffffff, 0.56, 0.275), tier(skirt, 0.34, 0.3), tier(L.trim || 0xffffff, 0.25, 0.32), tier(L.top, 0.1, 0.335), part(GEO.sph, L.trim || 0xffffff, 0, 1.06, 0.12, 0.07, 0.045, 0.04)); }
+  else sk.add(part(GEO.frustum, skirt, 0, long ? 0.56 : 0.6, 0, long ? 0.34 : 0.45, long ? 1.08 : 0.98, long ? 0.34 : 0.45));
+  if (L.tiers) { /* tiers carry their own trim */ } else if (!long) sk.add(part(GEO.frustum, L.trim || 0xffffff, 0, 0.19, 0, 0.52, 0.2, 0.52), part(GEO.frustum, skirt, 0, 0.36, 0, 0.49, 0.2, 0.49)); else if (L.trim) sk.add(part(GEO.frustum, L.trim, 0, 0.07, 0, 0.37, 0.11, 0.37)); if (long && L.accent) sk.add(part(GEO.frustum, L.accent, 0, 0.2, 0, 0.36, 0.16, 0.36)); on('Hips', sk);
   if (L.cape) on('Chest', long ? cape(L.cape, 1.46, 0.5, 0.36) : cape(L.cape, 1.46, 0.78, 0.33));
   if (L.collar) on('Chest', collar(L.collar, 1.45));
   if (L.crown) on('Head', part(GEO.cyl, 0xe9b949, 0, 1.9, 0.02, 0.11, 0.08, 0.11));
+  if (L.hairLong > 1) { // waist-length waves down the back and two locks over the shoulders; lies over the cape when she wears one
+    const hg = new THREE.Group(), out = (y) => (L.cape ? 0.21 + (1.46 - y) * 0.2 : 0.12 + (1.46 - y) * 0.06);
+    for (const [x, y, sx, sy] of [[0, 1.3, 0.17, 0.3], [-0.09, 1.08, 0.1, 0.3], [0.09, 1.05, 0.1, 0.3], [0, 0.92, 0.11, 0.27], [-0.13, 1.26, 0.07, 0.26], [0.13, 1.24, 0.07, 0.27], [-0.05, 0.8, 0.06, 0.16], [0.07, 0.78, 0.055, 0.15]]) hg.add(part(GEO.sph, L.hair, x, y, -out(y), sx, sy, 0.065));
+    for (const s of [-1, 1]) hg.add(part(GEO.sph, L.hair, s * 0.125, 1.36, 0.075, 0.042, 0.19, 0.045), part(GEO.sph, L.hair, s * 0.13, 1.22, 0.1, 0.035, 0.1, 0.04));
+    on('Chest', hg); }
   extras(L, on, true); animate(u, body, clips.lady);
   const h = (L.h || 1) * (L.style === 'child' ? 0.62 : 1); g.scale.setScalar(h); u.h = h; u.fast = L.style === 'girl' || L.style === 'child';
   return g;

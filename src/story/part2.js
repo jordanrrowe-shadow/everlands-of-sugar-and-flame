@@ -8,7 +8,7 @@ const ch6 = {
   intro: 'The trouble began with an old story.',
   companion: () => 'kim',
   steps: [
-    { goal: 'A picnic at Chocolate Lake, with two essential cups.', hint: 'West of town, in a hollow among low hills. Kim said so on your first day.', until: 'c6_lake' },
+    { goal: 'A picnic at Chocolate Lake, with two essential cups.', hint: 'West of town, in a hollow among low hills. Kim said so on your first day.', until: 'c6_lake', lead: 1 },
     { goal: 'Something is paddling up to look at you.', hint: 'Down at the biscuit-crumb shore. Kim has pistachios.', until: 'c6_turtle' },
     { goal: 'Two travellers are sharing a bench and a bag of toffee.', hint: 'Along the shore, a little south. Walk near enough to hear.', until: 'c6_story' },
     { goal: 'Tell her.', hint: 'Kim is holding out a cup.', until: 'c6_told' },
@@ -127,7 +127,7 @@ const ch8 = {
   intro: '“Do the dragons attend your festivals? What do you eat for breakfast?” — “Usually breakfast.”',
   companion: () => 'kim',
   steps: [
-    { goal: 'Kim is taking you to see the workshop at last.', hint: 'East of the market: stained-sugarglass windows and a crooked chimney.', until: 'c8_in' },
+    { goal: 'Kim is taking you to see the workshop at last.', hint: 'East of the market: stained-sugarglass windows and a crooked chimney.', until: 'c8_in', lead: 1 },
     { goal: 'Look around the workshop.', hint: 'The great windows, the shelves of treasures, and something curled in a caramel bowl.', until: 'c8_looked' },
     { goal: 'Kim promised to show you how taffy is pulled.', hint: 'The worktable.', until: 'c8_bracelet' },
     { goal: 'May I see?', hint: 'Look closely at the stone on Kim’s wrist, then show her your own.', until: 'c8_crests' },

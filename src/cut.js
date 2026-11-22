@@ -2,15 +2,17 @@
 // A scene is a list inside { cut: [...] }:
 //   { bg: 'room' }                         change the backdrop (cross-fades)
 //   { amber: 'smile' } / { kim: null }     show a portrait with an expression, or hide it
+//   { tira: 'happy' }                      Tira (happy|startled|asleep, or null); she appears by herself whenever Kim does
 //   ['Amber', 'text']                      a spoken line (voiced like any other line); 'text' alone is narration
 // Expressions: amber smile|worried|fierce|laugh, kim smile|shy|amazed|laugh. Backdrops are in public/art/cut.
 const $ = (id) => document.getElementById(id);
 const SIDE = { amber: 'cutL', kim: 'cutR' }, WHO = { Amber: 'amber', Kim: 'kim', 'Kimbrûlée': 'kim' };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-export function preloadCut(list) { for (const n of list) { if (n?.bg) new Image().src = `/art/cut/bg-${n.bg}.jpg`; for (const k of ['amber', 'kim']) if (n?.[k]) new Image().src = `/art/cut/${k}-${n[k]}.webp`; } }
+export function preloadCut(list) { for (const n of list) { if (n?.bg) new Image().src = `/art/cut/bg-${n.bg}.jpg`; for (const k of ['amber', 'kim', 'tira']) if (n?.[k]) new Image().src = `/art/cut/${k}-${n[k]}.webp`; } }
 export async function playCut(list, G) {
   const box = $('cut'), layers = [$('cutA'), $('cutB')], name = $('cutName'), text = $('cutText'); let top = 0, skip = false, next = null, typing = null;
-  preloadCut(list); for (const l of layers) { l.style.backgroundImage = ''; l.classList.remove('on'); } for (const id of Object.values(SIDE)) $(id).className = 'cutP'; $('cutBox').classList.add('hide');
+  preloadCut(list); for (const l of layers) { l.style.backgroundImage = ''; l.classList.remove('on'); } for (const id of Object.values(SIDE)) $(id).className = 'cutP'; $('cutBox').classList.add('hide'); const tira = $('cutT'); tira.className = ''; const ownTira = list.some((n) => n && typeof n === 'object' && !Array.isArray(n) && 'tira' in n);
+  const setTira = (m) => { if (m) { tira.src = `/art/cut/tira-${m}.webp`; tira.classList.add('in'); } else tira.classList.remove('in'); };
   box.classList.remove('hide'); await wait(30); box.classList.add('on');
   const advance = (e) => { e?.preventDefault?.(); if (typing) { typing(); return; } const n = next; next = null; n?.(); };
   const key = (e) => { if (['Space', 'Enter', 'KeyE'].includes(e.code)) advance(e); };
@@ -29,7 +31,8 @@ export async function playCut(list, G) {
         if (skip) break; await new Promise((res) => { next = res; }); G.voiceEl?.pause(); continue;
       }
       if (n.bg) { const l = layers[(top ^= 1)]; l.style.backgroundImage = `url(/art/cut/bg-${n.bg}.jpg)`; l.classList.add('on'); layers[top ^ 1].classList.remove('on'); await wait(G.noRender ? 0 : 700); }
-      for (const [c, id] of Object.entries(SIDE)) if (c in n) { const el = $(id); if (n[c]) { el.src = `/art/cut/${c}-${n[c]}.webp`; el.classList.add('in'); } else el.classList.remove('in'); layout(); }
+      for (const [c, id] of Object.entries(SIDE)) if (c in n) { const el = $(id); if (n[c]) { el.src = `/art/cut/${c}-${n[c]}.webp`; el.classList.add('in'); } else el.classList.remove('in'); layout(); if (c === 'kim' && !ownTira) setTira(n[c] ? (n[c] === 'amazed' ? 'startled' : 'happy') : null); }
+      if ('tira' in n) setTira(n.tira);
     }
   } finally { box.removeEventListener('click', advance); removeEventListener('keydown', key); $('cutSkip').removeEventListener('click', onSkip); G.voiceEl?.pause(); box.classList.remove('on'); await wait(G.noRender ? 0 : 500); box.classList.add('hide'); }
 }

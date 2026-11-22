@@ -172,7 +172,30 @@ export class Game {
     try { await this.exec(typeof script === 'function' ? script(this) : script); } catch (e) { console.error('script error', e); }
     UI.closeDialog(); this.busy--; if (!this.busy) { UI.controlsVisible(true); this.refresh(); await this.checkStep(); this.save(); }
   }
+  // Conversations carried by Amber and Kim play as illustrated cut scenes, staged automatically.
+  cutify(list) {
+    if (!Array.isArray(list) || this.S.opt.cuts === false) return list; const out = []; let run = [];
+    const isLine = (n) => typeof n === 'string' || (Array.isArray(n) && n.length === 2 && typeof n[0] === 'string' && typeof n[1] === 'string');
+    const flush = () => { const sp = run.filter(Array.isArray), ak = sp.filter((l) => l[0] === 'Amber' || l[0] === 'Kim').length; if (run.length >= 4 && sp.length >= 3 && ak >= sp.length * 0.6) out.push({ cut: this.direct(run) }); else out.push(...run); run = []; };
+    for (const n of list) { if (isLine(n)) run.push(n); else { flush(); out.push(n); } } flush(); return out;
+  }
+  autoBg() {
+    const W = this.W, p = this.player, t = this.S.time, P = W.P, near = (k, r) => P[k] && Math.hypot(p.x - P[k][0], p.z - P[k][1]) < r; if (this.chapter.cutBg) return this.chapter.cutBg(this.f, this);
+    if (W.sea) return 'sea';
+    if (W.name === 'ember') { if (near('room_desk', 13)) return 'room'; if (p.z > 30) return t === 'night' ? 'terrace' : 'market'; if (near('terrace', 16) || near('high_king', 14)) return t === 'day' ? 'balcony' : 'terrace'; return t === 'night' ? 'terrace' : t === 'dusk' ? 'balcony' : 'hall'; }
+    if (near('wtable', 11)) return 'workshop'; if (near('house_s', 13) || near('cradle', 11)) return 'home'; if (near('choc_shore', 26)) return 'choclake'; if (p.z > 112) return 'forest';
+    return t === 'night' || t === 'dusk' ? 'sugarnight' : 'sugar';
+  }
+  direct(run) {
+    const who = this.player.who, speaks = (n) => run.some((l) => Array.isArray(l) && l[0] === n), amber = speaks('Amber') || who === 'amber', kim = speaks('Kim') || who === 'kim' || this.comp?.id === 'kim';
+    const mood = (n, t) => { const sad = /sorry|afraid|don’t know|can’t|couldn’t|alone|lost|scared|worr|never|nobody|missing|…$|—$/i.test(t), joy = /laugh|ha!|wonderful|delicious|love|perfect|best|beautiful|sweet|!$/i.test(t), ask = /\?$/.test(t);
+      return n === 'Amber' ? (sad ? 'worried' : /!$/.test(t) && !/love|wonderful|delicious|beautiful/i.test(t) ? 'fierce' : joy ? 'laugh' : ask ? 'worried' : 'smile') : (sad ? 'shy' : ask || /oh|really|what/i.test(t) && /[!?]$/.test(t) ? 'amazed' : joy ? 'laugh' : 'smile'); };
+    const out = [{ bg: this.autoBg() }]; if (amber) out.push({ amber: 'smile' }); if (kim) out.push({ kim: 'smile' });
+    for (const l of run) { if (Array.isArray(l) && (l[0] === 'Amber' || l[0] === 'Kim')) out.push({ [l[0] === 'Amber' ? 'amber' : 'kim']: mood(l[0], l[1]) }); else if (typeof l === 'string' && kim && /Tira/.test(l)) out.push({ tira: /startl|squeak|jump/i.test(l) ? 'startled' : /sleep|doz/i.test(l) ? 'asleep' : 'happy' }); out.push(l); }
+    return out;
+  }
   async exec(list) {
+    list = this.cutify(list);
     for (const n of list) {
       if (!n) continue;
       if (typeof n === 'string') { this.sound.sfx('page'); await UI.say('', n); continue; }
@@ -347,6 +370,16 @@ export class Game {
     if (!this.trail) { const m = new THREE.InstancedMesh(GEO.sph, new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd870).multiplyScalar(2.2), transparent: true, opacity: 0.95, depthWrite: false }), 260); m.frustumCulled = false; const beam = part(GEO.cyl, 0xffe08a, 0, 0, 0, 0.16, 9, 0.16, true); beam.material = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd870).multiplyScalar(1.8), transparent: true, opacity: 0.55, depthWrite: false }); this.trail = { m, beam, pts: [] }; }
     const tr = this.trail; tr.t = 16; tr.target = t; tr.re = 0; this.scene.add(tr.m, tr.beam); this.sound.sfx('chime');
   }
+  updateTira(dt) { // Kim's little creature: sometimes rides in the bag, sometimes scurries about beside her
+    const k = this.comp?.id === 'kim' ? this.comp : this.player.who === 'kim' ? this.player : null;
+    if (!this.tira) { this.tira = { m: makeProp('tira'), out: false, t: 6, x: 0, z: 0, yaw: 0, tx: 0, tz: 0, w: 0 }; this.tira.m.visible = false; this.scene.add(this.tira.m); }
+    const T = this.tira; if (!k || this.riding || this.mode || this.room?.deck) { T.m.visible = false; T.out = false; return; }
+    if ((T.t -= dt) <= 0) { T.out = !T.out; T.t = T.out ? 16 + Math.random() * 16 : 9 + Math.random() * 10; if (T.out) { T.x = k.x + 0.5; T.z = k.z; this.sound.tone(1500, 0.08, 'sine', 0.05, 1900); } }
+    if (!T.out) { T.m.visible = false; return; }
+    if ((T.w -= dt) <= 0 || Math.hypot(T.tx - k.x, T.tz - k.z) > 3.6) { T.w = 0.8 + Math.random() * 1.6; const a = Math.random() * 6.283, r = 1 + Math.random() * 1.6; T.tx = k.x + Math.sin(a) * r; T.tz = k.z + Math.cos(a) * r; }
+    const d = Math.hypot(T.tx - T.x, T.tz - T.z); let hop = 0; if (d > 6) { T.x = k.x + 0.6; T.z = k.z + 0.4; } else if (d > 0.15) { const sp = Math.min(d, (d > 2.5 ? 8 : 3.6) * dt), [nx, nz] = this.collide(T.x + (T.tx - T.x) / d * sp, T.z + (T.tz - T.z) / d * sp, 0.2); T.yaw = Math.atan2(nx - T.x, nz - T.z); T.x = nx; T.z = nz; hop = Math.abs(Math.sin(this.t * 14)) * 0.13; }
+    T.m.visible = true; T.m.position.set(T.x, this.H(T.x, T.z) + hop, T.z); T.m.rotation.y = T.yaw; T.m.scale.setScalar(1.25);
+  }
   updateHint(dt) {
     const tr = this.trail; if (!tr || tr.t <= 0) return; const p = this.player, t = tr.target, d = Math.hypot(t.x - p.x, t.z - p.z); tr.t -= dt;
     if (tr.t <= 0 || d < 3 || this.riding || this.inCut) { tr.t = 0; this.scene.remove(tr.m, tr.beam); return; }
@@ -430,7 +463,7 @@ export class Game {
     // people
     for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < 7 && !this.riding && n.id !== 'warden1' && n.id !== 'warden2') n.tyaw = Math.atan2(p.x - n.x, p.z - n.z); n.yaw += wrap((n.tyaw ?? n.yaw) - n.yaw) * Math.min(1, dt * 5); n.model.rotation.y = n.yaw; n.model.visible = d < 110; if (d < 55) { n.model.userData.pose = this.busy && d < 6 ? 'talk' : null; animPerson(n.model, dt, false); } }
     if (this.comp) this.updateComp(dt);
-    this.updateRuby(dt); this.updateFire(dt); this.updateHint(dt);
+    this.updateRuby(dt); this.updateFire(dt); this.updateTira(dt); this.updateHint(dt);
     for (const t of this.things) if (t.prop) t.prop.rotation.y += dt * (t.def.prop === 'turtle' || t.def.prop === 'cat' ? 0 : 1.2);
     for (const [, m] of this.lits) { const s = 1 + Math.sin(this.t * 9 + m.position.x) * 0.15; m.scale.y = (m.scale.x < 0.5 ? 0.8 : 1.3) * s; }
     for (let i = this.sparks.length - 1; i >= 0; i--) { const m = this.sparks[i], u = m.userData, a = m.geometry.attributes.position; u.age += dt; for (let j = 0; j < a.count; j++) a.setXYZ(j, a.getX(j) + u.vel[j * 3] * dt, a.getY(j) + u.vel[j * 3 + 1] * dt, a.getZ(j) + u.vel[j * 3 + 2] * dt); a.needsUpdate = true; m.material.opacity = 0.9 * (1 - u.age / u.life); if (u.age > u.life) { this.scene.remove(m); this.sparks.splice(i, 1); } }
@@ -474,6 +507,14 @@ export class Game {
   onBouncer(x, z) { for (const b of this.W.bouncers || []) if ((x - b[0]) ** 2 + (z - b[1]) ** 2 < b[2] * b[2]) return true; return false; }
   updateSled(dt, mx) { const p = this.player; this.sledV = Math.min(27, this.sledV + dt * 9); p.z += this.sledV * dt; p.x = clamp(p.x + mx * 13 * dt, -13, 13); p.y = this.H(p.x, p.z) + 0.2; p.yaw = mx * 0.5; p.model.position.set(p.x, p.y, p.z); p.model.rotation.set(-0.35, p.yaw, 0); if (this.comp) { this.comp.x = p.x + 3.4; this.comp.z = p.z + 4; } if (Math.random() < 0.5) this.puff(p.x, p.y, p.z - 0.5, 0xffffff, 2, 0.6, 1.5, 0.6); if (p.z > -101) { p.model.rotation.set(0, 0, 0); this.sledDone?.(); this.sledDone = null; } }
   updateComp(dt) {
+    const c0 = this.comp, st = this.curStep();
+    if (st?.lead && !this.busy) { // Kim walks ahead to the next place and waits for you to catch up
+      const p = this.player; if ((c0.lt = (c0.lt || 0) - dt) <= 0) { c0.lt = 1.5; const t = this.hintTarget(); c0.goal = t && !t.ruby ? t : null; c0.path = c0.goal ? this.findPath(c0.x, c0.z, t.x, t.z) : null; c0.pi = 1; }
+      if (c0.goal && c0.path) { const dp = Math.hypot(p.x - c0.x, p.z - c0.z), dg = Math.hypot(c0.goal.x - c0.x, c0.goal.z - c0.z); let moving = false;
+        if (dg > 3.4 && dp < 10 && c0.pi < c0.path.length) { const [wx, wz] = c0.path[c0.pi], d = Math.hypot(wx - c0.x, wz - c0.z); if (d < 0.9) c0.pi++; else { const sp = (dp < 3 ? 6.2 : 4.6) * dt, [nx, nz] = this.collide(c0.x + (wx - c0.x) / d * sp, c0.z + (wz - c0.z) / d * sp, 0.3); c0.yaw += wrap(Math.atan2(nx - c0.x, nz - c0.z) - c0.yaw) * Math.min(1, dt * 10); c0.x = nx; c0.z = nz; moving = true; } }
+        else { c0.yaw += wrap(Math.atan2(p.x - c0.x, p.z - c0.z) - c0.yaw) * dt * 4; if (dp > 12 && dg > 3.4 && (c0.call = (c0.call || 0) - dt) <= 0) { c0.call = 9; this.bark(['This way!', 'Come on, slow feet!', 'Over here!', 'Keep up, Amber!'][Math.floor(Math.random() * 4)]); } if (dp > 40) { this.placeComp(); c0.lt = 0; } }
+        c0.y = this.H(c0.x, c0.z); c0.model.position.set(c0.x, c0.y, c0.z); c0.model.rotation.y = c0.yaw; animPerson(c0.model, dt, moving); return; } }
+    else if (c0.goal) c0.goal = null;
     const c = this.comp, p = this.player, tx = p.x - Math.sin(p.yaw) * 1.7 + Math.cos(p.yaw) * 1.1, tz = p.z - Math.cos(p.yaw) * 1.7 - Math.sin(p.yaw) * 1.1, d = Math.hypot(tx - c.x, tz - c.z); let moving = false;
     if (d > 26) this.placeComp(); else if (d > 1.1) { const sp = Math.min(8.5, 2 + d * 2.2) * dt, [nx, nz] = this.collide(c.x + (tx - c.x) / d * sp, c.z + (tz - c.z) / d * sp, 0.3); if (Math.hypot(nx - c.x, nz - c.z) < sp * 0.3) { c.stuck = (c.stuck || 0) + dt; if (c.stuck > 1.5) { this.placeComp(); c.stuck = 0; } } else c.stuck = 0; c.yaw = Math.atan2(nx - c.x, nz - c.z); c.x = nx; c.z = nz; moving = true; } else c.yaw += wrap(Math.atan2(p.x - c.x, p.z - c.z) - c.yaw) * dt * 4;
     c.y = this.H(c.x, c.z); c.model.position.set(c.x, c.y, c.z); c.model.rotation.y = c.yaw; animPerson(c.model, dt, moving);
@@ -523,7 +564,7 @@ export class Game {
       const d = t.def; let q = d.kimTalk ? (cmp ? [cmp.x, cmp.z] : null) : d.at === 'player' ? [p.x, p.z] : W.P[d.at]; if (!q) continue; const dist = Math.hypot(p.x - q[0], p.z - q[1]);
       if (d.auto) { const inZone = dist < d.auto && (!d.high || p.y > this.H(q[0], q[1]) - 0.8); if (inZone && !this.inside.has(d.id)) { this.inside.add(d.id); if (d.once) f['t_' + d.id] = 1; return this.run(d.script); } if (!inZone) this.inside.delete(d.id); continue; }
       if (d.flame) { anyFlame = true; if (d.self || dist < 5) flameT = t; continue; }
-      const dd = dist - (d.r || (d.kimTalk ? 4 : 3.2)); if (dd < 0 && dd - 0.5 < bd) { best = t; bd = dd - 0.5; }
+      const dd = dist - (d.kimTalk ? 4 : (t.rr ??= this.reach(q, d.r))); if (dd < 0 && dd - 0.5 < bd) { best = t; bd = dd - 0.5; }
     }
     this.anyFlame = anyFlame;
     // flame
@@ -533,8 +574,14 @@ export class Game {
     // whistle
     if (UI.hit('whistle') && this.canWhistle()) { this.sound.sfx('whistle'); const s = this.chapter.whistle?.(f); if (s) return this.run(s); if (this.freeRide()) return this.run([{ ruby: 'arrive', at: 'player' }, { fn: (g) => { g.mount(); g.ruby.pitch = 0.45; UI.tip('Steer with the left thumb. ▽ Land when you are low over open ground.', 6); } }]); }
     // talk / examine
+    if (best && !best.key && cmp?.goal && this.curStep()?.lead && best.def.label === cmp.goal.label && Math.hypot(cmp.x - p.x, cmp.z - p.z) < 9 && p.ground) { cmp.goal = null; return this.run(best.def.script); }
     if (best) { const isNpc = !!best.model && best.key; UI.setAct(isNpc ? 'Talk · ' + best.name : best.def.label); if (UI.hit('act')) { if (isNpc) { const t = best.def.talk, s = typeof t === 'function' ? t(f, this) : t; best.face(p.x, p.z); if (s) return this.run(s); } else return this.run(best.def.script); } }
     else { UI.setAct(this.ruby.state === 'idle' && this.freeRide() && Math.hypot(p.x - this.ruby.x, p.z - this.ruby.z) < 8 ? 'Ride Ruby' : null); if (UI.hit('act') && this.ruby.state === 'idle' && this.freeRide() && Math.hypot(p.x - this.ruby.x, p.z - this.ruby.z) < 8) { this.mount(); this.ruby.pitch = 0.45; } }
+  }
+  reach(q, r) { // how close counts as "there": generous, and measured from the edge of any obstacle the point sits in or beside
+    let ext = 0; const W = this.W; for (const c of W.circles) { const d = Math.hypot(q[0] - c[0], q[1] - c[1]); if (d < c[2] + 1.6) ext = Math.max(ext, c[2] + 1 - d * 0.3); }
+    for (const b of W.boxes) if (q[0] > b[0] - 1.2 && q[0] < b[1] + 1.2 && q[1] > b[2] - 1.2 && q[1] < b[3] + 1.2) ext = Math.max(ext, Math.min(b[1] - b[0], b[3] - b[2]) / 2 + 1.2);
+    return Math.max(r || 0, 4.6) + Math.min(ext, 9);
   }
   freeRide() { const p = this.player; return p.who === 'amber' && !this.W.sea && (this.chapter.free || (this.f.rideSugar && this.S.world === 'sugar' && Math.hypot(p.x, p.z - 140) < 34)); }
   canWhistle() { return this.S.items.whistle && this.player.who === 'amber' && !this.riding && (this.chapter.canWhistle?.(this.f) || this.freeRide()); }
