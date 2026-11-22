@@ -13,7 +13,12 @@ walk([p1, p2, p3]);
 const dir = new URL('../public/voice/', import.meta.url).pathname; fs.mkdirSync(dir, { recursive: true });
 console.log(lines.size, 'lines,', [...lines.values()].reduce((a, l) => a + l[1].length, 0), 'characters');
 if (!process.env.ELEVENLABS_API_KEY) { console.log('Set ELEVENLABS_API_KEY to record.'); process.exit(0); }
+// curl is used so the request honours the system proxy settings.
+import { execFileSync } from 'node:child_process';
+const model = process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2'; let n = 0;
 for (const [id, [who, text]] of lines) { const f = dir + id + '.mp3'; if (fs.existsSync(f)) continue;
-  const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voices[who]}?output_format=mp3_44100_64`, { method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'content-type': 'application/json' }, body: JSON.stringify({ text: text.replace(/^\(.*\)$/, ''), model_id: 'eleven_multilingual_v2' }) });
-  if (!r.ok) { console.error(who, r.status, await r.text()); break; } fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); process.stdout.write('.'); }
+  const code = execFileSync('curl', ['-s', '-o', f, '-w', '%{http_code}', '-X', 'POST', `https://api.elevenlabs.io/v1/text-to-speech/${voices[who]}?output_format=mp3_44100_64`, '-H', 'xi-api-key: ' + process.env.ELEVENLABS_API_KEY, '-H', 'content-type: application/json', '-d', JSON.stringify({ text, model_id: model })]).toString();
+  if (code !== '200') { console.error('\nFAILED', who, code, fs.readFileSync(f, 'utf8').slice(0, 300)); fs.unlinkSync(f); break; }
+  if (++n % 20 === 0) console.log(n, 'recorded'); if (process.env.LIMIT && n >= +process.env.LIMIT) break; }
 fs.writeFileSync(dir + 'index.json', JSON.stringify(fs.readdirSync(dir).filter((x) => x.endsWith('.mp3')).map((x) => x.slice(0, -4))));
+console.log('done', n);
