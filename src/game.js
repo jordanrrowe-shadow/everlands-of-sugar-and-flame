@@ -9,13 +9,14 @@ import { discover, drawMini } from './map.js';
 import { loadPack, WORLD_PACKS } from './assets.js';
 import { loadPeople } from './people.js';
 import { initGltf } from './gltf.js';
+import { INTERLUDES } from './story/interludes.js';
 import { playCut, WHO as CUTWHO } from './cut.js';
 import { makeRoom, deckZone } from './rooms.js';
 const PLAYS = {
   sugar: [{ id: 'stars', at: [95, 43], label: 'Star-hop the Marshmallow Meadows' }, { id: 'bounce', at: [93, 28], label: 'Bounce-off with Kim' }, { id: 'turtles', at: [-90, 33], label: 'Turtle round-up' }, { id: 'sled', at: [-5.5, -89], label: 'Sled the Ice Cream Mountain' },
     { id: 'tira', at: [-7, 14], label: 'Tira’s crumb hunt' }, { id: 'outfit', at: [-11, 48], label: 'Madame Praline’s secret order' }, { id: 'kim', at: [24, 3], label: 'Kim’s delivery round' }, { id: 'rubyfish', at: [-22, 141], label: 'Meanwhile, Ruby…', rings: [[-32, 8, 124], [-8, 12, 112], [22, 14, 126], [30, 12, 150], [5, 10, 162], [-26, 12, 156], [-52, 17, 166], [-32, 8, 124]] },
     { id: 'rings', at: [14, 132], label: 'Ring flight with Ruby', ruby: 1, rings: [[0, 34, 100], [-38, 44, 30], [-60, 52, -40], [0, 66, -96], [42, 62, -70], [86, 44, -62], [108, 48, 10], [40, 36, 90]] }],
-  ember: [{ id: 'lanterns', at: [11, 47], label: 'Lantern dash' },
+  ember: [{ id: 'lanterns', at: [11, 47], label: 'Lantern dash' }, { id: 'seafish', at: [127, 42], label: 'Ruby goes fishing', ruby: 1 },
     { id: 'rings', at: [-22, 16], label: 'Ring flight with Ruby', ruby: 1, rings: [[-58, 40, -8], [-52, 48, -52], [-34, 56, -78], [0, 64, -112], [34, 56, -78], [52, 50, -58], [58, 42, -6], [0, 34, 34]] }],
 };
 import { spokenLine } from './story/speak.js';
@@ -96,7 +97,7 @@ export class Game {
   // ───────── start / chapters ─────────
   async begin(fresh) {
     this.sound.unlock();
-    if (!fresh && this.load()) { this.started = true; this.sound.setOn(this.S.opt.sound); await this.enterWorld(this.S.world, this.S.time); this.lastStep = this.curStep(); const sp = this.S.pos || this.W.P[this.chapter.spawn] || [0, 0]; this.place(sp[0], sp[1]); if (sp[2] !== undefined) this.camYaw = sp[2]; this.refresh(); UI.playUI(true); this.paused = false; this.showGoal(); await UI.fade(false); }
+    if (!fresh && this.load()) { this.started = true; this.sound.setOn(this.S.opt.sound); await this.enterWorld(this.S.world, this.S.time); this.lastStep = this.curStep(); const sp = this.S.pos || this.W.P[this.chapter.spawn] || [0, 0]; this.place(sp[0], sp[1]); if (sp[2] !== undefined) this.camYaw = sp[2]; this.refresh(); UI.playUI(true); this.paused = false; this.showGoal(); await UI.fade(false); this.interlude(this.S.ch - 1, true); }
     else { const opt = this.S.opt; this.S = this.blank(); this.S.opt = opt; this.started = true; await this.startChapter(1); }
   }
   baseline(n) { const f = {}, it = {}; if (n >= 3) it.whistle = 1; if (n === 3) it.spyglass = 1; if (n >= 11 && n <= 14) it.stillbloom = 1; if (n >= 3) f.cape = 1; if (n >= 5 && n <= 12) f.coat = 1; if (n >= 13) f.coatOff = 1; if (n >= 8 && n <= 10) f.rideSugar = 1; return [f, it]; }
@@ -115,7 +116,7 @@ export class Game {
   showGoal(pulse) { const st = this.curStep(), n = this.S.ch; UI.setGoal(n > 17 ? 'Epilogue' : `Chapter ${n} · ${this.chapter.title}`, st ? st.goal : '', pulse); }
   async checkStep() {
     const st = this.curStep(); if (st === this.lastStep) return; this.lastStep = st;
-    if (!st) { if (this.S.ch >= this.chapters.length) return; await wait(0.6); if (this.S.ch === 17) await this.ending(); return this.startChapter(this.S.ch + 1); }
+    if (!st) { if (this.S.ch >= this.chapters.length) return; await wait(0.6); if (this.S.ch === 17) await this.ending(); await this.interlude(this.S.ch); return this.startChapter(this.S.ch + 1); }
     this.sound.sfx('chime'); this.showGoal(true);
   }
   async ending() { this.busy++; await UI.fade(true, 'The End'); await wait(2.4); UI.playUI(false); await UI.card('THE EVERLANDS', 'Of Sugar and Flame', 'From the book by Elisa Espinosa Ruiz.\n\nBoth kingdoms are yours to wander now. Whistle for Ruby anywhere.'); this.busy--; }
@@ -371,6 +372,7 @@ export class Game {
   }
   // ── Hint trail: find what advances the current step and draw a glowing path to it ──
   hintTarget() {
+    if (this.playS?.ms && this.playS.noClock) { const p = this.player, m = this.playS.ms.filter((v) => v.visible).sort((a, b) => Math.hypot(a.position.x - p.x, a.position.z - p.z) - Math.hypot(b.position.x - p.x, b.position.z - p.z))[0]; if (m) return { x: m.position.x, z: m.position.z, label: this.playS.label }; }
     const st = this.curStep(); if (!st) return null; const flag = st.until, ch = this.chapter, seen = new Set(), f = this.f;
     const has = (n, d = 0) => { if (!n || d > 14 || typeof n === 'string') return false; if (typeof n === 'function') return n.toString().includes(flag);
       if (Array.isArray(n)) return n.some((x) => has(x, d + 1));
@@ -418,9 +420,9 @@ export class Game {
     if (!keepMode) this.mode = 'play'; UI.controlsVisible(true); return new Promise((res) => { this.playS = { ms, got: 0, t: time, time, label, reach, onGet, end: (why) => { for (const m of ms) this.scene.remove(m); this.playS = null; res({ got: this.playGot, left: this.playLeft, why }); } }; this.playGot = 0; this.playLeft = time; });
   }
   updatePlay(dt) {
-    const S = this.playS, p = this.player; S.t -= dt; this.playLeft = S.t; if (S.tick) S.tick(dt);
+    const S = this.playS, p = this.riding ? { x: this.ruby.x, y: this.ruby.y - 1, z: this.ruby.z } : this.player; S.t -= dt; this.playLeft = S.t; if (S.tick) S.tick(dt);
     if (S.ms) { for (const m of S.ms) { if (!m.visible) continue; m.rotation.y += dt * 4; if (Math.hypot(m.position.x - p.x, m.position.y - p.y - 1, m.position.z - p.z) < S.reach) { m.visible = false; S.got++; this.playGot = S.got; this.sound.sfx('ring'); this.puff(m.position.x, m.position.y, m.position.z, 0xffe08a, 16, 0.8, 2, 0.9); S.onGet?.(m); } }
-      UI.setTimer(`${S.label} ${S.got}/${S.ms.length}`, S.t / S.time); if (S.got >= S.ms.length) return S.end('all'); }
+      UI.setTimer(S.quiet ? (S.ms.length > 1 ? `${S.got}/${S.ms.length} · ` : '') + S.quiet : `${S.label} ${S.got}/${S.ms.length}`, S.noClock ? 1 : S.t / S.time); if (S.got >= S.ms.length) return S.end('all'); }
     if (S.t <= 0 && !S.noClock) S.end('time');
   }
   async play_stars() { const W = this.W, items = W.bouncers.slice(0, 10).map(([x, z, r, top], i) => [x + (i % 2 ? 0.8 : -0.8), W.height(x, z, true) + top + 2.3 + (i % 3) * 0.7, z]); await UI.say('', 'Ten sugar stars hang over the marshmallows. Jump onto one, bounce, and catch them all before the minute is up.'); this.place(101, 36);
@@ -465,6 +467,21 @@ export class Game {
     if (r.got >= pts.length) { V.kimTira = 1; this.S.opt.tira = true; } this.asOverride = null; this.refresh(); this.place(s.at[0], s.at[1] + 2);
     if (V.kimTira) { await UI.say(P, 'Arms out. There. Oh, look at the pair of you.'); await UI.say('Kim', 'Tira, we match! We actually match!'); this.save(); }
     return { score: r.got * 100 + Math.round(Math.max(0, r.left)), cinders: r.got / 2, fmt: (v) => Math.floor(v / 100) + ' pieces', text: r.got >= pts.length ? 'Kim has a new outfit: the Tira dress. Visit Madame Praline’s marker again to change back and forth.' : `${r.got} of ${pts.length} finishing touches found. Madame Praline needs all six.` }; }
+  // "Meanwhile, Kim…": a short errand played as Kim between two Sugarland days.
+  async interlude(n, back) { const I = INTERLUDES[n], W = this.W; if (!I || this.S.vis['il' + n] || W.name !== 'sugar' || this.zone || this.riding || navigator.webdriver && !window.__interludes) return; this.S.vis['il' + n] = 1; this.busy++; const home = back && [this.player.x, this.player.z, this.camYaw];
+    try { await UI.fade(true, 'Meanwhile… ' + I.title, true); if (this.riding) this.unride(I.at, true); this.asOverride = 'kim'; this.refresh(); this.place(I.at[0], I.at[1]); this.faceCam(); UI.setGoal('Meanwhile, Kim…', I.title, true); await UI.fade(false);
+      for (const st of I.steps) { if (typeof st === 'string') await UI.say('', st); else if (Array.isArray(st)) { this.voice(st[0], st[1]); await UI.say(st[0], st[1]); this.voiceEl?.pause(); }
+        else { const pts = st.find || [st.go]; UI.closeDialog(); UI.setGoal('Meanwhile, Kim… · ' + I.title, st.label + '.', true); UI.tip(st.label + '. Tap the compass for the way.', 6); const g = this.collectGame({ items: pts.map(([x, z]) => [x, W.height(x, z) + 1.1, z]), time: 999, label: st.label, color: 0xffc45a, reach: 2.6 }); this.playS.noClock = true; this.playS.quiet = st.label; await g; this.mode = null; UI.setTimer(null); UI.controlsVisible(false); } }
+          if (home) { await UI.fade(true, 'And back to Amber…', true); this.asOverride = null; this.refresh(); this.place(home[0], home[1]); this.camYaw = home[2]; await UI.fade(false); }
+    } finally { this.playS = null; this.mode = null; UI.setTimer(null); this.asOverride = null; this.refresh(); this.showGoal(true); this.busy--; this.save(); } }
+  // Ruby fishes the harbour: fish leap from the sea east of the quay, and she takes them on the wing.
+  async play_seafish(s) { const W = this.W, R = rnd(Math.floor(this.t) + 5), n = 10, pts = []; while (pts.length < n) { const x = 166 + R() * 62, z = -70 + R() * 170; if (![[175, 0], [182, 60], [190, -55], [149, 36]].some(([sx, sz]) => Math.hypot(x - sx, z - sz) < 16)) pts.push([x, -1.2, z]); }
+    await UI.say('', 'Ruby has been watching the harbour all morning. Silver fish are leaping out beyond the quay. Fly low and take them on the wing: ten fish, seventy seconds.'); this.sound.sfx('roar');
+    const r = this.ruby; this.mount(); r.x = 146; r.y = 10; r.z = 88; r.yaw = Math.PI / 2; r.pitch = 0; this.camYaw = r.yaw; this.flying = true;
+    const game = this.collectGame({ items: pts, time: 70, label: 'Fish', color: 0xa8e8ff, reach: 5.2, keepMode: 1 }), S = this.playS; S.ms.forEach((m, i) => { m.material.transparent = true; m.material.opacity = 0; const f = sprite('fish', 6); f.scale.set(6 / 0.42, 6 / 0.42, 1); m.add(f); m.userData.ph = i * 1.3; });
+    S.tick = () => { for (const m of S.ms) { if (!m.visible) continue; const c = (this.t * 0.45 + m.userData.ph) % 2, up = c < 1 ? Math.sin(c * Math.PI) : 0; m.position.y = -1.6 + up * 6.5; m.children[0].material.rotation = (0.5 - c) * 1.6; if (c > 1 && c < 1.04) this.puff(m.position.x, -1, m.position.z, 0xffffff, 4, 1.2, 2.5, 0.6); } };
+    const res = await game; this.flying = false; await UI.fade(true); this.unride([s.at[0], s.at[1] + 3]); this.faceCam(); this.refresh(); await UI.fade(false);
+    return { score: res.got * 100 + Math.round(Math.max(0, res.left)), cinders: res.got / 2, fmt: (v) => Math.floor(v / 100) + ' fish', text: res.got >= n ? `All ten, with ${Math.round(res.left)} seconds to spare. Ruby is insufferably pleased.` : `${res.got} of ${n} fish. Ruby pretends the rest were too small.` }; }
   async play_rubyfish(s) { const t0 = this.t; await UI.say('', 'Meanwhile, Ruby has the forest to herself. The strawberry lake is full of slow pink fish, and nobody is watching. Skim the eight rings, low over the water and the striped trees.'); this.sound.sfx('roar');
     await this.fly({ solo: 1, rings: s.rings, start: [-40, this.W.height(-40, 138) + 9, 138], land: [s.at[0], s.at[1] + 4] }); const secs = Math.round(this.t - t0);
     return { score: -secs, cinders: Math.max(1, 6 - secs / 20), fmt: (v) => -v + ' seconds', text: `Eight rings in ${secs} seconds, and a chin dripping pink.` }; }
@@ -637,7 +654,7 @@ export class Game {
     if (!this.started || !this.W) return; if (this.paused) return; this.t += dt; const W = this.W, p = this.player, f = this.f, ch = this.chapter;
     if (UI.hit('journal')) this.journal.toggle();
     W.tick?.(this.t, dt, this); if (!this.busy) ch.tick?.(this, dt);
-    const fogT = this.fogOverride ?? (this.S.vis.fog ? 0.05 : this.baseFog); this.scene.fog.density = lerp(this.scene.fog.density, fogT, Math.min(1, dt * 1.5));
+    const fogT = this.fogOverride ?? (this.S.vis.fog ? 0.05 : this.baseFog * (this.riding ? 0.55 : 1)); this.scene.fog.density = lerp(this.scene.fog.density, fogT, Math.min(1, dt * 1.5));
     const free = !this.busy, [mx, my] = free || this.flying || this.mode ? UI.readMove() : [0, 0];
     const sens = (this.S.opt.fast ? 0.009 : 0.006); this.camYaw -= UI.input.lx * sens; this.camPitch = clamp(this.camPitch + UI.input.ly * sens * 0.8, -0.5, 1.2); UI.input.lx = UI.input.ly = 0;
     if (UI.input.keys.has('KeyZ')) this.camYaw += dt * 2; if (UI.input.keys.has('KeyX')) this.camYaw -= dt * 2;
@@ -726,7 +743,7 @@ export class Game {
     const cp = Math.cos(r.pitch); r.x += Math.sin(r.yaw) * cp * r.speed * dt; r.z += Math.cos(r.yaw) * cp * r.speed * dt; r.y += Math.sin(r.pitch) * r.speed * dt;
     const floor = (W.sea ? 0 : Math.max(W.name === 'ember' ? -1 : -2, W.height(r.x, r.z))) + 5; if (r.y < floor) { r.y = floor; r.pitch = Math.max(r.pitch, 0.05); } r.y = Math.min(r.y, 190);
     if (!this.flying && !this.busy) { // free roaming
-      if (W.edge && (Math.abs(r.x) > W.edge + 60 || Math.abs(r.z) > W.edge + 60) && this.chapter.free) this.cross();
+      if (W.edge && (Math.abs(r.x) > W.edge + 60 || Math.abs(r.z) > W.edge + 60) && this.chapter.free && !this.playS) this.cross();
       else if (W.edge && !this.chapter.free && Math.hypot(r.x, r.z - 100) > 130) r.yaw += wrap(Math.atan2(-r.x, 100 - r.z) - r.yaw) * dt * 1.5;
       if (UI.hit('land') && this.canLand()) { this.unride(); this.refresh(); this.save(); }
     }
