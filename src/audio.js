@@ -9,7 +9,7 @@ export class Sound {
   music() { // play the current realm's theme, fading the others out. Decoded into the audio graph (not a media element) so voices and iOS cannot pause it.
     if (!this.ctx) return; const ctx = this.ctx, t = ctx.currentTime, m = this._mood;
     for (const k of Object.keys(this.tracks)) if (k !== m) { const tr = this.tracks[k]; delete this.tracks[k]; tr.dead = true; tr.g.gain.cancelScheduledValues(t); tr.g.gain.setTargetAtTime(0, t, 0.6); setTimeout(() => { try { tr.src?.stop(); } catch (e) { /* not started */ } tr.g.disconnect(); }, 3000); }
-    if (!THEMES[m]) return; let tr = this.tracks[m]; const bufs = (this.bufs ||= {});
+    if (!THEMES[m]) return; let tr = this.tracks[m]; const bufs = (this.bufs ||= {}); for (const k of Object.keys(bufs)) if (k !== m) delete bufs[k]; // one decoded theme at a time: each is tens of megabytes
     if (!tr) { const g = ctx.createGain(); g.gain.value = 0; g.connect(this.master); tr = this.tracks[m] = { g };
       (bufs[m] ||= fetch(`music/${m}.mp3`).then((r) => { if (!r.ok) throw new Error('missing'); return r.arrayBuffer(); }).then((b) => new Promise((res, rej) => ctx.decodeAudioData(b, res, rej))))
         .then((buf) => { if (tr.dead) return; const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(g); s.start(); tr.src = s; }).catch(() => { tr.bad = true; }); }
