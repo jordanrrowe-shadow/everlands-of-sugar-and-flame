@@ -2,6 +2,11 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #1a0c12; color: var(--ink); font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif; overscroll-behavior: none; touch-action: none; position: fixed; inset: 0; }
 canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+/* iPad and iPhone home-screen apps report a window a status-bar shorter than the screen, which leaves a strip along the bottom.
+   Every full-screen layer is stretched to the real screen height instead (set from main.js). */
+html { min-height: calc(100% + env(safe-area-inset-top, 0px)); }
+html.fullh, html.fullh body { height: var(--fullh); bottom: auto; }
+html.fullh canvas#c, html.fullh #controls, html.fullh #qte, html.fullh #img, html.fullh #fade, html.fullh #card, html.fullh #journal, html.fullh #title, html.fullh #cut { bottom: auto; height: var(--fullh); }
 button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; touch-action: manipulation; }
 .hide { display: none !important; }
 
