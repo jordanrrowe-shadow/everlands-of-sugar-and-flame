@@ -9,7 +9,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder), src = {}, clips = { lady: {}, man: {} };
 // Sculpted hero models (generated from the authors' character art): Amber, Kim and the King are rigged and animated; Ruby and Tira are statues the game moves itself.
-const hero = {}, HEROES = ['amber', 'amber-coat', 'amber-cape', 'orin', 'steward', 'aldren', 'mistress', 'kim', 'king', 'ruby', 'tira', 'lava', 'smorella', 'tafford', 'praline', 'ashlock'], HERO_OF = { Amber: 'amber', Kim: 'kim', 'The King': 'king', 'Grandma Lava': 'lava', Smorella: 'smorella', Tafford: 'tafford', 'Madame Praline': 'praline', 'Lord Ashlock': 'ashlock', 'Master Orin': 'orin', 'The Steward': 'steward', 'Master Aldren': 'aldren', 'Etiquette Mistress': 'mistress' }, HERO_H = { kim: 1.07, king: 1.15, amber: 1.12, 'amber-coat': 1.12, 'amber-cape': 1.12, orin: 1.2, steward: 1.15, aldren: 1.1, mistress: 1.17, lava: 1.0, smorella: 1.1, tafford: 1.2, praline: 0.98, ashlock: 1.2 };
+const hero = {}, HEROES = ['amber', 'amber-coat', 'amber-cape', 'orin', 'steward', 'aldren', 'mistress', 'kim', 'king', 'ruby', 'tira', 'lava', 'smorella', 'tafford', 'praline', 'ashlock', 'emman', 'emwoman', 'emdancer', 'emchild', 'warden', 'guard', 'scholar', 'suman', 'suwoman', 'suchild', 'sugirl', 'traveller', 'traveller2'], HERO_OF = { Amber: 'amber', Kim: 'kim', 'The King': 'king', 'Grandma Lava': 'lava', Smorella: 'smorella', Tafford: 'tafford', 'Madame Praline': 'praline', 'Lord Ashlock': 'ashlock', 'Master Orin': 'orin', 'The Steward': 'steward', 'Master Aldren': 'aldren', 'Etiquette Mistress': 'mistress' }, HERO_H = { kim: 1.07, king: 1.15, amber: 1.12, 'amber-coat': 1.12, 'amber-cape': 1.12, orin: 1.2, steward: 1.15, aldren: 1.1, mistress: 1.17, lava: 1.0, smorella: 1.1, tafford: 1.2, praline: 0.98, ashlock: 1.2, emman: 1.15, emwoman: 1.1, emdancer: 1.08, emchild: 0.8, warden: 1.22, guard: 1.2, scholar: 1.13, suman: 1.13, suwoman: 1.08, suchild: 0.76, sugirl: 0.66, traveller: 1.15, traveller2: 1.1 };
 export const getHero = (n) => hero[n];
 export function heroStatic(n, size) { const h = hero[n]; if (!h) return null; const m = h.scene.clone(true), box = new THREE.Box3().setFromObject(m), sz = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3()), k = size / Math.max(sz.x, sz.y, sz.z), g = new THREE.Group(); m.position.set(-c.x * k, -box.min.y * k, -c.z * k); m.scale.multiplyScalar(k); g.add(m); g.userData.size = sz.multiplyScalar(k); m.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material.envMapIntensity = 0.5; o.material.metalness = 0; o.material.roughness = 0.85; } }); return g; }
 const LADIES = ['Formal', 'Witch'], MEN = ['King', 'Farmer', 'Adventurer', 'Worker', 'Suit', 'Casual'];
@@ -64,16 +64,17 @@ function extras(L, on, lady) {
 }
 export function makeRig(L) {
   const male = L.style === 'man' || L.style === 'guard' || (L.style !== 'woman' && L.style !== 'girl' && MALE.test(L.name || ''));
-  let hk = HERO_OF[L.name]; if (hk === 'amber' && L.collar) hk = 'amber-coat'; else if (hk === 'amber' && L.cape && hero['amber-cape']) hk = 'amber-cape'; if (hk && hero[hk]) return makeHero(L, hk);
+  let hk = L.hero || HERO_OF[L.name]; if (hk === 'amber' && L.collar) hk = 'amber-coat'; else if (hk === 'amber' && L.cape && hero['amber-cape']) hk = 'amber-cape'; if (hk && hero[hk]) return makeHero(L, hk);
   return male ? makeMan(L) : makeLady(L);
 }
 function makeHero(L, key) {
   const g = new THREE.Group(), u = (g.userData = { rig: true, hero: key, t: 0 }), H = hero[key], body = SkeletonUtils.clone(H.scene); g.add(body);
   body.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; o.material.envMapIntensity = 0.45; o.material.metalness = 0; o.material.roughness = 0.85; } });
+  if (L.tint) body.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.color.set(L.tint); } });
   const cl = H.clips, has = (n, d) => (cl[n] ? n : d); animate(u, body, cl);
   u.A = { idle: 'Idle', walk: has('Walking_Woman', has('Casual_Walk', 'Idle')), jog: has('Run_02', has('Casual_Walk', 'Idle')), sit: has('Chair_Sit_Idle_F', has('Chair_Sit_Idle_M', 'Idle')), air: 'Idle', talk: has('Talk_with_Hands_Open', has('Talk_with_Right_Hand_Open', 'Idle')), cast: has('mage_soell_cast', 'Big_Wave_Hello'), sleep: has('Sleep_Normally', 'Idle'), dance: has('Joyful_Dance_with_Hand_Sway', 'Idle') };
   u.cast = () => u.once(u.A.cast); u.cur = null; u.play('Idle', 0);
-  const h = HERO_H[key] || 1.1; g.scale.setScalar(h); u.h = h; u.fast = /^amber|kim/.test(key);
+  const h = (HERO_H[key] || 1.1) * (L.hero && L.h ? 0.6 + L.h * 0.4 : 1); g.scale.setScalar(h); u.h = h; u.fast = /^amber|kim/.test(key);
   return g;
 }
 function makeLady(L) {

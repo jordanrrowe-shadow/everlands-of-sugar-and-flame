@@ -60,14 +60,30 @@ export function glowPatch(m) { // living flicker on lava, lamps, windows
   return m;
 }
 // Glossy, gently rolling water that reflects the sky.
-export function waterMaterial(color, opacity = 0.9, rough = 0.07, wave = 1) {
+export function waterMaterial(color, opacity = 0.9, rough = 0.07, wave = 1, glint = 0xffffff) {
+  const gc = new THREE.Color(glint);
+  // Painted water: slow bands of deep and shallow colour, a drifting web of light, soft foam flecks and sun glitter.
   const m = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0.05, transparent: opacity < 1, opacity, envMapIntensity: 1.5 });
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uTime = U.time;
     sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-    sh.fragmentShader = 'uniform float uTime; varying vec3 vWP;\n' + sh.fragmentShader.replace('#include <normal_fragment_maps>', `vec2 q = vWP.xz * 0.42; float t = uTime * 0.7;
+    sh.fragmentShader = `uniform float uTime; varying vec3 vWP;
+      vec2 wH(vec2 p) { p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3))); return fract(sin(p) * 43758.5453); }
+      float wCell(vec2 p, float t) { vec2 i = floor(p), f = fract(p); float d = 1.0; for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) { vec2 g = vec2(float(x), float(y)), o = wH(i + g); o = 0.5 + 0.42 * sin(t + 6.2831 * o); d = min(d, length(g + o - f)); } return d; }
+      float wN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(wH(i).x, wH(i + vec2(1, 0)).x, f.x), mix(wH(i + vec2(0, 1)).x, wH(i + vec2(1, 1)).x, f.x), f.y); }
+      ` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      { float wt = uTime * 0.5, dist = length(vWP - cameraPosition), nearK = 1.0 - smoothstep(40.0, 170.0, dist);
+        vec2 wp = vWP.xz + vec2(sin(vWP.z * 0.11 + wt), cos(vWP.x * 0.09 - wt * 0.8)) * 0.9;
+        float band = wN(wp * 0.035 + vec2(wt * 0.03, 0.0)) * 0.6 + wN(wp * 0.11 - vec2(0.0, wt * 0.05)) * 0.4;
+        diffuseColor.rgb *= mix(0.72, 1.22, smoothstep(0.25, 0.8, band));
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.8, 1.08, 1.12) + 0.03, smoothstep(0.55, 0.9, band) * 0.5);
+        float c1 = wCell(wp * 0.33 + vec2(wt * 0.12, wt * 0.05), wt * 1.3), c2 = wCell(wp * 0.71 - vec2(wt * 0.1, -wt * 0.07), wt * 1.7 + 2.0);
+        float web = smoothstep(0.5, 0.78, c1) * 0.7 + smoothstep(0.55, 0.8, c2) * 0.45;
+        float fleck = smoothstep(0.82, 0.9, c1 * 0.6 + c2 * 0.5 + band * 0.25);
+        vec3 lightC = mix(diffuseColor.rgb * 1.25, vec3(${gc.r.toFixed(3)}, ${gc.g.toFixed(3)}, ${gc.b.toFixed(3)}), 0.38);
+        diffuseColor.rgb = mix(diffuseColor.rgb, lightC, clamp(web * 0.36 * nearK + fleck * 0.6 * nearK, 0.0, 0.8)); }`).replace('#include <normal_fragment_maps>', `vec2 q = vWP.xz * 0.42; float t = uTime * 0.7;
       vec2 g = vec2(sin(q.x * 1.3 + t) + sin(q.y * 1.7 - t * 1.3) + sin((q.x + q.y) * 2.9 + t * 1.7) * 0.5 + sin(q.x * 6.1 - t * 2.2) * 0.25, cos(q.y * 1.1 + t * 0.8) + cos(q.x * 2.3 + t) + cos((q.x - q.y) * 3.1 - t * 1.4) * 0.5 + cos(q.y * 5.7 + t * 2.0) * 0.25) * ${(0.07 * wave).toFixed(3)};
-      normal = normalize(normal + mat3(viewMatrix) * vec3(g.x, 0.0, g.y));`);
+      normal = normalize(normal + mat3(viewMatrix) * vec3(g.x, 0.0, g.y) * (1.0 - smoothstep(30.0, 150.0, length(vWP - cameraPosition))));`);
   };
   return m;
 }
