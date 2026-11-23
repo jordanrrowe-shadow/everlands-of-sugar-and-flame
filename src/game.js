@@ -262,13 +262,17 @@ export class Game {
       if (!opts.length) break;
       const list = opts.map((t) => ({ t: t.q, cls: this.f[hash(t.q)] ? 'seen' : '' })); if (exitOk) list.push({ t: n.exit || 'Goodbye.', cls: 'exit' });
       const i = await UI.choose(list); if (i >= opts.length) { await this.speakChoice(n.exit || 'Goodbye.'); break; }
-      this.f[hash(opts[i].q)] = 1; await this.speakChoice(opts[i].q, opts[i].a); await this.exec(opts[i].a); if (opts[i].end) break;
+      this.f[hash(opts[i].q)] = 1; await this.speakChoice(opts[i].q, opts[i].a, n.by); await this.exec(opts[i].a); if (opts[i].end) break;
     }
   }
   // Recorded voice lines: public/voice/<id>.mp3, listed in public/voice/index.json (see tools/voices.mjs).
   voice(name, text) { if (!this.S.opt.sound) return; if (!this.voiceSet) { this.voiceSet = new Set(); fetch('voice/index.json').then((r) => r.json()).then((a) => (this.voiceSet = new Set(a))).catch(() => {}); return; } const id = hash(name + '|' + text); if (!this.voiceSet.has(id)) return; const a = (this.voiceEl = this.voiceEl || new Audio()); a.src = 'voice/' + id + '.mp3?v=4'; a.play().catch(() => {}); }
   // The reply you tap is spoken aloud by the character you are playing (unless it is a silent action or thought).
-  async speakChoice(text, next) { const who = this.player.who === 'kim' ? 'Kim' : 'Amber', sp = spokenLine(text, who); if (!sp) return; const first = Array.isArray(next) && next.find((x) => x && typeof x !== 'object' || Array.isArray(x)); if (Array.isArray(first) && first[0] === sp[0] && first[1].startsWith(sp[1].slice(0, 24))) return; this.sound.sfx('page'); this.voice(sp[0], sp[1]); await UI.say(sp[0], sp[1]); this.voiceEl?.pause(); }
+  // A tapped line is spoken by whoever is really saying it. If the reply that follows is the player's own character answering,
+  // then the tapped line was a question put TO her, so the other person in the conversation asks it.
+  async speakChoice(text, next, by) { const me = this.player.who === 'kim' ? 'Kim' : 'Amber', first = Array.isArray(next) && next.find((x) => x && typeof x !== 'object' || Array.isArray(x)); let who = me;
+    if (Array.isArray(first) && first[0] === me) { who = by || (this.comp?.id === 'kim' ? 'Kim' : this.comp?.id === 'amber' ? 'Amber' : me === 'Kim' ? 'Amber' : null); if (!who) return; }
+    const sp = spokenLine(text, who); if (!sp) return; if (Array.isArray(first) && first[0] === sp[0] && first[1].startsWith(sp[1].slice(0, 24))) return; this.sound.sfx('page'); this.voice(sp[0], sp[1]); await UI.say(sp[0], sp[1]); this.voiceEl?.pause(); }
   speaker(name) { const n = this.npcs.find((x) => x.name === name); if (n) { n.face(this.player.x, this.player.z); if (!this.riding) this.player.tyaw = Math.atan2(n.x - this.player.x, n.z - this.player.z); } }
   bark(line) { if (typeof line === 'string') UI.bark('', line); else UI.bark(line[0], line[1]); }
 
