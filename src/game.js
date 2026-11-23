@@ -774,7 +774,7 @@ export class Game {
   // ── going inside: houses have rooms, towers have tops ──
   nearDoor() { const p = this.player; let best = null, bd = 2.7; for (const d of this.W.doors || []) { const k = Math.hypot(p.x - d.x, p.z - d.z); if (k < bd) { bd = k; best = d; } } return best; }
   async enterDoor(d) {
-    this.busy++; UI.setAct(null); this.sound.sfx('page'); await UI.fade(true); const p = this.player, Z = d.deck ? deckZone(d.deck) : makeRoom(this.W.name, d.seed); Z.back = [d.x, d.z]; this.zone = Z;
+    this.busy++; UI.setAct(null); this.sound.sfx('page'); await UI.fade(true); const p = this.player, Z = d.deck ? deckZone(d.deck) : makeRoom(this.W.name, d.seed, d.kind); Z.back = [d.x, d.z]; this.zone = Z;
     if (Z.group) this.scene.add(Z.group); if (Z.resident) { const L = { ...CAST[Z.resident.id] }; Z.npc = makePerson(L); Z.npc.position.set(Z.resident.x, Z.y, Z.resident.z); Z.npc.rotation.y = Math.atan2(Z.spawn[0] - Z.resident.x, Z.spawn[1] - Z.resident.z); this.scene.add(Z.npc); }
     p.x = Z.spawn[0]; p.z = Z.spawn[1]; p.y = Z.y; p.vy = 0; p.ground = true; p.yaw = p.tyaw = Z.room ? Math.PI : Math.atan2(Z.cx - p.x, Z.cz - p.z); this.camYaw = p.yaw; this.camSnap = 3; if (this.comp) this.placeComp();
     if (this.trail) this.trail.t = 0.01; await wait(0.15); await UI.fade(false); this.busy--; if (Z.deck && !this.f.tipDeck) { this.f.tipDeck = 1; UI.tip('The whole kingdom from up here. The hatch takes you back down.', 6); }
@@ -814,7 +814,7 @@ export class Game {
     this.pinAt = null;
     if (best) { const isNpc = !!best.model && best.key; UI.setAct(isNpc ? 'Talk · ' + best.name : best.def.label); const d0 = best.def, q0 = isNpc ? [best.x, best.z] : d0.kimTalk && cmp ? [cmp.x, cmp.z] : d0.at === 'player' ? null : W.P[d0.at]; if (q0) this.pinAt = [q0[0], isNpc || d0.kimTalk ? 2.5 : 1.7, q0[1]]; if (UI.hit('act')) { if (isNpc) { const t = best.def.talk, s = typeof t === 'function' ? t(f, this) : t; best.face(p.x, p.z); if (s) return this.run(s); } else return this.run(best.def.script); } }
     else if (this.nearPlay()) { const s = this.nearPlay(); UI.setAct('Play · ' + s.label); this.pinAt = [s.at[0], 4.2, s.at[1]]; if (UI.hit('act')) return this.run([{ fn: (g) => g.play(s) }]); }
-    else if (this.nearDoor() && p.ground) { const d = this.nearDoor(); UI.setAct(d.label || 'Go inside'); this.pinAt = [d.x, 2.6, d.z]; if (UI.hit('act')) return this.enterDoor(d); }
+    else if (this.nearDoor() && p.ground) { const d = this.nearDoor(); UI.setAct(d.label || ({ bakery: 'Go inside the bakery', forge: 'Go inside the forge', glassworks: 'Go inside the glassworks', candleshop: 'Go inside the candle shop', emberinn: 'Go inside the inn', inn: 'Go inside the inn', tailor: 'Go inside Madame Praline’s' })[d.kind] || 'Go inside'); this.pinAt = [d.x, 2.6, d.z]; if (UI.hit('act')) return this.enterDoor(d); }
     else { UI.setAct(this.ruby.state === 'idle' && this.freeRide() && Math.hypot(p.x - this.ruby.x, p.z - this.ruby.z) < 8 ? 'Ride Ruby' : null); if (UI.hit('act') && this.ruby.state === 'idle' && this.freeRide() && Math.hypot(p.x - this.ruby.x, p.z - this.ruby.z) < 8) { this.mount(); this.ruby.pitch = 0.45; } }
   }
   reach(q, r) { // how close counts as "there": generous, and measured from the edge of any obstacle the point sits in or beside
