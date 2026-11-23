@@ -35,7 +35,7 @@ export const INTERLUDES = {
     { go: [0, 60], label: 'Leave it at the signpost' },
     [K, 'She comes this way every evening. She thinks nobody has noticed.'],
     'Kim stands the flask against the lollipop signpost, wraps her own scarf round it to keep the heat in, and goes home whistling.'] },
-  7: { title: 'Crumbs for a dragon', at: [34, 9], back: 'Not yet! I can’t go to Ruby with an empty basket.', steps: [
+  7: { title: 'Crumbs for a dragon', at: [34, 9], ruby: 'cave_ruby', back: 'Not yet! I can’t go to Ruby with an empty basket.', steps: [
     'Meanwhile, Kim has met a dragon, and cannot think about anything else.',
     [K, 'What do dragons eat? Tira, what do dragons eat? Don’t look at me like that. Not ferrets.'],
     { find: [[37, -6], [8, 11], [-7, 30]], label: 'Gather a basket: pastries, tarts, a red ribbon' },
