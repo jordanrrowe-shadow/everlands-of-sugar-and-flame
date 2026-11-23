@@ -6,7 +6,7 @@ import { terrainMaterial, waterMaterial, roadMaterial } from './gfx.js';
 import { Scatter, hasModel } from './assets.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
-const BENCHF = 0, BOATY = -2.9, SHIPY = { wardenship: -0.9, sugarship: -0.9, woodboat: -1.7 }; // how deep each hull sits below the waterline
+const BENCHF = 0, BOATY = -2.9, SHIPY = { wardenship: -0.9, sugarship: -2.0, woodboat: -1.7 }; // how deep each hull sits below the waterline
 const kb = (k) => { const m = k.build(); if (!k.sc) return m; const g = new THREE.Group(); g.add(m, k.sc.build()); return g; };
 const FRONT = { emberhouse3: 0, emberhouse4: 0, bakery: 0, forge: 0, glassworks: 0, candleshop: 0, emberinn: 0, wardenship: 0, sugarship: 0, woodboat: -Math.PI / 2, cakehouse1: 0, cakehouse2: 0, cakehouse3: 0, stall: 0, cave: 0, statue: 0 }; // yaw to add so each sculpted model's front faces +Z
 function terrain(w, size, seg, colorFn, splatFn, layers) {
