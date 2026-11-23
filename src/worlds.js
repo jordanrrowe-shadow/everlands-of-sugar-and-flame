@@ -359,7 +359,39 @@ export function buildEmber() {
   for (const [x, z, s] of [[150, -280, 90], [30, -330, 110], [-230, -200, 80], [230, -160, 70]]) { if (hasModel('emberpeak')) sc.add('emberpeak', x, -5, z, x * 0.013, s * 2.2); else k.cone(x, 0, z, s, s * 1.1, 0x3a2a30, {}, 7); }
   // harbor
   k.box(122, -3, 34, 34, 3.5, 36, 0x9a8a78); for (let i = 0; i < 5; i++) { k.cyl(138.5, 0.5, 20 + i * 7, 0.3, 0.3, 1, 0x4a3a34); }
-  for (const [x, z] of [[108, 23], [114, 23], [108, 29], [114, 29]]) k.cyl(x, 0.5, z, 0.1, 0.1, 3.2, 0x6b4a36); k.box(111, 3.7, 26, 7.4, 0.2, 7.4, RED); k.box(111, 0.5, 26, 1.4, 1, 1.4, 0x6b2a2a);
+  { // the quay, dressed as a working royal harbour
+    const q = 0.5, STONE = 0xb8a890, DKW = 0x6b4a36, ROPE = 0xd9c08a, circ = (x, z, r) => w.circles.push([x, z, r]);
+    // paving: a border of pale kerbstones, a herringbone of darker setts down the middle, plank decking along the water's edge
+    for (const z of [16.5, 51.5]) k.box(122, q, z, 34, 0.06, 1, STONE); for (const x of [105.5, 138.5]) k.box(x, q, 34, 1, 0.06, 36, STONE);
+    for (let i = 0; i < 16; i++) k.box(107.5 + i * 2, q + 0.01, 34, 0.12, 0.04, 33, 0x8a7a6a); for (let i = 0; i < 9; i++) k.box(122, q + 0.01, 18.5 + i * 4, 31, 0.04, 0.12, 0x8a7a6a);
+    for (let i = 0; i < 17; i++) k.box(136.6, q + 0.03, 18 + i * 2, 2.6, 0.06, 1.8, i % 2 ? 0xa87a52 : 0x9a6e48, { wood: 1 });
+    // the royal pavilion: gilt poles, a striped canopy with a scalloped fringe, a carpet, two chairs and a table set with a flask
+    for (const [x, z] of [[108, 23], [114, 23], [108, 29], [114, 29]]) { k.cyl(x, q, z, 0.14, 0.18, 0.4, GOLD, {}, 8); k.cyl(x, q, z, 0.09, 0.09, 3.3, 0x6b2a2a, {}, 8); k.sph(x, q + 3.6, z, 0.2, GOLD); k.cone(x, q + 3.7, z, 0.1, 0.4, LAVA, { glow: 1 }, 6); }
+    for (let i = 0; i < 9; i++) k.box(107.7 + i * 0.825, q + 3.25 + Math.sin(i / 8 * Math.PI) * 0.35, 26, 0.84, 0.14, 7.6, i % 2 ? RED : 0xf3d9a0); for (let i = 0; i < 10; i++) for (const z of [22.2, 29.8]) k.cone(107.6 + i * 0.75, q + 3.2, z, 0.3, 0.45, i % 2 ? GOLD : RED, { rx: Math.PI }, 4);
+    k.box(111, q + 0.01, 26, 6.4, 0.05, 6.4, 0x8e1b2c); k.box(111, q + 0.03, 26, 5.4, 0.05, 5.4, 0xe2b24a); k.box(111, q + 0.05, 26, 4.6, 0.05, 4.6, 0x8e1b2c);
+    k.cyl(111, q, 26, 0.5, 0.4, 0.8, DKW, { wood: 1 }, 12); k.cyl(111, q + 0.8, 26, 0.75, 0.75, 0.08, 0x8a5a3a, { wood: 1 }, 14); k.cyl(111.2, q + 0.88, 26, 0.12, 0.14, 0.3, 0x8a8a92, {}, 8); k.sph(110.7, q + 0.98, 26.2, 0.14, 0xd9a05a, { s: [1.3, 0.7, 1] }); circ(111, 26, 0.9);
+    for (const [x, z, ry] of [[109.4, 26, 1.571], [112.6, 26, -1.571]]) { k.box(x, q, z, 0.8, 0.5, 0.8, 0x6b2a2a); k.box(x, q + 0.5, z, 0.86, 0.1, 0.86, RED); k.box(x + (ry > 0 ? -0.36 : 0.36), q + 0.5, z, 0.12, 1.1, 0.86, 0x6b2a2a); k.sph(x + (ry > 0 ? -0.36 : 0.36), q + 1.7, z, 0.12, GOLD); circ(x, z, 0.55); }
+    // mooring: bollards hung with rope, iron rings, a jetty running out to the visiting ship's berth
+    for (let i = 0; i < 5; i++) { k.cyl(138.5, q + 1, 20 + i * 7, 0.38, 0.3, 0.14, 0x3a2e2a, {}, 10); k.torus(138.5, q + 0.5, 20 + i * 7, 0.42, 0.07, ROPE, { rx: Math.PI / 2 }); if (i < 4) for (let j = 1; j < 7; j++) k.sph(138.5, q + 0.95 - Math.sin(j / 7 * Math.PI) * 0.55, 20 + i * 7 + j, 0.07, ROPE); }
+    for (let i = 0; i < 6; i++) k.torus(139.05, q - 0.5, 17.5 + i * 6.6, 0.22, 0.04, 0x3a2e2a);
+    k.box(144.5, q - 0.25, 28.5, 11, 0.2, 2.6, 0xa87a52, { wood: 1 }); for (let i = 0; i < 5; i++) for (const dz of [-1.2, 1.2]) k.cyl(140.5 + i * 2.2, -3.2, 28.5 + dz, 0.16, 0.16, 4.2, DKW, {}, 6); for (let i = 0; i < 10; i++) k.box(139.6 + i * 1.1, q - 0.04, 28.5, 0.06, 0.03, 2.6, 0x7a5236);
+    for (const z of [27.4, 29.6]) { for (let i = 0; i < 4; i++) k.cyl(141 + i * 2.9, q - 0.05, z, 0.07, 0.07, 0.9, DKW, {}, 6); k.box(145.3, q + 0.78, z, 9, 0.06, 0.06, ROPE); }
+    // the harbour crane with a crate swinging on its hook
+    k.cyl(134.5, q, 46.5, 0.6, 0.7, 0.5, STONE, {}, 10); k.cyl(134.5, q + 0.5, 46.5, 0.2, 0.24, 5.4, DKW, { wood: 1 }, 8); k.box(136.6, q + 5.6, 46.5, 6.2, 0.26, 0.26, DKW, { wood: 1, rz: 0.22 }); k.box(133.7, q + 4.2, 46.5, 2.4, 0.16, 0.16, DKW, { rz: -0.9 }); k.cyl(139.3, q + 3.9, 46.5, 0.03, 0.03, 2.3, ROPE, {}, 4); k.box(139.3, q + 3, 46.5, 1, 0.9, 1, 0xa87a52, { wood: 1, ry: 0.4 }); k.torus(139.3, q + 3.95, 46.5, 0.12, 0.03, 0x3a2e2a); circ(134.5, 46.5, 0.9);
+    // cargo: stacked crates, barrels with gold hoops, sacks, coiled rope, lobster pots, a net hung to dry with floats
+    for (const [x, z, n] of [[107.5, 19, 3], [109.3, 18.4, 2], [135.5, 19, 2], [136.6, 20.6, 1]]) { for (let j = 0; j < n; j++) k.box(x + (j % 2) * 0.12, q + j * 0.95, z, 1 - j * 0.1, 0.95, 1 - j * 0.1, j % 2 ? 0xb98a5a : 0xa87a52, { wood: 1, ry: j * 0.5 }); circ(x, z, 0.8); }
+    for (const [x, z] of [[131, 18.6], [132.2, 19.6], [130.6, 20], [112.5, 48.6], [113.8, 49.4]]) { k.cyl(x, q, z, 0.5, 0.44, 1.05, 0x8a5a3a, { wood: 1 }, 12); for (const hy of [0.2, 0.85]) k.torus(x, q + hy, z, 0.5, 0.03, GOLD, { rx: Math.PI / 2 }); k.cyl(x, q + 1.05, z, 0.46, 0.46, 0.04, 0x6b4a36, {}, 12); circ(x, z, 0.6); }
+    for (const [x, z] of [[119.5, 19], [120.4, 18.4], [119.9, 19.9]]) { k.sph(x, q + 0.4, z, 0.5, 0xe2d3b8, { s: [1, 0.8, 1] }); k.cyl(x, q + 0.76, z, 0.1, 0.18, 0.2, ROPE, {}, 8); } circ(119.9, 19.1, 1.1);
+    for (const [x, z] of [[128.5, 49], [136.4, 33.5], [124, 18.6]]) for (let j = 0; j < 3; j++) k.torus(x, q + 0.07 + j * 0.13, z, 0.5 - j * 0.04, 0.07, ROPE, { rx: Math.PI / 2 });
+    for (let i = 0; i < 4; i++) { const x = 126 + (i % 2) * 0.95, z = 46.8 + Math.floor(i / 2) * 0.95; k.cyl(x, q, z, 0.4, 0.4, 0.5, 0x8a6a4a, { rz: 0 }, 8); k.torus(x, q + 0.25, z, 0.4, 0.03, DKW, { rx: Math.PI / 2 }); } circ(126.5, 47.3, 1.1);
+    for (const x of [118.2, 123.8]) { k.cyl(x, q, 50.6, 0.09, 0.11, 3, DKW, {}, 6); k.sph(x, q + 3.05, 50.6, 0.13, GOLD); circ(x, 50.6, 0.3); } k.box(121, q + 2.8, 50.6, 5.6, 0.07, 0.07, DKW);
+    for (let i = 0; i < 9; i++) { k.box(118.6 + i * 0.6, q + 1.7, 50.6, 0.03, 2.2, 0.03, 0x7a8a8a); if (i < 7) k.box(121, q + 0.8 + i * 0.3, 50.6, 5.4, 0.03, 0.03, 0x7a8a8a); } for (let i = 0; i < 5; i++) k.sph(118.9 + i * 1.05, q + 2.72, 50.6, 0.14, [0xe85a3a, 0xf3d9a0][i % 2]);
+    // an anchor laid up for mending, signal braziers at the seaward corners, a line of pennants
+    k.box(108, q + 0.12, 34.5, 0.2, 0.2, 3, 0x3a2e2a, { ry: 0.5 }); k.torus(108.75, q + 0.14, 35.85, 0.28, 0.07, 0x3a2e2a, { rx: Math.PI / 2 }); k.torus(107.3, q + 0.12, 33.2, 0.9, 0.09, 0x3a2e2a, { rx: Math.PI / 2, s: [1, 1, 0.4] }); circ(108, 34.5, 1);
+    for (const z of [17.2, 50.8]) { if (hasModel('brazier')) sc.add('brazier', 137.6, q, z, 0, 1.5); else { k.cyl(137.6, q, z, 0.3, 0.4, 1.2, STONE); k.cone(137.6, q + 1.2, z, 0.4, 0.9, LAVA, { glow: 1 }); } circ(137.6, z, 0.7); w.glows?.push([137.6, q + 2, z, 0xffa040, 1]); }
+    for (const z of [17, 51]) { k.cyl(106, q, z, 0.1, 0.12, 6.4, DKW, {}, 6); k.sph(106, q + 6.5, z, 0.16, GOLD); } for (let i = 0; i < 22; i++) k.cone(106, q + 6.1 - Math.sin(i / 21 * Math.PI) * 1.2, 17.8 + i * 1.55, 0.26, 0.55, [RED, GOLD, 0xf3d9a0][i % 3], { rx: Math.PI }, 4);
+    // skiffs drawn up alongside, below the wall
+    for (const [z, c] of [[22, 0x8e1b2c], [41, 0x5a7a9a]]) { k.sph(141.2, -0.9, z, 1, c, { s: [0.75, 0.5, 2.2] }); k.box(141.2, -0.72, z, 1.2, 0.08, 3.4, 0xa87a52, { wood: 1 }); k.box(141.2, -0.6, z - 0.4, 1.3, 0.06, 0.3, DKW); k.box(141.9, -0.5, z + 0.3, 0.05, 0.05, 2.6, DKW, { ry: 0.5 }); } }
   k.wl = -1.2;
   ship(k, 175, 0, 0, 0x5a5a62, 0x8b8b92); ship(k, 182, 0, 60, 0x5a5a62, 0x8b8b92, 0.3); ship(k, 190, 0, -55, 0x5a5a62, 0x8b8b92, -0.2);
   for (let i = 0; i < 5; i++) { if (KIT) kitHouse(sc, k, w, 96 + i * 10.5, 64 + (i % 2) * 5, 6, i % 2 ? 6 : 8, Math.PI, glassCols[i]); else house(98 + i * 9, 62 + (i % 2) * 6, 7, 6, 4 + i % 3, glassCols[i]); }
