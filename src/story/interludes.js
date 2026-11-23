@@ -3,6 +3,9 @@
 // golden markers to walk to before the story carries on.
 const K = 'Kim';
 // What Kim calls when she has run ahead and you have fallen behind (spoken aloud).
+// What Kim shouts when Tira is lost, and what she says when she strays from the search.
+export const TIRA_CALLS = ['Tira!', 'Tira, where are you?', 'Here, Tira! Come on!'];
+export const KIM_BACK = ['Not that way. Tira first.', 'She wouldn’t have gone this far. Back we go.'];
 export const KIM_CALLS = ['This way!', 'Come on, slow feet!', 'Over here!', 'Keep up, Amber!'];
 export const INTERLUDES = {
   4: { title: 'A scone for the stranger', at: [34, 9], steps: [
@@ -15,7 +18,7 @@ export const INTERLUDES = {
     [K, 'Not there? But where would anybody sleep, if not in a bed?'],
     'Kim leaves the scone on the windowsill with a note that says FOR AMBER in her best handwriting, and looks for a long moment down the forest path.',
     [K, 'Come on, Tira. She’ll turn up. People who like tarts always do.']] },
-  5: { title: 'Tira is missing', at: [0, 26], steps: [
+  5: { title: 'Tira is missing', at: [0, 26], call: 'Call for Tira', steps: [
     'Meanwhile, Kim has turned the satchel inside out twice. There are crumbs in it, and a button, and no Tira.',
     [K, 'Tira? Tira! This is not funny. It is a little bit funny. Tira!'],
     { find: [[8, 12], [-7, 30], [0, 20]], label: 'Search the market for Tira' },

@@ -9,7 +9,7 @@ import { discover, drawMini } from './map.js';
 import { loadPack, WORLD_PACKS } from './assets.js';
 import { loadPeople } from './people.js';
 import { initGltf } from './gltf.js';
-import { INTERLUDES, KIM_CALLS } from './story/interludes.js';
+import { INTERLUDES, KIM_CALLS, TIRA_CALLS, KIM_BACK } from './story/interludes.js';
 import { playCut, WHO as CUTWHO } from './cut.js';
 import { makeRoom, deckZone } from './rooms.js';
 const PLAYS = {
@@ -471,9 +471,16 @@ export class Game {
   async interlude(n, back) { const I = INTERLUDES[n], W = this.W; if (!I || this.S.vis['il' + n] || W.name !== 'sugar' || this.zone || this.riding || navigator.webdriver && !window.__interludes) return; this.S.vis['il' + n] = 1; this.busy++; const home = back && [this.player.x, this.player.z, this.camYaw];
     try { await UI.fade(true, 'Meanwhile… ' + I.title, true); if (this.riding) this.unride(I.at, true); this.asOverride = 'kim'; this.refresh(); this.place(I.at[0], I.at[1]); this.faceCam(); UI.setGoal('Meanwhile, Kim…', I.title, true); await UI.fade(false);
       for (const st of I.steps) { if (typeof st === 'string') await UI.say('', st); else if (Array.isArray(st)) { this.voice(st[0], st[1]); await UI.say(st[0], st[1]); this.voiceEl?.pause(); }
-        else { const pts = st.find || [st.go]; UI.closeDialog(); UI.setGoal('Meanwhile, Kim… · ' + I.title, st.label + '.', true); UI.tip(st.label + '. Tap the compass for the way.', 6); const g = this.collectGame({ items: pts.map(([x, z]) => [x, W.height(x, z) + 1.1, z]), time: 999, label: st.label, color: 0xffc45a, reach: 2.6 }); this.playS.noClock = true; this.playS.quiet = st.label; await g; this.mode = null; UI.setTimer(null); UI.controlsVisible(false); } }
-          if (home) { await UI.fade(true, 'And back to Amber…', true); this.asOverride = null; this.refresh(); this.place(home[0], home[1]); this.camYaw = home[2]; await UI.fade(false); }
-    } finally { this.playS = null; this.mode = null; UI.setTimer(null); this.asOverride = null; this.refresh(); this.showGoal(true); this.busy--; this.save(); } }
+        else { const pts = st.find || [st.go]; UI.closeDialog(); UI.setGoal('Meanwhile, Kim… · ' + I.title, st.label + '.', true); UI.tip(st.label + '. Tap the compass for the way.', 6); const g = this.collectGame({ items: pts.map(([x, z]) => [x, W.height(x, z) + 1.1, z]), time: 999, label: st.label, color: 0xffc45a, reach: 2.6 }); this.playS.noClock = true; this.playS.quiet = st.label; { const S = this.playS, p = this.player, near = () => S.ms.filter((v) => v.visible).map((m) => [Math.hypot(m.position.x - p.x, m.position.z - p.z), m]).sort((a, b) => a[0] - b[0])[0]; let d0 = null, backT = 0, callT = 0;
+          // keep Kim to the errand: she cannot wander off (to Ruby, say) while it is under way, and when Tira is lost she can call for her
+          S.tick = (dt) => { const n = near(); if (!n) return; const [d, m] = n; if (d0 === null) d0 = d; backT -= dt; callT -= dt;
+            const r = this.ruby, atRuby = r.model.visible && Math.hypot(r.x - p.x, r.z - p.z) < 16;
+            if (d > Math.max(46, d0 + 20) || atRuby) { const k = 9 * dt / (d || 1); p.x += (m.position.x - p.x) * k; p.z += (m.position.z - p.z) * k; if (backT <= 0) { backT = 6; const line = KIM_BACK[atRuby ? 0 : 1]; this.bark(['Kim', line]); this.voice('Kim', line); this.showHint(); } }
+            if (I.call) { UI.setAct(I.call); if (UI.hit('act') && callT <= 0) { callT = 2.4; const line = TIRA_CALLS[Math.floor(Math.random() * TIRA_CALLS.length)]; this.bark(['Kim', line]); this.voice('Kim', line); const vol = d < 10 ? 0.16 : d < 28 ? 0.09 : 0.04;
+              setTimeout(() => { this.sound.tone(1500, 0.08, 'sine', vol, 1900); this.sound.tone(1700, 0.08, 'sine', vol, 2100, 0.14); this.bark(d < 10 ? 'A squeak. Very close!' : d < 28 ? 'A faint squeak, not far off.' : 'Something squeaks, a long way away.'); this.showHint(); }, 900); } } }; }
+        await g; UI.setAct(null); this.mode = null; UI.setTimer(null); UI.controlsVisible(false); } }
+          UI.closeDialog(); if (home) { await UI.fade(true, 'And back to Amber…', true); this.asOverride = null; this.refresh(); this.place(home[0], home[1]); this.camYaw = home[2]; await UI.fade(false); }
+    } finally { UI.closeDialog(); UI.setAct(null); this.playS = null; this.mode = null; UI.setTimer(null); this.asOverride = null; this.refresh(); this.showGoal(true); this.busy--; this.save(); } }
   // Ruby fishes the harbour: fish leap from the sea east of the quay, and she takes them on the wing.
   async play_seafish(s) { const W = this.W, R = rnd(Math.floor(this.t) + 5), n = 10, pts = []; while (pts.length < n) { const x = 166 + R() * 62, z = -70 + R() * 170; if (![[175, 0], [182, 60], [190, -55], [149, 36]].some(([sx, sz]) => Math.hypot(x - sx, z - sz) < 16)) pts.push([x, -1.2, z]); }
     await UI.say('', 'Ruby has been watching the harbour all morning. Silver fish are leaping out beyond the quay. Fly low and take them on the wing: ten fish, seventy seconds.'); this.sound.sfx('roar');
