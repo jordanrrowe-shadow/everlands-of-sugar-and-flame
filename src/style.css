@@ -8,6 +8,10 @@ html.fullh, html.fullh body { height: calc(var(--fullh) + 60px); bottom: auto; }
 html.fullh canvas#c { bottom: auto; height: calc(var(--fullh) + 24px); }
 html.fullh #controls, html.fullh #qte, html.fullh #img, html.fullh #fade, html.fullh #card, html.fullh #journal, html.fullh #title, html.fullh #cut { bottom: auto; height: calc(var(--fullh) + 60px); padding-bottom: 60px; box-sizing: border-box; }
 html.fullh #journal { padding-bottom: calc(70px + var(--sb)); }
+/* cut scenes place their portraits and text from the bottom edge, so the scene itself keeps the true height and only its backdrop runs past the edge */
+html.fullh #cut { height: var(--fullh); padding-bottom: 0; overflow: visible; }
+html.fullh #cut .cbg, html.fullh #cut::after { bottom: -60px; }
+html.fullh #card::after { bottom: calc(86px + var(--sb)); } html.fullh #buildTag { bottom: 70px !important; }
 button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; touch-action: manipulation; }
 .hide { display: none !important; }
 
