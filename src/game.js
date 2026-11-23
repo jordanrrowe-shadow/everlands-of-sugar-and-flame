@@ -86,7 +86,7 @@ export class Game {
     this.flameLight = new THREE.PointLight(0xffa040, 0, 14); this.scene.add(this.flameLight);
     this.spark = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), new THREE.MeshBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.9, fog: false })); this.sparks = [];
     UI.initInput(canvas); this.journal = UI.initJournal(this);
-    addEventListener('fullh', () => this.resize()); addEventListener('resize', () => this.resize()); addEventListener('orientationchange', () => setTimeout(() => this.resize(), 250)); this.resize();
+    addEventListener('resize', () => this.resize()); addEventListener('orientationchange', () => setTimeout(() => this.resize(), 250)); this.resize();
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.save(); });
     this.last = performance.now(); const loop = (now) => { requestAnimationFrame(loop); const raw = (now - this.last) / 1000, dt = Math.min(0.05, raw); this.last = now; if (!this.paused && this.started && !navigator.webdriver) { this.ft = (this.ft || 0.016) * 0.97 + raw * 0.03; this.ftT = (this.ftT || 0) + raw; if (this.ftT > 10) { this.ftT = 0; const rs = this.resScale || 1; if (this.ft > 0.045 && rs > 0.7) { this.resScale = rs - 0.15; this.resize(); } } } for (let i = 0; i < (this.warp || 1); i++) this.update(dt); if (this.noRender || this.inCut || this.ctxLost) return; if (this.S.opt.fx !== false) this.composer.render(dt); else this.renderer.render(this.scene, this.cam); }; requestAnimationFrame(loop);
   }

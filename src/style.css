@@ -2,16 +2,10 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #1a0c12; color: var(--ink); font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif; overscroll-behavior: none; touch-action: none; position: fixed; inset: 0; }
 canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-/* iPad and iPhone home-screen apps report a window a status-bar shorter than the screen, which leaves a strip along the bottom.
-   Every full-screen layer is stretched to the real screen height instead (set from main.js). */
-html.fullh, html.fullh body { height: calc(var(--fullh) + 60px); bottom: auto; }
-html.fullh canvas#c { bottom: auto; height: calc(var(--fullh) + 24px); }
-html.fullh #controls, html.fullh #qte, html.fullh #img, html.fullh #fade, html.fullh #card, html.fullh #journal, html.fullh #title, html.fullh #cut { bottom: auto; height: calc(var(--fullh) + 60px); padding-bottom: 60px; box-sizing: border-box; }
-html.fullh #journal { padding-bottom: calc(70px + var(--sb)); }
-/* cut scenes place their portraits and text from the bottom edge, so the scene itself keeps the true height and only its backdrop runs past the edge */
-html.fullh #cut { height: var(--fullh); padding-bottom: 0; overflow: visible; }
-html.fullh #cut .cbg, html.fullh #cut::after { bottom: -60px; }
-html.fullh #card::after { bottom: calc(86px + var(--sb)); } html.fullh #buildTag { bottom: 70px !important; }
+/* Full-screen layers reach the largest height the device offers, without ever resizing the page itself (resizing the page made
+   iPhones shrink the whole game into a corner). Only painted backgrounds are stretched; anything placed from the bottom edge is not. */
+canvas#c, #title, #fade, #card { bottom: auto; height: max(100%, 100vh); height: max(100%, 100lvh); }
+#cut .cbg, #cut::after { bottom: -80px; } #cut { overflow: visible; }
 button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; touch-action: manipulation; }
 .hide { display: none !important; }
 
