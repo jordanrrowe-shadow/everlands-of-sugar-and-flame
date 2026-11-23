@@ -751,7 +751,7 @@ export class Game {
     if (this.nearTorch() && this.fireOK()) anyFlame = true;
     for (const t of this.things) {
       const d = t.def; let q = d.kimTalk ? (cmp ? [cmp.x, cmp.z] : null) : d.at === 'player' ? [p.x, p.z] : W.P[d.at]; if (!q) continue; const dist = Math.hypot(p.x - q[0], p.z - q[1]);
-      if (d.auto) { const inZone = dist < d.auto && (!d.high || p.y > this.H(q[0], q[1]) - 0.8); if (inZone && !this.inside.has(d.id)) { this.inside.add(d.id); if (d.once) f['t_' + d.id] = 1; return this.run(d.script); } if (!inZone) this.inside.delete(d.id); continue; }
+      if (d.auto) { const inZone = (dist < d.auto || (d.box && p.x > d.box[0] && p.x < d.box[1] && p.z > d.box[2] && p.z < d.box[3])) && (!d.high || p.y > this.H(q[0], q[1]) - 0.8); if (inZone && !this.inside.has(d.id)) { this.inside.add(d.id); if (d.once) f['t_' + d.id] = 1; return this.run(d.script); } if (!inZone) this.inside.delete(d.id); continue; }
       if (d.flame) { anyFlame = true; if (d.self || dist < 5) flameT = t; continue; }
       const dd = dist - (d.kimTalk ? 4 : (t.rr ??= this.reach(q, d.r))); if (dd < 0 && dd - 0.5 < bd) { best = t; bd = dd - 0.5; }
     }

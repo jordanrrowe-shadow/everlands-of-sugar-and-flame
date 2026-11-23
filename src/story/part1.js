@@ -254,7 +254,8 @@ const ch3 = {
     { goal: 'Ask her.', hint: 'Go to Ruby. Press your forehead to familiar warmth.', until: 'c3_asked' },
     { goal: 'Fly. Over the harbor, into the fog, and beyond the map.', hint: 'Follow the glowing rings. Keep your eyes on the red along Ruby’s neck.', until: 'c3_landed' },
     { goal: 'A strange forest. See that Ruby is looked after.', hint: 'Listen for water through the striped trees. Then look for shelter in the pale hill behind the lake.', until: 'c3_cave' },
-    { goal: 'Step onto the path. Alone, at first.', hint: 'Leave the second bun where it will be found, then take the path north, bordered by flowers that smell like vanilla.', until: 'c3_end' },
+    { goal: 'Leave the second bun where it will be found.', hint: 'There is a flat stone at the edge of the clearing, back east past the pink lake.', until: 'c3_bun' },
+    { goal: 'Step onto the path. Alone, at first.', hint: 'Take the path north out of the clearing, bordered by flowers that smell like vanilla.', until: 'c3_end' },
   ],
   canWhistle: (f) => f.c3_top && !f.c3_ruby,
   whistle: (f) => f.c3_top && !f.c3_ruby ? [
@@ -313,7 +314,9 @@ const ch3 = {
       [A, 'If they’re kind, I’ll bring them to meet you. I promise. At home everyone knows what a dragon is worth. I’d like someone here to know it too.'],
       'Ruby breathes out, a long warm sigh, and goes into the cave at last.', { set: 'c3_cave' }] },
     { id: 'bun', at: 'bun_stone', label: 'Leave the second bun', if: (f) => f.c3_cave && !f.c3_bun, script: ['She sets the second bun on a flat stone at the edge of the clearing, where it will be found.', { set: 'c3_bun' }] },
-    { id: 'path', at: 'forest_path', auto: 6, if: (f) => f.c3_bun && !f.c3_end, script: [
+    // anywhere on the path counts; if she steps onto it before leaving the bun, she is turned back toward the stone
+    { id: 'path_early', at: 'forest_path', auto: 6, box: [-6, 6, 60, 129], if: (f) => f.c3_cave && !f.c3_bun, script: [[A, 'Not yet. The second bun first: the flat stone at the edge of the clearing.'], { lead: 'The flat stone is back at the edge of the clearing, just south of where the path begins.' }] },
+    { id: 'path', at: 'forest_path', auto: 6, box: [-6, 6, 60, 129], if: (f) => f.c3_bun && !f.c3_end, script: [
       'A breeze comes down the path to meet her, fresh and sweet. It goes straight through her cape as though the cape were not there.',
       [A, 'Seven greetings for people I was never to meet. And all I have is my own name and a wish to be liked.'], { set: 'c3_end' }] },
   ],
