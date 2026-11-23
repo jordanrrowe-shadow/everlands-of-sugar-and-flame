@@ -20,7 +20,7 @@ export function gownDisplay(key, dye, height = 1.6) { const h = hero[key]; if (!
       sh.fragmentShader = 'varying float vGy; uniform float uNeck;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
       { if (vGy > uNeck) discard; vec3 q0 = diffuseColor.rgb, q = pow(max(q0, vec3(0.0)), vec3(0.4545)); float mx = max(q.r, max(q.g, q.b)), mn = min(q.r, min(q.g, q.b)), d = mx - mn, sat = mx > 0.0 ? d / mx : 0.0, hh = 0.0;
         if (d > 0.0001) { hh = mx == q.r ? (q.g - q.b) / d : mx == q.g ? 2.0 + (q.b - q.r) / d : 4.0 + (q.r - q.g) / d; hh = fract(hh / 6.0); }
-        if (abs(fract(hh - ${hh.toFixed(4)} + 0.5) - 0.5) < ${hw.toFixed(4)} && sat > ${hs.toFixed(3)}) discard;
+        if (abs(fract(hh - ${hh.toFixed(4)} + 0.5) - 0.5) < ${hw.toFixed(4)} && sat > ${hs.toFixed(3)} && vGy > uNeck - ${(height * 0.4).toFixed(3)}) discard;
         float skin = (1.0 - smoothstep(0.035, 0.05, abs(fract(hh - 0.06 + 0.5) - 0.5))) * smoothstep(0.16, 0.24, sat) * (1.0 - smoothstep(0.5, 0.58, sat)) * step(0.55, mx);
         float dh = abs(fract(hh - ${hue.toFixed(4)} + 0.5) - 0.5), mk = (1.0 - smoothstep(${width.toFixed(4)}, ${(width + 0.025).toFixed(4)}, dh)) * smoothstep(${satMin.toFixed(3)}, ${(satMin + 0.1).toFixed(3)}, sat) * (1.0 - smoothstep(${satMax.toFixed(3)}, ${(satMax + 0.1).toFixed(3)}, sat));
         vec3 hk = vec3(0.57735), r = clamp(q0 * ${c} + cross(hk, q0) * ${sn} + hk * dot(hk, q0) * (1.0 - ${c}), 0.0, 1.0) * ${(valDown || 1).toFixed(3)}; r = mix(r, vec3(dot(r, vec3(0.3333))), ${gray.toFixed(3)});
