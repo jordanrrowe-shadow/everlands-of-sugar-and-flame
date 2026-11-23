@@ -442,7 +442,7 @@ const ch5 = {
   ruby: (f) => f.c5_night ? 'cave_ruby' : null,
   steps: [
     { goal: 'Meet Kim at the lollipop signpost.', hint: 'She is waiting with Tira.', until: 'c5_start' },
-    { goal: 'Three expeditions, in any order: the Meadows, the Mountains, Sweetlake.', hint: 'Meadows: east of town; bounce up to the sprite. Mountains: north; ride the licorice basket. Sweetlake: north-east; the walnut boats. Ask Kim.', until: 'c5_three', lead: 1 },
+    { goal: 'Three expeditions, in any order: the Meadows, the Mountains, Sweetlake.', hint: 'Meadows: east of town, where the ground bounces; hop up to the sprite. Mountains: north; ride the licorice basket. Sweetlake: north-east; the walnut boats. Ask Kim.', until: 'c5_three', lead: 1, via: ['meadow', 'sprite', 'lift', 'boat'] },
     { goal: 'The best day: the balloon flight.', hint: 'The balloonist waits in the meadow west of the market.', until: 'c5_balloon', lead: 1 },
     { goal: 'Kim is bringing you home for supper.', hint: 'The house stands behind the family workshop, east of the market: the roof with the crooked chimney.', until: 'c5_supper', lead: 1 },
     { goal: 'Walk back to the signpost and say good night.', hint: 'South of the market.', until: 'c5_night' },
@@ -473,7 +473,8 @@ const ch5 = {
       [K, 'He could see you were cold. What else was he supposed to do?'],
       { set: 'c5_sled' }, ...three] },
     { id: 'cider', at: 'lift_cider', talk: [['Cider Seller', 'Hot cider! Warms the nose first, then the toes, then the opinions.']] },
-    { id: 'balloonist', at: 'balloon', talk: (f) => !f.c5_three ? [['Balloonist', 'No flights till the wind’s combed out. Come back another day.']] : f.c5_balloon ? [['Balloonist', 'Most visitors squeak. You didn’t squeak.']] : [
+    { id: 'balloonist', at: 'balloon', talk: (f) => !(f.c5_three || (f.c5_meadow && f.c5_sled && f.c5_lake)) ? [['Balloonist', 'No flights till the wind’s combed out. See the ' + [!f.c5_meadow && 'Marshmallow Meadows', !f.c5_sled && 'Ice Cream Mountains', !f.c5_lake && 'Sweetlake'].filter(Boolean).join(' and the ') + ' first, and come back after.']] : f.c5_balloon ? [['Balloonist', 'Most visitors squeak. You didn’t squeak.']] : [
+      { set: 'c5_three' },
       'The balloons go up a dozen at a time, each an enormous puff of cotton candy tethered over a basket. Kim chooses one shaped like a lavender macaron.',
       ['Balloonist', 'Are you afraid of heights?'], [A, 'No.'], 'With perfect truth.', ['Balloonist', 'Good. Most visitors squeak.'],
       { mini: 'balloon', script: [
@@ -519,6 +520,8 @@ const ch5 = {
       'The sprite squeaks with approval. Tira, who had watched all this with the expression of a creature who had seen better, comes wriggling out of the bag — and the two of them roll down the slope together in a single squeaking ball.',
       [K, 'She never plays with anyone. She thinks it’s beneath her.'], [A, 'Perhaps she’s never been asked properly.'],
       [K, 'You’ve stopped looking over your shoulder.'], [A, 'Was I?'], [K, 'All yesterday. As if someone was going to come and tell you off.'], [A, 'Someone usually does.'],
+      [K, 'One more thing before we go anywhere. A bounce-off! I did ten without stopping, so you have to beat ten.'], [A, 'And if I can’t?'], [K, 'Then we live here now.'],
+      { mini: 'bounce' },
       { set: 'c5_meadow' }, ...three] },
     { id: 'lift', at: 'lift', label: 'Ride the licorice basket', if: (f) => f.c5_start && !f.c5_sled, script: [{ fade: 'The basket swings alarmingly at every post.' }, { tp: 'summit' }, [K, 'It’s colder still up here. The Sweet Breeze begins among these peaks.'], 'Amber turns up the whipped-cream collar until it covers her ears.'] },
     { id: 'boat', at: 'boat', label: 'Take a walnut boat', if: (f) => f.c5_start && !f.c5_lake, script: [

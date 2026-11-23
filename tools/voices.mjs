@@ -19,6 +19,7 @@ const walk = (n) => { if (!n) return; if (typeof n === 'function') return callAl
 walk([p1, p2, p3]);
 const dir = new URL('../public/voice/', import.meta.url).pathname; fs.mkdirSync(dir, { recursive: true });
 console.log(lines.size, 'lines,', [...lines.values()].reduce((a, l) => a + l[1].length, 0), 'characters');
+if (process.env.DUMP) { fs.writeFileSync(process.env.DUMP, JSON.stringify([...lines])); process.exit(0); }
 if (!process.env.ELEVENLABS_API_KEY) { console.log('Set ELEVENLABS_API_KEY to record.'); process.exit(0); }
 // curl is used so the request honours the system proxy settings.
 import { execFileSync } from 'node:child_process';

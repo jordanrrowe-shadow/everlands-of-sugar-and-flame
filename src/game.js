@@ -12,8 +12,8 @@ import { initGltf } from './gltf.js';
 import { playCut, WHO as CUTWHO } from './cut.js';
 import { makeRoom, deckZone } from './rooms.js';
 const PLAYS = {
-  sugar: [{ id: 'stars', at: [95, 43], label: 'Star-hop the Marshmallow Meadows' }, { id: 'turtles', at: [-90, 33], label: 'Turtle round-up' }, { id: 'sled', at: [-5.5, -89], label: 'Sled the Ice Cream Mountain' },
-    { id: 'tira', at: [-7, 14], label: 'Tira’s crumb hunt' }, { id: 'kim', at: [24, 3], label: 'Kim’s delivery round' }, { id: 'rubyfish', at: [-22, 141], label: 'Meanwhile, Ruby…', rings: [[-32, 8, 124], [-8, 12, 112], [22, 14, 126], [30, 12, 150], [5, 10, 162], [-26, 12, 156], [-52, 17, 166], [-32, 8, 124]] },
+  sugar: [{ id: 'stars', at: [95, 43], label: 'Star-hop the Marshmallow Meadows' }, { id: 'bounce', at: [93, 28], label: 'Bounce-off with Kim' }, { id: 'turtles', at: [-90, 33], label: 'Turtle round-up' }, { id: 'sled', at: [-5.5, -89], label: 'Sled the Ice Cream Mountain' },
+    { id: 'tira', at: [-7, 14], label: 'Tira’s crumb hunt' }, { id: 'outfit', at: [-11, 48], label: 'Madame Praline’s secret order' }, { id: 'kim', at: [24, 3], label: 'Kim’s delivery round' }, { id: 'rubyfish', at: [-22, 141], label: 'Meanwhile, Ruby…', rings: [[-32, 8, 124], [-8, 12, 112], [22, 14, 126], [30, 12, 150], [5, 10, 162], [-26, 12, 156], [-52, 17, 166], [-32, 8, 124]] },
     { id: 'rings', at: [14, 132], label: 'Ring flight with Ruby', ruby: 1, rings: [[0, 34, 100], [-38, 44, 30], [-60, 52, -40], [0, 66, -96], [42, 62, -70], [86, 44, -62], [108, 48, 10], [40, 36, 90]] }],
   ember: [{ id: 'lanterns', at: [11, 47], label: 'Lantern dash' },
     { id: 'rings', at: [-22, 16], label: 'Ring flight with Ruby', ruby: 1, rings: [[-58, 40, -8], [-52, 48, -52], [-34, 56, -78], [0, 64, -112], [34, 56, -78], [52, 50, -58], [58, 42, -6], [0, 34, 34]] }],
@@ -154,6 +154,7 @@ export class Game {
   cond(c) { if (c === undefined || c === null) return true; if (typeof c === 'string') return c[0] === '!' ? !this.f[c.slice(1)] : !!this.f[c]; if (Array.isArray(c)) return c.every((x) => this.cond(x)); return !!c(this.f, this); }
   look(id) {
     const f = this.f, L = { ...CAST[id] };
+    if (id === 'kim' && this.S.vis.kimTira && this.S.opt.tira !== false) L.tiraFit = 1;
     if (id === 'amber') { if (f.coat && !f.coatOff) Object.assign(L, { top: 0xfff1d6, skirt: 0xfbe6c2, trim: 0xe9b949, collar: 0xffffff, cape: 0, sleeve: 0xfff1d6 }); if (!f.cape || f.c17_cape || this.S.opt.cape === false) L.cape = 0; }
     if (id === 'kim') { L.tira = 1; if (f.c17_cape) L.cape = 0xa3182c; }
     return L;
@@ -264,7 +265,7 @@ export class Game {
     }
   }
   // Recorded voice lines: public/voice/<id>.mp3, listed in public/voice/index.json (see tools/voices.mjs).
-  voice(name, text) { if (!this.S.opt.sound) return; if (!this.voiceSet) { this.voiceSet = new Set(); fetch('voice/index.json').then((r) => r.json()).then((a) => (this.voiceSet = new Set(a))).catch(() => {}); return; } const id = hash(name + '|' + text); if (!this.voiceSet.has(id)) return; const a = (this.voiceEl = this.voiceEl || new Audio()); a.src = 'voice/' + id + '.mp3'; a.play().catch(() => {}); }
+  voice(name, text) { if (!this.S.opt.sound) return; if (!this.voiceSet) { this.voiceSet = new Set(); fetch('voice/index.json').then((r) => r.json()).then((a) => (this.voiceSet = new Set(a))).catch(() => {}); return; } const id = hash(name + '|' + text); if (!this.voiceSet.has(id)) return; const a = (this.voiceEl = this.voiceEl || new Audio()); a.src = 'voice/' + id + '.mp3?v=2'; a.play().catch(() => {}); }
   // The reply you tap is spoken aloud by the character you are playing (unless it is a silent action or thought).
   async speakChoice(text, next) { const who = this.player.who === 'kim' ? 'Kim' : 'Amber', sp = spokenLine(text, who); if (!sp) return; const first = Array.isArray(next) && next.find((x) => x && typeof x !== 'object' || Array.isArray(x)); if (Array.isArray(first) && first[0] === sp[0] && first[1].startsWith(sp[1].slice(0, 24))) return; this.sound.sfx('page'); this.voice(sp[0], sp[1]); await UI.say(sp[0], sp[1]); this.voiceEl?.pause(); }
   speaker(name) { const n = this.npcs.find((x) => x.name === name); if (n) { n.face(this.player.x, this.player.z); if (!this.riding) this.player.tyaw = Math.atan2(n.x - this.player.x, n.z - this.player.z); } }
@@ -377,11 +378,11 @@ export class Game {
       return false; };
     const live = (src) => { try { return typeof src === 'function' ? src(f, this) : src; } catch (e) { return null; } };
     const c = [], p = this.player;
-    for (const t of this.things) { const d = t.def; if (d.at === 'player') continue; const q = this.pt(d.at); if (q) c.push({ x: q[0], z: q[1], src: d.script, label: d.label }); }
+    for (const t of this.things) { const d = t.def; if (d.at === 'player') continue; const q = this.pt(d.at); if (q) c.push({ x: q[0], z: q[1], src: d.script, label: d.label, id: d.id, thing: 1 }); }
     for (const n of this.npcs) if (n.def.talk) { const sc = live(n.def.talk); if (sc) c.push({ x: n.x, z: n.z, src: n.def.talk, now: sc, label: n.name }); }
     if (this.ruby?.model.visible && !this.riding && this.ruby.state === 'idle') c.push({ x: this.ruby.x, z: this.ruby.z, src: null, label: 'Ruby', ruby: 1 });
     const near = (l) => l.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z))[0];
-    const sure = c.filter((k) => { seen.clear(); return has(k.now || live(k.src)); }); if (sure.length) return near(sure);
+    const sure = c.filter((k) => { seen.clear(); return has(k.now || live(k.src)) || (k.thing && st.via?.includes(k.id)); }); if (sure.length) return near(sure);
     const maybe = c.filter((k) => { seen.clear(); return has(k.src); }); if (maybe.length) return near(maybe);
     return c.length ? near(c) : null;
   }
@@ -433,7 +434,7 @@ export class Game {
     const r = await new Promise((res) => { this.playS = { t: time, time, end: (why) => { for (const t of ts) this.scene.remove(t.m); this.playS = null; res({ got, left: this.playLeft, why }); }, tick: (dt) => { for (const t of ts) { if (t.home) { t.m.position.y -= dt * 0.6; t.m.scale.multiplyScalar(1 - dt); continue; } const d = Math.hypot(p.x - t.x, p.z - t.z); let vx = 0, vz = 0, sp = 1.2;
           if (d < 1.4) { t.home = true; got++; this.sound.sfx('boing'); this.puff(t.x, W.height(t.x, t.z) + 0.5, t.z, 0xbfe3a0, 14, 0.7, 1.5, 0.8); setTimeout(() => (t.m.visible = false), 900); continue; }
           if (d < 7) { vx = (t.x - p.x) / d; vz = (t.z - p.z) / d; sp = 4.9; const side = Math.sin(this.t * 2 + t.yaw) * 0.6; [vx, vz] = [vx - vz * side, vz + vx * side]; } else { if ((t.w -= dt) <= 0) { t.w = 1.5 + Math.random() * 2; const a = Math.random() * 6.283; t.tx = cx + Math.cos(a) * 9; t.tz = cz + Math.sin(a) * 9; } const k = Math.hypot(t.tx - t.x, t.tz - t.z) || 1; vx = (t.tx - t.x) / k; vz = (t.tz - t.z) / k; }
-          const out = Math.hypot(t.x - cx, t.z - cz); if (out > 13) { vx += (cx - t.x) / out * 1.6; vz += (cz - t.z) / out * 1.6; } const n = Math.hypot(vx, vz) || 1, [nx, nz] = this.collide(t.x + vx / n * sp * dt, t.z + vz / n * sp * dt, 0.5); t.yaw = Math.atan2(nx - t.x, nz - t.z); t.x = nx; t.z = nz; t.m.position.set(t.x, W.height(t.x, t.z) + Math.abs(Math.sin(this.t * 9 + t.yaw)) * 0.06, t.z); t.m.rotation.y = t.yaw; }
+          const out = Math.hypot(t.x - cx, t.z - cz); if (out > 13) { vx += (cx - t.x) / out * 1.6; vz += (cz - t.z) / out * 1.6; } const n = Math.hypot(vx, vz) || 1, [nx, nz] = this.collide(t.x + vx / n * sp * dt, t.z + vz / n * sp * dt, 0.5); t.yaw = Math.atan2(nx - t.x, nz - t.z); t.x = nx; t.z = nz; t.m.position.set(t.x, W.height(t.x, t.z) + Math.abs(Math.sin(this.t * 9 + t.yaw)) * 0.06, t.z); this.faceSprite(t.m.children[0], Math.sin(t.yaw), Math.cos(t.yaw)); }
         UI.setTimer(`Turtles ${got}/6`, this.playS.t / time); if (got >= 6) this.playS.end('all'); } }; this.playLeft = time; });
     return { score: r.got * 100 + Math.round(Math.max(0, r.left)), cinders: r.got / 2, fmt: (v) => Math.floor(v / 100) + ' turtles', text: r.got >= 6 ? `All six safely home, with ${Math.round(r.left)} seconds left!` : `${r.got} of 6 turtles sent home.` }; }
   async play_sled(s) { const W = this.W, R = rnd(Math.floor(this.t * 10) + 3), items = []; for (let z = -148; z < -106; z += 3.4) { const x = -10 + R() * 20; items.push([x, W.height(x, z) + 1.1, z]); }
@@ -454,6 +455,16 @@ export class Game {
     const r = await this.collectGame({ items: doors.map((d) => [d.x, W.height(d.x, d.z) + 1.2, d.z]), time: 75, label: 'Deliveries', color: 0xff8ab8, reach: 2 });
     this.asOverride = null; this.refresh(); this.place(s.at[0], s.at[1] + 2);
     return { score: r.got * 100 + Math.round(Math.max(0, r.left)), cinders: r.got / 2, fmt: (v) => Math.floor(v / 100) + ' doorsteps', text: r.got >= 8 ? `All eight delivered warm, with ${Math.round(r.left)} seconds in hand.` : `${r.got} of 8 boxes delivered.` }; }
+  // A side quest: gather the finishing touches for the tiramisu dress Madame Praline has made to match Tira. Kim keeps the outfit.
+  async play_outfit(s) { const W = this.W, V = this.S.vis, P = 'Madame Praline', pts = [[-7, 30], [9, 42], [-13, 7], [24, 3], [5, 33], [-2, 22]];
+    if (V.kimTira) { await UI.say(P, 'It suits her, and I do not say that lightly. Wear it or do not, dear; a good dress keeps.'); this.S.opt.tira = this.S.opt.tira === false; this.refresh(); await UI.say('', this.S.opt.tira === false ? 'Kim changes back into her pink dress.' : 'Kim puts the tiramisu dress back on.'); this.save(); return null; }
+    await UI.say(P, 'Not a word to anyone. I have made Kimbrûlée a dress to match that creature of hers: cream ruffles, a dusting of cocoa, and a hat like a caramel flower.');
+    await UI.say(P, 'It wants six finishing touches and I cannot leave the shop. Maroon ribbon, cocoa, brûlée sugar, gold beads, a satchel buckle and bootlaces. They are waiting about the village. Ninety seconds, before the cream sets.');
+    this.asOverride = 'kim'; this.refresh(); this.place(s.at[0], s.at[1] + 2);
+    const r = await this.collectGame({ items: pts.map(([x, z]) => [x, W.height(x, z) + 1.1, z]), time: 90, label: 'Finishing touches', color: 0xc98a4a, reach: 2.2 });
+    if (r.got >= pts.length) { V.kimTira = 1; this.S.opt.tira = true; } this.asOverride = null; this.refresh(); this.place(s.at[0], s.at[1] + 2);
+    if (V.kimTira) { await UI.say(P, 'Arms out. There. Oh, look at the pair of you.'); await UI.say('Kim', 'Tira, we match! We actually match!'); this.save(); }
+    return { score: r.got * 100 + Math.round(Math.max(0, r.left)), cinders: r.got / 2, fmt: (v) => Math.floor(v / 100) + ' pieces', text: r.got >= pts.length ? 'Kim has a new outfit: the Tira dress. Visit Madame Praline’s marker again to change back and forth.' : `${r.got} of ${pts.length} finishing touches found. Madame Praline needs all six.` }; }
   async play_rubyfish(s) { const t0 = this.t; await UI.say('', 'Meanwhile, Ruby has the forest to herself. The strawberry lake is full of slow pink fish, and nobody is watching. Skim the eight rings, low over the water and the striped trees.'); this.sound.sfx('roar');
     await this.fly({ solo: 1, rings: s.rings, start: [-40, this.W.height(-40, 138) + 9, 138], land: [s.at[0], s.at[1] + 4] }); const secs = Math.round(this.t - t0);
     return { score: -secs, cinders: Math.max(1, 6 - secs / 20), fmt: (v) => -v + ' seconds', text: `Eight rings in ${secs} seconds, and a chin dripping pink.` }; }
@@ -491,7 +502,7 @@ export class Game {
         for (let i = 0; i < 9; i++) L.fl.push({ s: add(sprite('butterfly', 0.5)), ph: i * 1.9, ox: Math.cos(i * 2.4) * (6 + i), oz: Math.sin(i * 2.4) * (6 + i) }); }
       else for (let i = 0; i < 8; i++) L.fl.push({ s: add(sprite('ember', 0.55)), ph: i * 1.9, ox: Math.cos(i * 2.4) * (5 + i * 1.5), oz: Math.sin(i * 2.4) * (5 + i * 1.5), ember: 1 }); }
     const L = W.life, p = this.player; L.g.visible = !this.zone;
-    for (const q of L.turtles) { q.a += dt * q.sp; const x = -116 + Math.cos(q.a) * q.r, z = 20 + Math.sin(q.a) * q.r; q.s.position.set(x, Math.max(-1.95, W.height(x, z)) + Math.abs(Math.sin(t * 2 + q.a * 9)) * 0.05, z); }
+    for (const q of L.turtles) { q.a += dt * q.sp; const x = -116 + Math.cos(q.a) * q.r, z = 20 + Math.sin(q.a) * q.r; this.faceSprite(q.s, x - q.s.position.x, z - q.s.position.z); q.s.position.set(x, Math.max(-1.95, W.height(x, z)) + Math.abs(Math.sin(t * 2 + q.a * 9)) * 0.05, z); }
     for (const q of L.fish) { const cyc = (t * 0.22 + q.ph) % 1, up = cyc < 0.22 ? Math.sin(cyc / 0.22 * Math.PI) : 0, a = q.a + Math.floor(t * 0.22 + q.ph) * 2.1; q.s.visible = up > 0; q.s.position.set(-32 + Math.cos(a) * q.r + cyc * 3, W.height(-32, 124) + 0.1 + up * 1.5, 124 + Math.sin(a) * q.r); q.s.material.rotation = (0.5 - cyc / 0.22) * 1.2; if (up > 0 && cyc < 0.02 && Math.hypot(p.x + 32, p.z - 124) < 30 && !q.sp) { q.sp = 1; this.puff(q.s.position.x, q.s.position.y, q.s.position.z, 0xffc8dc, 8, 0.5, 1.4, 0.6); } if (!up) q.sp = 0; }
     const night = this.nightNow(); for (const q of L.fl) { const on = q.ember ? night || (this.kL ?? 1) < 0.8 : !night; q.s.visible = on; if (!on) continue; const cx = q.ember ? (Math.hypot(p.x, p.z - 86) < 60 ? 0 : p.x) : p.x, cz = q.ember ? (Math.hypot(p.x, p.z - 86) < 60 ? 86 : p.z) : p.z, x = cx + q.ox + Math.sin(t * 0.5 + q.ph) * 3, z = cz + q.oz + Math.cos(t * 0.4 + q.ph * 1.3) * 3; q.s.position.set(x, W.height(x, z) + (q.ember ? 2.4 : 1.2) + Math.sin(t * 1.7 + q.ph) * 0.7, z); q.s.scale.setScalar((q.ember ? 0.55 : 0.5) * (0.85 + 0.15 * Math.sin(t * (q.ember ? 3 : 11) + q.ph))); }
     // painted sky band
@@ -520,14 +531,19 @@ export class Game {
       n.fx.rotation.set(1.1 + Math.sin(t * 3 + ph) * 0.5, t * 5 + ph, 0); if (still) return;
       m.position.set(n.x + Math.cos(t * 0.9 + ph) * 1.5, n.y + Math.abs(Math.sin(t * 5 + ph)) * 0.22, n.z + Math.sin(t * 0.9 + ph) * 1.5); m.rotation.y = t * 2.6 + ph; }
   }
-  updateTira(dt) { // Kim's little creature: sometimes rides in the bag, sometimes scurries about beside her
+  faceSprite(s, vx, vz) { if (!s || !s.isSprite || Math.hypot(vx, vz) < 1e-5) return; const e = this.cam.matrixWorld.elements, side = vx * e[0] + vz * e[2]; if (Math.abs(side) > 1e-5) s.scale.x = Math.abs(s.scale.x) * (side < 0 ? -1 : 1); }
+  updateTira(dt) { // Kim's ferret: sometimes rides in the bag, sometimes comes out to potter about. She sits and watches unless Kim gets ahead of her.
     const k = this.comp?.id === 'kim' ? this.comp : this.player.who === 'kim' ? this.player : null;
-    if (!this.tira) { this.tira = { m: makeProp('tira'), out: false, t: 6, x: 0, z: 0, yaw: 0, tx: 0, tz: 0, w: 0 }; this.tira.m.visible = false; this.scene.add(this.tira.m); }
+    if (!this.tira) { this.tira = { m: makeProp('tira'), out: false, t: 6, x: 0, z: 0, yaw: 0, tx: 0, tz: 0, w: 0, go: false }; this.tira.m.visible = false; this.scene.add(this.tira.m); }
     const T = this.tira; if (!k || this.riding || this.mode || this.zone?.deck) { T.m.visible = false; T.out = false; return; }
-    if ((T.t -= dt) <= 0) { T.out = !T.out; T.t = T.out ? 16 + Math.random() * 16 : 9 + Math.random() * 10; if (T.out) { T.x = k.x + 0.5; T.z = k.z; this.sound.tone(1500, 0.08, 'sine', 0.05, 1900); } }
+    if ((T.t -= dt) <= 0) { T.out = !T.out; T.t = T.out ? 22 + Math.random() * 18 : 9 + Math.random() * 10; if (T.out) { T.x = k.x + 0.5; T.z = k.z; T.tx = T.x; T.tz = T.z; T.go = false; T.w = 4; this.sound.tone(1500, 0.08, 'sine', 0.05, 1900); } }
     if (!T.out) { T.m.visible = false; return; }
-    if ((T.w -= dt) <= 0 || Math.hypot(T.tx - k.x, T.tz - k.z) > 3.6) { T.w = 0.8 + Math.random() * 1.6; const a = Math.random() * 6.283, r = 1 + Math.random() * 1.6; T.tx = k.x + Math.sin(a) * r; T.tz = k.z + Math.cos(a) * r; }
-    const d = Math.hypot(T.tx - T.x, T.tz - T.z); let hop = 0; if (d > 6) { T.x = k.x + 0.6; T.z = k.z + 0.4; } else if (d > 0.15) { const sp = Math.min(d, (d > 2.5 ? 8 : 3.6) * dt), [nx, nz] = this.collide(T.x + (T.tx - T.x) / d * sp, T.z + (T.tz - T.z) / d * sp, 0.2); T.yaw = Math.atan2(nx - T.x, nz - T.z); T.x = nx; T.z = nz; hop = Math.abs(Math.sin(this.t * 14)) * 0.13; }
+    const dk = Math.hypot(k.x - T.x, k.z - T.z);
+    if (dk > 9) { T.x = k.x + 0.6; T.z = k.z + 0.4; T.go = false; }
+    else if (!T.go && (dk > 3.2 || (T.w -= dt) <= 0)) { const a = dk > 3.2 ? Math.atan2(T.x - k.x, T.z - k.z) + (Math.random() - 0.5) : Math.random() * 6.283, r = 1.1 + Math.random() * 0.7; T.tx = k.x + Math.sin(a) * r; T.tz = k.z + Math.cos(a) * r; T.go = true; T.w = 5 + Math.random() * 6; }
+    let hop = 0, d = Math.hypot(T.tx - T.x, T.tz - T.z);
+    if (T.go && d > 0.2) { const sp = Math.min(d, (dk > 5 ? 7 : 3.2) * dt), [nx, nz] = this.collide(T.x + (T.tx - T.x) / d * sp, T.z + (T.tz - T.z) / d * sp, 0.2), mv = Math.hypot(nx - T.x, nz - T.z); if (mv > 0.004) T.yaw += wrap(Math.atan2(nx - T.x, nz - T.z) - T.yaw) * Math.min(1, dt * 10); else T.go = false; T.x = nx; T.z = nz; hop = Math.abs(Math.sin(this.t * 12)) * 0.1; }
+    else { T.go = false; T.yaw += wrap(Math.atan2(k.x - T.x, k.z - T.z) - T.yaw) * Math.min(1, dt * 3); }
     T.m.visible = true; T.m.position.set(T.x, this.H(T.x, T.z) + hop, T.z); T.m.rotation.y = T.yaw; T.m.scale.setScalar(1.25);
   }
   updateHint(dt) {
@@ -565,6 +581,16 @@ export class Game {
   }
 
   // ───────── minigames ─────────
+  // The bounce-off: every bounce counts, but not twice running on the same marshmallow. Kim finishes on ten.
+  bounceRound(time) { const p = this.player; this.place(101, 36); this.mode = 'play'; UI.controlsVisible(true); let got = 0, last = -1;
+    return new Promise((res) => { this.playS = { t: time, time, end: () => { this.playS = null; this.mode = null; UI.setTimer(null); res(got); }, onBounce: (i) => { if (i === last) return; last = i; got++; this.sound.sfx('ring'); this.puff(p.x, p.y + 0.4, p.z, 0xffe08a, 10, 0.7, 1.6, 0.7); },
+      tick: () => { const S = this.playS, kim = Math.min(10, Math.floor((1 - S.t / time) * 10.6)); UI.setTimer(`You ${got} · Kim ${kim}`, S.t / time); } }; this.playLeft = time; }); }
+  async mini_bounce() { let time = 40; if (navigator.webdriver && !window.__playBounce) return;
+    for (;;) { UI.tip('Hop from one marshmallow to the next. The same one twice running does not count.', 6); const got = await this.bounceRound(time); UI.controlsVisible(false);
+      if (got > 10) { await UI.say('Kim', `${got}! All right. All right! You win, and I am never telling anyone.`); return; }
+      await UI.say('Kim', got >= 8 ? `${got}. So close! I did ten. Again, and bend your knees this time.` : `${got}. I did ten! Again. A different marshmallow every time, remember.`); time += 8; } }
+  async play_bounce() { await UI.say('Kim', 'Bounce-off! Forty seconds. I always get ten, so there is your number to beat.'); const got = await this.bounceRound(40);
+    return { score: got, cinders: got / 4, fmt: (v) => v + ' bounces', text: got > 10 ? `${got} bounces to Kim’s ten. She demands a rematch.` : `${got} bounces. Kim got ten, and is being unbearable about it.` }; }
   async mini_sled() {
     const p = this.player, W = this.W; this.place(0, -156); this.mode = 'sled'; this.sledV = 4; this.camYaw = 0; UI.controlsVisible(true); UI.tip('Lean with the left thumb. The mountain decides the rest.', 5);
     await new Promise((res) => (this.sledDone = res)); this.mode = null; UI.controlsVisible(false); this.sound.sfx('hit'); this.shake = 0.6; this.puff(p.x, p.y + 1, p.z, 0xffffff, 30); await wait(0.8);
@@ -665,12 +691,14 @@ export class Game {
     if (p.tyaw !== undefined) p.yaw += wrap(p.tyaw - p.yaw) * Math.min(1, dt * 12);
     const h = this.H(p.x, p.z);
     if (free && UI.hit('jump') && p.ground) { p.vy = 8.6; p.ground = false; }
-    if (!p.ground || p.y > h + 0.05) { p.vy -= 24 * dt; p.y += p.vy * dt; p.ground = false; if (p.y <= h) { const fell = p.vy; p.y = h; p.ground = true; p.vy = 0; if (fell < -3 && this.onBouncer(p.x, p.z)) { p.vy = 13.6; p.ground = false; p.y += 0.02; this.sound.sfx('boing'); } } }
+    if (!p.ground || p.y > h + 0.05) { p.vy -= 24 * dt; p.y += p.vy * dt; p.ground = false; if (p.y <= h) { const fell = p.vy; p.y = h; p.ground = true; p.vy = 0; if (fell < -3 && this.onBouncer(p.x, p.z)) { p.vy = 13.6; p.ground = false; p.y += 0.02; this.sound.sfx('boing'); this.playS?.onBounce?.((this.W.bouncers || []).findIndex((b) => (p.x - b[0]) ** 2 + (p.z - b[1]) ** 2 < b[2] * b[2])); } } }
     else p.y = h;
     p.model.userData.pose = this.mode === 'med' ? 'sit' : p.ground ? null : 'air'; p.model.position.set(p.x, p.y, p.z); p.model.rotation.y = p.yaw; if (p.model.userData.critter) p.model.position.y += moving && p.ground ? Math.abs(Math.sin(this.t * 16)) * 0.14 : 0; else animPerson(p.model, dt, moving && p.ground);
   }
   onBouncer(x, z) { for (const b of this.W.bouncers || []) if ((x - b[0]) ** 2 + (z - b[1]) ** 2 < b[2] * b[2]) return true; return false; }
-  updateSled(dt, mx) { const p = this.player; this.sledV = Math.min(27, this.sledV + dt * 9); p.z += this.sledV * dt; p.x = clamp(p.x + mx * 13 * dt, -13, 13); p.y = this.H(p.x, p.z) + 0.2; p.yaw = mx * 0.5; p.model.position.set(p.x, p.y, p.z); p.model.rotation.set(-0.35, p.yaw, 0); if (this.comp) { this.comp.x = p.x + 3.4; this.comp.z = p.z + 4; } if (Math.random() < 0.5) this.puff(p.x, p.y, p.z - 0.5, 0xffffff, 2, 0.6, 1.5, 0.6); if (p.z > -101) { p.model.rotation.set(0, 0, 0); this.sledDone?.(); this.sledDone = null; } }
+  updateSled(dt, mx) { const p = this.player; this.sledV = Math.min(10.5, this.sledV + dt * 2.6); p.z += this.sledV * dt; p.x = clamp(p.x + mx * 8.5 * dt, -13, 13); p.y = this.H(p.x, p.z) + 0.34; p.yaw = mx * 0.4; p.model.position.set(p.x, p.y, p.z); p.model.rotation.set(-0.22, p.yaw, 0);
+    if (!this.sledM) { const g = (this.sledM = new THREE.Group()); g.add(part(GEO.box, 0xe2a548, 0, 0.06, 0, 1.5, 0.14, 2.3), part(GEO.cyl, 0xe2a548, 0, 0.2, 1.15, 1.5, 0.36, 0.36)); g.children[1].rotation.z = Math.PI / 2; for (let i = -2; i <= 2; i++) { g.add(part(GEO.box, 0xb9742a, i * 0.3, 0.15, 0, 0.07, 0.06, 2.2)); g.add(part(GEO.box, 0xb9742a, 0, 0.15, i * 0.46, 1.4, 0.06, 0.07)); } for (const sx of [-1, 1]) g.add(part(GEO.box, 0xf4ead8, sx * 0.62, -0.05, 0, 0.1, 0.12, 2.5)); this.scene.add(g); }
+    this.sledM.visible = true; this.sledM.position.set(p.x, p.y - 0.28, p.z); this.sledM.rotation.set(-0.12, p.yaw, mx * -0.12); if (this.comp) { this.comp.x = p.x + 3.4; this.comp.z = p.z + 4; } if (Math.random() < 0.5) this.puff(p.x, p.y, p.z - 0.5, 0xffffff, 2, 0.6, 1.5, 0.6); if (p.z > -101) { p.model.rotation.set(0, 0, 0); this.sledM.visible = false; this.sledDone?.(); this.sledDone = null; } }
   updateComp(dt) {
     const c0 = this.comp, st = this.curStep();
     if (st?.lead && !this.busy) { // Kim walks ahead to the next place and waits for you to catch up
