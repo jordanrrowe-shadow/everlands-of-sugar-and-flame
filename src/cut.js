@@ -12,7 +12,7 @@ const CAST = ['amber', 'kim', 'ruby', 'king', 'praline'];
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // Creatures the story mentions appear in the scene as it does: [what the line says, the picture].
 // The ruby whistle shows when it is mentioned, and Ruby herself comes into the middle of the scene when both sides are already taken.
-const CREATURES = [[/whistle/i, '/art/cut/item-whistle.webp', 'item'], [/\bRuby\b|\bdragon\b/i, 'ruby', 'big'], [/\bCinder\b|emberwing|\bhound\b/i, '/art/cut/creature-cinder.webp'], [/bonbon sprite|\bsprite\b/i, '/art/cut/creature-sprite.webp'], [/turtle/i, '/art/sprite/turtle.webp'], [/\bcat\b|\bkitten\b|purr/i, '/art/cut/creature-cat.webp'], [/\bfish\b/i, '/art/sprite/fish.webp'], [/butterfl/i, '/art/sprite/butterfly.webp']];
+const CREATURES = [[/whistle/i, '/art/cut/item-whistle.webp', 'item'], [/\bRuby\b/, 'ruby', 'big'], [/\bCinder\b|emberwing|\bhound\b/i, '/art/cut/creature-cinder.webp'], [/bonbon sprite|\bsprite\b/i, '/art/cut/creature-sprite.webp'], [/turtle/i, '/art/sprite/turtle.webp'], [/\bcat\b|\bkitten\b|purr/i, '/art/cut/creature-cat.webp'], [/\bfish\b/i, '/art/sprite/fish.webp'], [/butterfl/i, '/art/sprite/butterfly.webp']];
 const creatureIn = (line) => CREATURES.find(([re]) => re.test(line));
 const rubyMood = (line) => (/laugh|pleased|delight|happy|purr|warm|nuzzl|press/i.test(line) ? 'happy' : /look|tilt|sniff|watch|curious|blink|peer|eye/i.test(line) ? 'curious' : 'soft');
 // Amber's portraits follow what she is wearing (the cream coat), and Kim's follow her tiramisu outfit once she has it.
@@ -39,7 +39,8 @@ export async function playCut(list, G) {
       if (typeof n === 'string' || Array.isArray(n)) {
         const who = Array.isArray(n) ? n[0] : '', line = Array.isArray(n) ? n[1] : n, k = WHO[who];
         for (const id of ['cutL', 'cutR']) { $(id).classList.toggle('talk', !!k && slot[id] === k); $(id).classList.toggle('dim', !!who && slot[id] !== k); }
-        { const hit = creatureIn(line), isRuby = hit && hit[1] === 'ruby', cr = !hit || (isRuby && (where('ruby') || !(slot.cutL && slot.cutR))) ? null : isRuby ? `/art/cut/ruby-${rubyMood(line)}.webp` : hit[1]; if (isRuby && !cr && !where('ruby') && !slot.cutR) show('ruby', rubyMood(line));
+        { // Ruby only comes into a scene she is really in: close by and in sight, or carrying them
+          const rubyHere = !!G.riding || (G.ruby?.model.visible && !G.zone && Math.hypot(G.ruby.x - G.player.x, G.ruby.z - G.player.z) < 45); let hit = creatureIn(line); if (hit && hit[1] === 'ruby' && !rubyHere) hit = CREATURES.slice(2).find(([re]) => re.test(line)); const isRuby = hit && hit[1] === 'ruby', cr = !hit || (isRuby && (where('ruby') || !(slot.cutL && slot.cutR))) ? null : isRuby ? `/art/cut/ruby-${rubyMood(line)}.webp` : hit[1]; if (isRuby && !cr && !where('ruby') && !slot.cutR) show('ruby', rubyMood(line));
           if (cr) { if (beast.dataset.src !== cr) { beast.dataset.src = cr; beast.src = cr; } beast.classList.remove('in'); void beast.offsetWidth; beast.className = 'in ' + (hit[2] || ''); beastN = 0; if (hit[2] === 'big') G.sound.grunt(0.6, /happy/.test(cr) ? 3 : /curious/.test(cr) ? 2 : 1); else G.sound.sfx(hit[2] === 'item' ? 'chime' : 'boing'); }
           else if (isRuby && (where('ruby') || beast.classList.contains('big'))) G.sound.grunt(0.5); else if (beast.classList.contains('in') && ++beastN > 7) beast.classList.remove('in'); if (/\bTira\b/.test(line) && !tira.classList.contains('in')) setTira('happy'); }
         tira.classList.toggle('dim', !!who); box.classList.toggle('focusL', !!k && slot.cutL === k); box.classList.toggle('focusR', !!k && slot.cutR === k);

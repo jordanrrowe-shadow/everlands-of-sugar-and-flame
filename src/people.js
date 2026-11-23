@@ -74,12 +74,12 @@ function makeHero(L, key) {
   body.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; o.material.envMapIntensity = 0.45; o.material.metalness = 0; o.material.roughness = 0.85; } });
   if (L.tint) body.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.color.set(L.tint); } });
   // A dyed gown: turn only the cloth's own colour round the wheel, leaving skin, hair and trim as they are.
-  if (L.dye) { const [shift, hue, width, satMin, valDown, satMax = 2] = L.dye, a = shift * 6.2832, c = Math.cos(a).toFixed(4), sn = Math.sin(a).toFixed(4);
+  if (L.dye) { const [shift, hue, width, satMin, valDown, satMax = 2, gray = 0] = L.dye, a = shift * 6.2832, c = Math.cos(a).toFixed(4), sn = Math.sin(a).toFixed(4);
     body.traverse((o) => { if (!o.isMesh) return; o.material = o.material.clone(); o.material.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
       { vec3 q0 = diffuseColor.rgb, q = pow(max(q0, vec3(0.0)), vec3(0.4545)); float mx = max(q.r, max(q.g, q.b)), mn = min(q.r, min(q.g, q.b)), d = mx - mn, sat = mx > 0.0 ? d / mx : 0.0, hh = 0.0;
         if (d > 0.0001) { hh = mx == q.r ? (q.g - q.b) / d : mx == q.g ? 2.0 + (q.b - q.r) / d : 4.0 + (q.r - q.g) / d; hh = fract(hh / 6.0); }
         float dh = abs(fract(hh - ${hue.toFixed(4)} + 0.5) - 0.5), m = (1.0 - smoothstep(${width.toFixed(4)}, ${(width + 0.025).toFixed(4)}, dh)) * smoothstep(${satMin.toFixed(3)}, ${(satMin + 0.1).toFixed(3)}, sat) * (1.0 - smoothstep(${satMax.toFixed(3)}, ${(satMax + 0.1).toFixed(3)}, sat));
-        vec3 hk = vec3(0.57735), r = clamp(q0 * ${c} + cross(hk, q0) * ${sn} + hk * dot(hk, q0) * (1.0 - ${c}), 0.0, 1.0) * ${(valDown || 1).toFixed(3)}; diffuseColor.rgb = mix(q0, r, m); }`); };
+        vec3 hk = vec3(0.57735), r = clamp(q0 * ${c} + cross(hk, q0) * ${sn} + hk * dot(hk, q0) * (1.0 - ${c}), 0.0, 1.0) * ${(valDown || 1).toFixed(3)}; r = mix(r, vec3(dot(r, vec3(0.3333))), ${gray.toFixed(3)}); diffuseColor.rgb = mix(q0, r, m); }`); };
       o.material.customProgramCacheKey = () => 'dye' + L.dye.join(','); }); }
   const cl = H.clips, has = (n, d) => (cl[n] ? n : d); animate(u, body, cl);
   u.A = { idle: 'Idle', walk: has('Walking_Woman', has('Casual_Walk', 'Idle')), jog: has('Run_02', has('Casual_Walk', 'Idle')), sit: has('Chair_Sit_Idle_F', has('Chair_Sit_Idle_M', 'Idle')), air: 'Idle', talk: has('Talk_with_Hands_Open', has('Talk_with_Right_Hand_Open', 'Idle')), cast: has('mage_soell_cast', 'Big_Wave_Hello'), sleep: has('Sleep_Normally', 'Idle'), dance: has('Joyful_Dance_with_Hand_Sway', 'Idle') };

@@ -17,10 +17,12 @@ import { makeRoom, deckZone } from './rooms.js';
 const WARDROBE = {
   amber: { who: 'Amber', keeper: 'The seamstress', base: 'the crimson gown', gowns: [
     { id: 'sunfire', name: 'Sunfire gold', cost: 6, dye: [0.12, 0.985, 0.03, 0.55, 1] }, { id: 'emerald', name: 'Emberwood green', cost: 10, dye: [0.33, 0.985, 0.03, 0.55, 1] },
-    { id: 'sapphire', name: 'Harbour sapphire', cost: 14, dye: [0.62, 0.985, 0.03, 0.55, 1] }, { id: 'amethyst', name: 'Twilight amethyst', cost: 18, dye: [0.8, 0.985, 0.03, 0.55, 0.85] }] },
+    { id: 'sapphire', name: 'Harbour sapphire', cost: 14, dye: [0.62, 0.985, 0.03, 0.55, 1] }, { id: 'amethyst', name: 'Twilight amethyst', cost: 18, dye: [0.8, 0.985, 0.03, 0.55, 0.85] },
+    { id: 'nightflame', name: 'Nightflame black', earn: 'ember', how: 'light every lamp in Emberland', dye: [0, 0.985, 0.04, 0.5, 0.2, 2, 0.9] }] },
   kim: { who: 'Kim', keeper: 'Madame Praline', base: 'the pink dress', gowns: [
     { id: 'lemon', name: 'Lemon drop', cost: 6, dye: [0.14, 0.95, 0.06, 0.1, 1, 0.5] }, { id: 'mint', name: 'Peppermint', cost: 10, dye: [0.3, 0.95, 0.06, 0.1, 1, 0.5] },
-    { id: 'sky', name: 'Blueberry cream', cost: 14, dye: [0.62, 0.95, 0.06, 0.1, 1, 0.5] }, { id: 'lilac', name: 'Sugared violet', cost: 18, dye: [0.8, 0.95, 0.06, 0.1, 1, 0.5] }] },
+    { id: 'sky', name: 'Blueberry cream', cost: 14, dye: [0.62, 0.95, 0.06, 0.1, 1, 0.5] }, { id: 'lilac', name: 'Sugared violet', cost: 18, dye: [0.8, 0.95, 0.06, 0.1, 1, 0.5] },
+    { id: 'plum', name: 'Moonlit plum', earn: 'sugar', how: 'light every lamp in Sugarland', dye: [0.72, 0.95, 0.06, 0.1, 0.72, 0.5] }] },
 };
 const PLAYS = {
   sugar: [{ id: 'stars', at: [95, 43], label: 'Star-hop the Marshmallow Meadows' }, { id: 'bounce', at: [93, 28], label: 'Bounce-off with Kim' }, { id: 'turtles', at: [-90, 33], label: 'Turtle round-up' }, { id: 'sled', at: [-5.5, -89], label: 'Sled the Ice Cream Mountain' },
@@ -469,7 +471,7 @@ export class Game {
   async play_cinderfetch() { const W = this.W, cx = -80, cz = 9, R = rnd(Math.floor(this.t) + 9), n = 8, pts = [...Array(n)].map(() => { const a = R() * 6.283, d = 3 + R() * 5.5; return [cx + Math.cos(a) * d, cz + Math.sin(a) * d]; });
     await UI.say('', 'Cinder drops an ember at Amber’s feet and looks up, tail going. Eight embers, one at a time. Reach each before she does!'); this.place(cx + 2, cz + 2);
     let mine = 0, hers = 0, cur = 0; const C = this.cinder, game = this.collectGame({ items: pts.map(([x, z]) => [x, W.height(x, z) + 0.9, z]), time: 60, label: 'Embers', color: 0xff9a30, reach: 1.9, onGet: () => { mine++; next(); } }), S = this.playS;
-    const next = () => { cur++; S.ms.forEach((m, i) => (m.visible = i === cur)); if (cur < n && C) { C.tx = pts[cur][0]; C.tz = pts[cur][1]; C.go = true; } }; S.ms.forEach((m, i) => (m.visible = i === 0)); S.text = () => `You ${mine} · Cinder ${hers}`; if (C) { C.tx = pts[0][0]; C.tz = pts[0][1]; C.go = true; }
+    const next = () => { cur++; S.ms.forEach((m, i) => (m.visible = i === cur)); if (cur < n && C) { C.tx = pts[cur][0]; C.tz = pts[cur][1]; C.go = true; } }; S.ms.forEach((m, i) => (m.visible = i === 0)); S.text = () => `You ${mine} · Cinder ${hers}`; S.cinderGame = 1; if (C) { C.tx = pts[0][0]; C.tz = pts[0][1]; C.go = true; }
     S.tick = (dt) => { const m = S.ms[cur]; if (!m || !C) return; const d = Math.hypot(m.position.x - C.x, m.position.z - C.z), sp = 4.6 * dt; if (d > 0.5) { C.x += (m.position.x - C.x) / d * sp; C.z += (m.position.z - C.z) / d * sp; C.tx = C.x; C.tz = C.z; C.m.position.set(C.x, W.height(C.x, C.z) + Math.abs(Math.sin(this.t * 12)) * 0.2, C.z); C.m.visible = true; } else { hers++; S.got++; this.playGot = S.got; this.sound.tone(700, 0.12, 'triangle', 0.08, 900); this.bark('Cinder got that one!'); next(); } };
     const r = await game; return { score: mine * 100 + Math.round(Math.max(0, r.left)), cinders: mine / 2, fmt: (v) => Math.floor(v / 100) + ' embers', text: mine > hers ? `${mine} to ${hers}. Cinder demands a rematch, loudly.` : mine === hers ? `${mine} all. Cinder calls it a win.` : `Cinder took it, ${hers} to ${mine}, and is unbearable about it.` }; }
   // The black smoke comes over the rampart in waves. Burn every wisp before they put out the three wall braziers.
@@ -514,9 +516,10 @@ export class Game {
   // The dressmaker: spend cinders on a gown in a new colour, or change into one you own.
   async play_wardrobe(s) { const Wd = WARDROBE[s.who], V = this.S.vis, own = (V.gowns ||= {}), worn = (V.worn ||= {}), K = Wd.keeper, word = this.W.name === 'sugar' ? 'sweets' : 'cinders';
     V.wardrobeSeen = 1; await UI.say(K, s.who === 'kim' ? 'A dress in every flavour, dear. Bring me cinders from your games and I shall cut the cloth myself.' : 'Highness. I have bolts in every colour the dye-houses make. A few cinders from your flame, and one is yours.');
-    for (;;) { const n = this.S.sparks || 0, opts = [{ t: `Wear ${Wd.base}` + (!worn[s.who] ? ' (wearing)' : '') }, ...Wd.gowns.map((g) => ({ t: own[g.id] ? `Wear ${g.name}` + (worn[s.who] === g.id ? ' (wearing)' : '') : `${g.name} · ${g.cost} ${word}` + (n < g.cost ? ' (not yet)' : '') })), { t: 'That is all, thank you.', cls: 'exit' }];
+    for (;;) { const n = this.S.sparks || 0, opts = [{ t: `Wear ${Wd.base}` + (!worn[s.who] ? ' (wearing)' : '') }, ...Wd.gowns.map((g) => ({ t: own[g.id] ? `Wear ${g.name}` + (worn[s.who] === g.id ? ' (wearing)' : '') : g.earn ? `${g.name} · ${g.how}` : `${g.name} · ${g.cost} ${word}` + (n < g.cost ? ' (not yet)' : '') })), { t: 'That is all, thank you.', cls: 'exit' }];
       const i = await UI.choose(opts, `${Wd.who}’s wardrobe · you have ${n} ${word}`); if (i === opts.length - 1) break;
       if (i === 0) { delete worn[s.who]; this.refresh(); this.sound.sfx('page'); continue; } const g = Wd.gowns[i - 1];
+      if (!own[g.id] && g.earn) { await UI.say(K, `That one cannot be bought. It is given to whoever can ${g.how}, after dark.`); continue; }
       if (!own[g.id]) { if (n < g.cost) { await UI.say(K, `${g.name} wants ${g.cost}, and you have ${n}. Play a game or two and come back.`); continue; } this.S.sparks = n - g.cost; own[g.id] = 1; this.sound.sfx('chapter'); await UI.say(K, s.who === 'kim' ? 'Arms out. There! It might have been made for you. It was.' : 'It becomes you, Highness. Turn. Yes.'); }
       worn[s.who] = g.id; this.refresh(); this.sound.sfx('ring'); }
     UI.closeDialog(); this.save(); return null; }
@@ -609,12 +612,14 @@ export class Game {
   }
   // ── torches: after dark, every unlit torch can be lit with Amber's (or Kim's) flame ──
   nightNow() { return this.S.time === 'night' || this.S.time === 'dusk'; }
-  markTorches() { const W = this.W; if (!W.torches || W.torchGroup) return; W.torchGroup = new THREE.Group(); for (const t of W.torches) { t.m = new THREE.Mesh(GEO.cone, mat(t.pink ? 0xff8ab8 : 0xffa030, true)); t.m.position.set(t.x, t.y + 0.45, t.z); t.m.scale.set(0.3, 0.9, 0.3); t.m.visible = false; const c = new THREE.Mesh(GEO.cone, mat(t.pink ? 0xffd0e4 : 0xffe08a, true)); c.scale.set(0.5, 0.6, 0.5); c.position.y = -0.2; t.m.add(c); W.torchGroup.add(t.m); } W.group.add(W.torchGroup); }
+  markTorches() { const W = this.W; if (!W.torches || W.torchGroup) return; W.torchGroup = new THREE.Group(); const tex = this.softTex(), sp = (c, k) => new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(c).multiplyScalar(k), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); for (const t of W.torches) { t.m = new THREE.Group(); t.m.position.set(t.x, t.y - (t.pink ? 0.02 : 0.12), t.z); const halo = sp(t.pink ? 0xff8ab8 : 0xff8a20, 1.1), core = sp(t.pink ? 0xffe0f0 : 0xffe9a0, 2); halo.scale.setScalar(1.7); core.scale.set(0.42, 0.56, 1); t.m.add(halo, core); t.m.visible = false; W.torchGroup.add(t.m); } W.group.add(W.torchGroup); }
   nearTorch(r = 4.4) { const p = this.player; let best = null, bd = r; if (!this.nightNow()) return null; for (const t of this.W.torches || []) { if (t.lit) continue; const d = Math.hypot(p.x - t.x, p.z - t.z); if (d < bd) { bd = d; best = t; } } return best; }
   lightTorch(t) { t.lit = true; this.sound.sfx('lit'); this.fireFx(t.x, t.y + 0.3, t.z, !!t.pink, 22, 0.7, 2.4, 0.8, 1.8); this.puff(t.x, t.y + 0.5, t.z, t.pink ? 0xff8ab8 : 0xffb030, 18, 0.5, 2.2); const all = this.W.torches, n = all.filter((x) => x.lit).length; this.S.sparks = (this.S.sparks || 0) + 1;
-    if (n === all.length) { this.S.sparks += 6; this.sound.sfx('chapter'); UI.tip(`Every torch in ${this.W.name === 'ember' ? 'Emberland' : 'Sugarland'} is burning. The whole night glows. (+6 cinders)`, 8); } else UI.tip(`Torch lit: ${n} of ${all.length}.`, 2.5); }
+    if (n === all.length) { this.S.sparks += 6; this.sound.sfx('chapter'); const who = this.W.name === 'ember' ? 'amber' : 'kim', g = WARDROBE[who].gowns.find((x) => x.earn === this.W.name), V = this.S.vis, had = V.gowns?.[g.id]; (V.gowns ||= {})[g.id] = 1; if (this.player.who === who || this.comp?.id === who) { (V.worn ||= {})[who] = g.id; this.refresh(); }
+      for (const q of all) this.fireFx(q.x, q.y + 0.2, q.z, !!q.pink, 16, 0.8, 3.5, 1.2, 2); this.shake = 0.3;
+      UI.tip(`Every lamp in ${this.W.name === 'ember' ? 'Emberland' : 'Sugarland'} is burning, and the whole night glows. +6 cinders` + (had ? '.' : `, and a gown no one can buy: ${g.name}. Change it at the dressmaker's rail.`), 11); this.save(); } else UI.tip(`Lamp lit: ${n} of ${all.length}.`, 2.5); }
   updateTorches(dt) { const W = this.W; if (!W.torches) return; const night = this.nightNow(); if (night && !this.f.tipTorch && this.fireOK() && this.nearTorch(9)) { this.f.tipTorch = 1; UI.tip('An unlit torch. Stand beside it and hold ✦ to light it. There are more along the lanes.', 8); }
-    for (const t of W.torches) { if (!t.m) continue; t.m.visible = t.lit && night; if (t.m.visible) { const s = 1 + Math.sin(this.t * 11 + t.x) * 0.16; t.m.scale.set(0.3, 0.9 * s, 0.3); } } }
+    for (const t of W.torches) { if (!t.m) continue; t.m.visible = t.lit && night; if (t.m.visible) { const s = 1 + Math.sin(this.t * 11 + t.x) * 0.1 + Math.sin(this.t * 23 + t.z) * 0.05; t.m.children[0].scale.setScalar(1.7 * s); t.m.children[1].scale.set(0.42 * s, 0.56 * (2 - s), 1); } } }
   poseNpc(n) { // small stagings: the king lies in his bed, the dancers actually dance
     const pose = n.def.pose || (n.id === 'king' && n.def.at === 'king' ? 'lie' : null); if (!pose) return; const m = n.model, t = this.t;
     if (pose === 'lie' && m.userData.A?.sleep) { m.userData.fixedPose = 'sleep'; m.rotation.set(0, Math.PI, 0); m.position.set(n.x, n.y + 1.0, n.z - 3.0); return; }
@@ -627,7 +632,10 @@ export class Game {
   // Cinder, an Emberwing Hound, has attached herself to Amber: in Emberland she trots along behind, sits when Amber stops, and keeps out from underfoot.
   updateCinder(dt) { const p = this.player, on = this.W.name === 'ember' && p.who === 'amber' && !this.riding && !this.mode && !this.zone && this.started;
     if (!this.cinder) { this.cinder = { m: makeProp('cinder'), x: 0, z: 0, tx: 0, tz: 0, go: false, w: 3, here: false }; this.cinder.m.visible = false; this.scene.add(this.cinder.m); }
+    if (this.playS?.cinderGame) return;
     const C = this.cinder; if (!on) { C.m.visible = false; C.here = false; return; }
+    // she visits: a quarter of a minute at Amber's heels, then off about her own business for a good while (unless a game is using her)
+    if ((C.vt = (C.vt ?? 14) - dt) <= 0) { C.away = !C.away; C.vt = C.away ? 45 + Math.random() * 50 : 12 + Math.random() * 8; C.here = false; if (C.away && C.m.visible) this.puff(C.x, this.H(C.x, C.z) + 0.6, C.z, 0xffb060, 10, 0.6, 1.4, 0.6); } if (C.away) { C.m.visible = false; return; }
     if (!C.here) { C.here = true; C.x = p.x - 1.6; C.z = p.z - 1.2; C.tx = C.x; C.tz = C.z; C.go = false; if (!this.S.vis.cinderMet && !this.busy) { this.S.vis.cinderMet = 1; UI.tip('Cinder, an Emberwing Hound, has taken a liking to you. She will follow wherever you walk in Emberland.', 7); } }
     const dk = Math.hypot(p.x - C.x, p.z - C.z);
     if (dk > 14) { C.x = p.x - Math.sin(p.yaw) * 2; C.z = p.z - Math.cos(p.yaw) * 2; C.go = false; }
