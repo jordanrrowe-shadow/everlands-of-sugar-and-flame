@@ -5,6 +5,14 @@ import { makeDragon, animDragon, makeCritter, makePerson } from './models.js';
 import { terrainMaterial, waterMaterial, roadMaterial } from './gfx.js';
 import { Scatter, hasModel } from './assets.js';
 import { makeCradle } from './cradle.js';
+import { gownDisplay } from './people.js';
+// a dressmaker's rail hung with the real gowns in every colour on offer (falls back to simple shapes until the sculpts are in)
+function gownRail(g, k, w, key, dyes, x, y, z, along, post, bar, cols) { const n = dyes.length, step = 0.92, half = (n - 1) * step / 2 + 0.5, P = (t) => (along === 'x' ? [x + t, z] : [x, z + t]);
+  for (const t of [-half, half]) { const [px, pz] = P(t); k.cyl(px, y, pz, 0.07, 0.1, 2.35, post, {}, 8); k.sph(px, y + 2.4, pz, 0.13, bar); k.cyl(px, y, pz, 0.3, 0.34, 0.1, post, {}, 10); }
+  if (along === 'x') k.box(x, y + 2.24, z, half * 2, 0.07, 0.07, bar); else k.box(x, y + 2.24, z, 0.07, 0.07, half * 2, bar);
+  dyes.forEach((d, i) => { const [px, pz] = P(-half + 0.5 + i * step), m = gownDisplay(key, d, 1.62); k.box(px, y + 2.1, pz, 0.03, 0.22, 0.03, 0x4a3226); if (along === 'x') k.box(px, y + 2.0, pz, 0.5, 0.04, 0.04, 0x8a6a4a); else k.box(px, y + 2.0, pz, 0.04, 0.04, 0.5, 0x8a6a4a);
+    if (m) { m.position.set(px, y + 0.42, pz); m.rotation.y = (along === 'x' ? 0 : Math.PI / 2) + (i - (n - 1) / 2) * 0.1; g.add(m); } else { k.cone(px, y + 0.55, pz, 0.34, 1.15, cols[i], {}, 10); k.sph(px, y + 1.7, pz, 0.2, cols[i], { s: [1.1, 0.7, 1.1] }); } });
+  if (along === 'x') w.boxes.push([x - half - 0.2, x + half + 0.2, z - 0.4, z + 0.4]); else w.boxes.push([x - 0.4, x + 0.4, z - half - 0.2, z + half + 0.2]); }
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const BENCHF = 0, BOATY = -2.9, SHIPY = { wardenship: -0.9, sugarship: -2.0, woodboat: -1.7 }; // how deep each hull sits below the waterline
@@ -22,7 +30,7 @@ function terrain(w, size, seg, colorFn, splatFn, layers) {
 function water(x, z, r, y, color, opacity = 0.85, rough = 0.07) { const m = new THREE.Mesh(new THREE.CircleGeometry(r, 48), waterMaterial(color, opacity, rough)); m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.userData.ground = 1; return m; }
 function ocean(color, y, size = 1400, glint) { const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), waterMaterial(color, 1, 0.12, 1.4, glint)); m.rotation.x = -Math.PI / 2; m.position.y = y; m.userData.ground = 1; return m; }
 // A brick street: a ribbon that follows the ground along a smoothed line of points (or a ring), with a darker kerb either side.
-function street(g, w, pts, width, tint, kerb = 0x5a3a34, ring = 0) {
+function street(g, w, pts, width, tint, kerb = 0x5a3a34, ring = 0, up = 0) {
   const P = [];
   if (ring) { const n = Math.ceil(ring * 6.283 / 0.9); for (let i = 0; i <= n; i++) { const a = i / n * 6.283; P.push([pts[0] + Math.sin(a) * ring, pts[1] + Math.cos(a) * ring]); } }
   else { const c = new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal', 0.5), n = Math.ceil(c.getLength() / 0.9); for (const v of c.getSpacedPoints(n)) P.push([v.x, v.z]); }
@@ -32,7 +40,7 @@ function street(g, w, pts, width, tint, kerb = 0x5a3a34, ring = 0) {
       if (i) { const r = (i - 1) * (C + 1), q = i * (C + 1); for (let j = 0; j < C; j++) idx.push(r + j, r + j + 1, q + j, r + j + 1, q + j + 1, q + j); } });
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
     const m = new THREE.Mesh(geo, roadMaterial(col)); m.material.side = THREE.DoubleSide; m.receiveShadow = true; m.userData.sh = 1; g.add(m); };
-  strip(width + 0.7, 0.035, kerb); strip(width, 0.06, tint);
+  strip(width + 0.7, 0.035 + up, kerb); strip(width, 0.06 + up, tint);
 }
 function ship(k, x, y, z, hull, sail, ry = 0, lamp = 0xffc45a) {
   { const r = hull >> 16, gC = (hull >> 8) & 255, b = hull & 255, name = Math.abs(r - b) < 24 ? 'wardenship' : r > 220 && gC < 200 ? 'sugarship' : 'woodboat'; if (hasModel(name)) { const own = y === 1.6; (k.sc = k.sc || new Scatter()).add(name, x, (k.wl ?? y - 1.2) + (own ? BOATY : SHIPY[name]), z, ry + FRONT[name], own ? 14 : name === 'woodboat' ? 13 : 19); k.sculpted = 1; return; } }
@@ -162,12 +170,11 @@ export function buildEmber() {
   const glassCols = [0xff9a3a, 0xff5a7a, 0xffd24a, 0xff7ad0, 0x7ad0ff, 0xb48aff];
   for (let i = 0; i < 26; i++) { const side = i % 2 ? 1 : -1, row = Math.floor(i / 2), x = side * (34 + (row % 3) * 15 + R() * 3), z = 52 + Math.floor(row / 3) * 14 + R() * 3; if (side > 0 && z < 44) continue; const r1 = R(), r2 = R(), r3 = R(); if (KIT) { const big = i % 3 === 0; kitHouse(sc, k, w, x, z, big ? 8 : 6, big ? 8 : i % 2 ? 8 : 6, side > 0 ? -Math.PI / 2 : Math.PI / 2, glassCols[i % 6], { 0: 'bakery', 1: 'glassworks', 7: 'forge', 6: 'candleshop' }[i]); } else house(x, z, 7 + r1 * 3, 6 + r2 * 3, 4 + r3 * 3, glassCols[i % 6]); }
   if (KIT) { for (const [x, z, r] of [[-20, 54, 0.4], [-21.4, 55.6, 1.2], [23, 62, 0.2], [-22, 80, 2], [24, 86, 1], [25.3, 84.6, 0.3], [116, 46, 0.5], [117.4, 47.2, 1.4], [134, 22, 0]]) { sc.add('Prop_Crate', x, H(x, z), z, r, 0.95); w.circles.push([x, z, 0.7]); } sc.add('Prop_Wagon', 26, H(26, 76), 76, 0.3); w.circles.push([26, 75, 1.6]); sc.add('Prop_Wagon', 106, H(106, 44), 44, 1.9); w.circles.push([106, 44, 1.6]); for (let i = 0; i < 8; i++) sc.add('Prop_WoodenFence_Single', -31, H(-31, 50 + i * 2.06), 50 + i * 2.06, Math.PI / 2); }
-  { const x = -14.5, z = 63.6, y = H(x, z); for (const dx of [-1.6, 1.6]) { k.cyl(x + dx, y, z, 0.07, 0.09, 2.1, 0x6b4a36, {}, 8); k.sph(x + dx, y + 2.15, z, 0.12, GOLD); } k.box(x, y + 2, z, 3.3, 0.07, 0.07, GOLD);
-    [0xa3182c, 0xe2b24a, 0x3f8a4a, 0x2f5fb0, 0x7a2f9a].forEach((c, i) => { const gx = x - 1.3 + i * 0.65; k.cone(gx, y + 0.55, z, 0.34, 1.15, c, {}, 10); k.sph(gx, y + 1.7, z, 0.2, c, { s: [1.3, 0.7, 0.8] }); k.box(gx, y + 1.9, z, 0.03, 0.14, 0.03, 0x4a3226); }); w.boxes.push([x - 1.8, x + 1.8, z - 0.35, z + 0.35]); }
+  gownRail(g, k, w, 'amber', [null, [0.12, 0.985, 0.03, 0.55, 1], [0.33, 0.985, 0.03, 0.55, 1], [0.62, 0.985, 0.03, 0.55, 1], [0.8, 0.985, 0.03, 0.55, 0.85], [0, 0.985, 0.04, 0.5, 0.2, 2, 0.9]], -14.5, H(-14.5, 63.6), 63.6, 'x', 0x6b4a36, GOLD, [0xa3182c, 0xe2b24a, 0x3f8a4a, 0x2f5fb0, 0x7a2f9a, 0x222226]);
   // streets of coloured brick inside the pale cobbles: the royal avenue from the palace stair to the Fire Square, the ring round it,
   // gold lanes to the shops, and a blue-grey road to the harbour
   { const ROYAL = 0xb8323a, SHOP = 0xe0a23e, PORT = 0x6f7f9a, KERB = 0x4a2e2a, GK = 0xf0d9a0;
-    street(g, w, [[0, 2], [0, 16], [0, 30], [0, 44], [0, 54], [0, 65.4]], 6, ROYAL, GK);
+    street(g, w, [[0, 2], [0, 16], [0, 30], [0, 44], [0, 54], [0, 65.4]], 6, ROYAL, GK, 0, 0.07);
     street(g, w, [0, 86], 2.8, ROYAL, GK, 19.6);
     street(g, w, [[0, 106.6], [0, 116], [0, 128]], 5, ROYAL, GK);
     for (const s of [-1, 1]) street(g, w, [[s * 3.7, 62.6], [s * 14, 62.6], [s * 27.2, 62.6]], 3.2, SHOP, KERB);
@@ -178,7 +185,8 @@ export function buildEmber() {
     if (hasModel('emberbench')) for (const [x, z, ry] of [[-4.9, 51.5, 1.571], [4.9, 51.5, -1.571], [-4.9, 58.5, 1.571], [4.9, 58.5, -1.571], [-5, 18, 1.571], [5, 18, -1.571], [65, 30.3, 0], [93, 30.3, 0], [-10, 59.9, 0], [10, 59.9, 0],
       ...[45, 135, 225, 315].map((d) => { const a = d * Math.PI / 180; return [Math.sin(a) * 22.9, 86 + Math.cos(a) * 22.9, a + Math.PI]; })]) { if (w.circles.some((c) => Math.hypot(c[0] - x, c[1] - z) < c[2] + 1.1) || w.boxes.some((q) => x > q[0] - 1 && x < q[1] + 1 && z > q[2] - 1 && z < q[3] + 1)) continue; sc.add('emberbench', x, H(x, z) - 0.02, z, ry + BENCHF, 2.2); w.circles.push([x, z, 0.95]); } }
   // great stair + plateau rim
-  for (let i = 0; i < 12; i++) k.box(0, PL.h * (1 - (i + 1) / 12) - 0.2, 32.5 + i * 1.15, 14 - i * 0.2, 0.55, 1.2, IV);
+  street(g, w, [[0, 29], [0, 34], [0, 40], [0, 47]], 12.5, 0xf1e6d2, 0xe2b24a); // the great stair is a broad ivory brick ramp under the royal avenue (stone steps sank into the slope)
+  for (let i = 0; i < 7; i++) for (const s of [-1, 1]) { const z = 31 + i * 2.5, x = s * 6.9, y = H(x, z); k.box(x, y, z, 0.7, 0.9, 0.7, IV); k.sph(x, y + 1.05, z, 0.3, GOLD); w.circles.push([x, z, 0.5]); }
   for (const s of [-1, 1]) { pillar(s * 8, 31, 7, 0.6); k.sph(s * 8, PL.h + 7.9, 31, 0.5, LAVA, { glow: 1 }); }
   // towers (as in the painting: ivory, gold, crimson, with dragon terraces)
   const perch = [];
@@ -347,7 +355,6 @@ export function buildEmber() {
       const fl = new THREE.Group(); fl.add(new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.55, 8), stone), new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), stone)); fl.children[0].position.y = 0.3; fl.children[1].position.y = 0.05; let hand = null; st.traverse((o) => { if (o.isBone && o.name === 'WristR') hand = o; else if (o.isBone && /Wrist.?R/.test(o.name) && !hand) hand = o; }); if (hand) { fl.scale.setScalar(0.55); fl.position.set(0, 0.1, 0); hand.add(fl); }
     } catch (e) { if (!hasModel('statue')) { k.cyl(-85, 1.4, 5, 0.42, 0.6, 1.9, 0xfaf3e6); k.sph(-85, 3.6, 5, 0.34, 0xfaf3e6); } } }
   for (let i = 0; i < 40; i++) { const a = R() * 6.28, d = 3 + R() * 9, x = -80 + Math.cos(a) * d, z = 9 + Math.sin(a) * d; k.cone(x, 0.3, z, 0.18, 0.5, i % 3 ? 0xe2402c : 0xff8a2a); k.cyl(x, 0, z, 0.03, 0.03, 0.4, 0x4a6a3a, {}, 4); }
-  for (let i = 0; i < 9; i++) k.box(-56 - i * 1.5, PL.h * (1 - (i + 1) / 9) * 0.9, 0 + i * 0.5, 1.6, 0.5, 5, IV, { ry: 0.3 });
   { // the queen's garden, kept as she left it: a ring walk, clipped beds of fire-lilies, rose arches at the gates, benches, a lily pool, a vine trellis, candles
     const cx = -80, cz = 9, HEDGE = 0x3f5a34, PETAL = [0xe2402c, 0xff8a2a, 0xf3c04a, 0xc8243a, 0xffb0a0], circ = (x, z, r) => w.circles.push([x, z, r]), at = (a, r) => [cx + Math.cos(a) * r, cz + Math.sin(a) * r];
     street(g, w, [cx, cz], 1.8, 0xe6c9a0, 0x9a6a4a, 9.6); street(g, w, [[-68.4, 9.6], [-72, 9.4], [-77.2, 9.2]], 2, 0xe6c9a0, 0x9a6a4a);
@@ -387,6 +394,7 @@ export function buildEmber() {
     for (const e of [-1, 1]) for (const s of [-1, 1]) { const x = bx + e * 6.3, z = bz + s * 6.6; k.cyl(x, 0.1, z, 0.08, 0.1, 4.6, 0x3a2a24, {}, 6); k.sph(x, 4.75, z, 0.14, GOLD); k.box(x, 2.9, z + s * 0.5, 0.06, 1.7, 0.9, RED); k.cone(x, 2.4, z + s * 0.5, 0.45, 0.5, RED, { rx: Math.PI, s: [0.14, 1, 1] }, 4); k.sph(x + 0.05, 3.2, z + s * 0.5, 0.2, GOLD, { s: [0.2, 1, 1] }); w.circles.push([x, z, 0.3]); }
     box(76.2, 87.8, 27.9, 29.3); box(76.2, 87.8, 39.7, 41.1); }
   lava(-112, -110, -112, 112, 4); box(-114.5, -109.5, -110, 112); lava(-112, -110, -60, -200, 3); lava(82, -100, 110, -200, 3);
+  street(g, w, [[0, -93], ...[...Array(11)].map((_, i) => { const t = (i + 0.5) / 11; return [lerp(0, 26, t) + Math.sin(t * 9) * 2.2 + 1.7, lerp(-97, -148, t)]; }), [27, -151]], 2.8, 0x8a6258, 0x2e2226); // the mountain path, in dark brick beside its glowing seam
   for (let i = 0; i < 16; i++) { const t = i / 15, x = lerp(0, 26, t) + Math.sin(t * 9) * 2.2, z = lerp(-97, -148, t); k.box(x, H(x, z) + 0.03, z, 0.5, 0.08, 2.6, LAVA, { glow: 1, ry: 0.4 + Math.sin(i) }); }
   for (let i = 0; i < 40; i++) { const x = -140 + R() * 280, z = -105 - R() * 80; if (Math.hypot(x - 26, z + 150) < 16 || Math.abs(x - lerp(0, 26, (-97 - z) / 51)) < 6) continue; const y = H(x, z), s = 1.5 + R() * 3, rr = R(); if (NAT) sc.add(['Rock_Medium_1', 'Rock_Medium_2', 'Rock_Medium_3'][i % 3], x, y - 0.3, z, rr * 6, s * 0.9); else k.cone(x, y - 0.5, z, s, s * 2, 0x33262a, { ry: rr * 3 }, 5); w.circles.push([x, z, s * 0.75]); }
   // volcano
@@ -602,8 +610,7 @@ export function buildSugar() {
     { const cr = makeCradle(); cr.position.set(38, y + 1.2, -30.6); g.add(cr); w.cradle = cr; (w.glows ||= []).push([38, y + 1.2, -30.6, 0xffb060, 1]); }
     k.cyl(64, y + 0.06, -28.6, 2.3, 2.3, 0.04, 0x9a2a36, {}, 28); k.cyl(64, y + 0.08, -28.6, 1.9, 1.9, 0.04, 0xe9c98a, {}, 28); k.cyl(64, y + 0.1, -28.6, 1.3, 1.3, 0.04, 0xb8404a, {}, 28); circ([64, -28.6, 2.1]);
     for (let i = 0; i < 10; i++) { const x = 73 + R() * 4, z = -19 + R() * 6; k.cone(x, H(x, z) + 0.2, z, 0.2, 0.5, 0x7fc98a); k.sph(x, H(x, z) + 0.6, z, 0.1, 0xbfa0e8); } } }
-  { const x = -15.2, z = 39.2, y = H(x, z); for (const dz of [-1.5, 1.5]) { k.cyl(x, y, z + dz, 0.07, 0.09, 2.1, 0xffffff, {}, 8); k.sph(x, y + 2.15, z + dz, 0.12, 0xf5c84a); } k.box(x, y + 2, z, 0.07, 0.07, 3.1, 0xf5c84a);
-    [0xf58ab5, 0xf5d24a, 0x8fe08a, 0x8ac8f5, 0xc9a0f0].forEach((c, i) => { const gz = z - 1.2 + i * 0.6; k.cone(x, y + 0.55, gz, 0.34, 1.15, c, {}, 10); k.sph(x, y + 1.7, gz, 0.2, c, { s: [0.8, 0.7, 1.3] }); k.box(x, y + 1.9, gz, 0.03, 0.14, 0.03, 0x8a6a4a); }); w.boxes.push([x - 0.35, x + 0.35, z - 1.7, z + 1.7]); }
+  gownRail(g, k, w, 'kim', [null, [0.14, 0.95, 0.06, 0.1, 1, 0.5], [0.3, 0.95, 0.06, 0.1, 1, 0.5], [0.62, 0.95, 0.06, 0.1, 1, 0.5], [0.8, 0.95, 0.06, 0.1, 1, 0.5], [0.72, 0.95, 0.06, 0.1, 0.72, 0.5]], -15.2, H(-15.2, 38.6), 38.6, 'z', 0xffffff, 0xf5c84a, [0xf58ab5, 0xf5d24a, 0x8fe08a, 0x8ac8f5, 0xc9a0f0, 0x7a4a9a]);
   // marshmallow meadows
   w.bouncers.forEach(([x, z, r, top], i) => { const y = base(x, z), c = [0xffffff, 0xffe0ec, 0xfff6d0][i % 3]; k.cyl(x, y - 0.5, z, r, r, top + 0.2, c, {}, 16); k.sph(x, y + top - 0.3, z, r * 0.98, c, { s: [1, 0.22, 1] }); });
   // licorice lift + mountain dressing

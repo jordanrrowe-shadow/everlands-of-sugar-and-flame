@@ -331,7 +331,7 @@ const ch3 = {
       n.y = g.H(n.x, n.z); n.model.position.set(n.x, n.y, n.z);
       if (!n.cone) { const geo = new THREE.CircleGeometry(13, 16, Math.PI / 2 - 0.72, 1.44); geo.rotateX(-Math.PI / 2); n.cone = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide })); n.cone.position.y = 0.12; n.cone.scale.setScalar(1 / (n.model.scale.x || 1)); n.model.add(n.cone); } };
     beat(a, P.gate_w1, [-17, -86], -1); beat(b, P.gate_w2, [17, -86], 1);
-    if (T < 0.1 && !g.tmp.wasTalk) { const i = (g.tmp.wi = ((g.tmp.wi ?? -1) + 1) % wardenBanter.length); g.bark(wardenBanter[i]); } g.tmp.wasTalk = T < 0.1;
+    if (T < 0.1 && !g.tmp.wasTalk) { const i = (g.tmp.wi = ((g.tmp.wi ?? -1) + 1) % wardenBanter.length); if (Math.min(Math.hypot(p.x - a.x, p.z - a.z), Math.hypot(p.x - b.x, p.z - b.z)) < 26) g.bark(wardenBanter[i]); } g.tmp.wasTalk = T < 0.1; // only overheard from close by
     if (!f.c3_near || g.busy || p.z > -72) return;
     const hidden = [P.gate_shadow, P.hide1, P.hide2].some((q) => Math.hypot(p.x - q[0], p.z - q[1]) < 2.6);
     const sees = (n) => { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d > 13 || d < 0.1) return d < 0.1; let da = Math.atan2(p.x - n.x, p.z - n.z) - n.yaw; da = Math.atan2(Math.sin(da), Math.cos(da)); return Math.abs(da) < 0.72; };
