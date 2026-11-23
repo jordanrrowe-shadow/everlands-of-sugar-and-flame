@@ -72,7 +72,8 @@ export function buildEmber() {
     h = lerp(h, 36, smooth(17, 9, Math.hypot(x - 26, z + 150)));
     for (const [mx, mz, r, ramp, mh] of mounds) h += mh * smooth(r + ramp, r, Math.hypot(x - mx, z - mz));
     h -= smooth(139, 150, x) * 6;
-    { const dz = smooth(17.6, 16.2, Math.hypot(x, z - 86)); if (dz > 0) h = Math.max(h, 0.5 * dz); } // the Fire Square stands on a low round dais
+    { const dz = smooth(17.6, 16.2, Math.hypot(x, z - 86)); if (dz > 0) h = Math.max(h, 0.5 * dz); }
+    if (Math.abs(x - 82) < 5.6 && z > 29.3 && z < 39.7) h = Math.max(h, 0.22 + 0.75 * Math.cos((x - 82) / 5.6 * Math.PI / 2) ** 2); // the deck of the Ember Bridge // the Fire Square stands on a low round dais
     return h;
   };
   w.P = {
@@ -373,7 +374,18 @@ export function buildEmber() {
   if (NAT) { for (let i = 0; i < 26; i++) { const a = R() * 6.28, d = 3 + R() * 8, x = -80 + Math.cos(a) * d, z = 9 + Math.sin(a) * d; if (Math.hypot(x + 85, z - 5) < 2.5) continue; sc.add(i % 3 ? 'Flower_3_Group' : 'Bush_Common_Flowers', x, 0, z, R() * 6, 0.7 + R() * 0.4, i % 2 ? 0xe2402c : 0xff8a2a); } for (const [x, z] of [[-95, 20], [-66, 22], [-98, -4]]) { sc.add('TwistedTree_2', x, H(x, z) - 0.2, z, R() * 6, 0.55, 0xb3261e); w.circles.push([x, z, 0.9]); } for (let i = 0; i < 14; i++) { const x = -120 + R() * 240, z = -20 + R() * 120; const [cx, cz] = [x, z]; if (Math.hypot(x, z + 30) < 80 || Math.abs(x) < 70 && z > 40 || x > 76) continue; sc.add(i % 2 ? 'DeadTree_1' : 'DeadTree_2', x, H(x, z) - 0.2, z, R() * 6, 0.7 + R() * 0.4); w.circles.push([x, z, 0.6]); } }
   // lava rivers, bridge, glowing seams up the mountain path
   const lava = (x0, z0, x1, z1, wd) => { const n = Math.ceil(Math.hypot(x1 - x0, z1 - z0) / 6); for (let i = 0; i < n; i++) { const t = (i + 0.5) / n, x = lerp(x0, x1, t), z = lerp(z0, z1, t); k.box(x, H(x, z) - 0.2, z, wd, 0.34, 6.4, i % 2 ? LAVA : 0xffa02a, { glow: 1, ry: Math.atan2(x1 - x0, z1 - z0) }); } };
-  lava(82, -100, 82, 110, 3.4); box(80, 84, -100, 28); box(80, 84, 41, 112); k.box(82, 0.1, 34.5, 7, 0.5, 13, IV); for (const s of [-1, 1]) k.box(82, 0.6, 34.5 + s * 6.2, 7, 0.9, 0.5, GOLD);
+  lava(82, -100, 82, 110, 3.4); box(80, 84, -100, 27.9); box(80, 84, 41.1, 112); { // the Ember Bridge over the lava river: an arched ivory span with a brick roadway, balustrades, gilded lamp piers and dragon-head spouts
+    const bx = 82, bz = 34.5, rise = (x) => 0.75 * Math.cos((x - bx) / 5.6 * Math.PI / 2) ** 2;
+    for (let i = -5; i <= 5; i++) { const x = bx + i * 1.02, y = 0.12 + rise(x); k.box(x, y - 0.5, bz, 1.06, 0.6, 13, IV); k.box(x, y + 0.1, bz, 1.06, 0.06, 9.4, i % 2 ? 0x8a3a34 : 0x9a4238); k.box(x, y + 0.1, bz - 5.1, 1.06, 0.07, 0.6, 0xf0d9a0); k.box(x, y + 0.1, bz + 5.1, 1.06, 0.07, 0.6, 0xf0d9a0); }
+    for (const s of [-1, 1]) { const z = bz + s * 5.9;
+      for (let i = -5; i <= 5; i++) { const x = bx + i * 1.02, y = 0.2 + rise(x); k.box(x, y, z, 1.06, 0.22, 0.7, IV); k.cyl(x, y + 0.22, z, 0.11, 0.15, 0.7, 0xfaf3e6, {}, 8); k.sph(x, y + 0.5, z, 0.16, 0xfaf3e6, { s: [1, 0.7, 1] }); k.box(x, y + 0.92, z, 1.06, 0.16, 0.5, IV); k.box(x, y + 1.08, z, 1.06, 0.06, 0.6, GOLD); }
+      for (const e of [-1, 0, 1]) { const x = bx + e * 5.3, y = 0.2 + rise(x); k.box(x, y - 0.6, z, 1, 2.2, 1, IV); k.box(x, y + 1.6, z, 1.2, 0.16, 1.2, GOLD); if (e) { k.cyl(x, y + 1.76, z, 0.1, 0.12, 1.3, 0x3a2a24, {}, 8); k.sph(x, y + 3.2, z, 0.3, 0xffb84a, { glow: 1 }); k.cone(x, y + 3.45, z, 0.22, 0.3, GOLD, {}, 6); (w.glowsExtra ||= []).push([x, y + 3.2, z, 0xffa040, 1]); } else { k.sph(x, y + 1.95, z, 0.34, GOLD); k.cone(x, y + 2.2, z, 0.16, 0.5, LAVA, { glow: 1 }, 6); } }
+      // the arch below, and a dragon-head spout pouring a thread of lava
+      for (let i = 0; i <= 8; i++) { const t = i / 8 * Math.PI; k.box(bx - Math.cos(t) * 3.4, -0.7 + Math.sin(t) * 1.1, z + s * 0.36, 0.95, 0.3, 0.3, 0xe2d3b8, { rz: Math.PI / 2 - t }); } k.box(bx, 0.55, z + s * 0.36, 0.7, 0.8, 0.3, GOLD);
+      k.sph(bx, -0.1, z + s * 0.75, 0.32, GOLD, { s: [0.8, 0.8, 1.3] }); for (const e of [-1, 1]) k.cone(bx + e * 0.18, 0.2, z + s * 0.6, 0.07, 0.3, GOLD, { rz: -e * 0.4 }, 5); k.box(bx, -0.75, z + s * 0.98, 0.1, 1.1, 0.1, LAVA, { glow: 1 }); }
+    // banners at the four corners
+    for (const e of [-1, 1]) for (const s of [-1, 1]) { const x = bx + e * 6.3, z = bz + s * 6.6; k.cyl(x, 0.1, z, 0.08, 0.1, 4.6, 0x3a2a24, {}, 6); k.sph(x, 4.75, z, 0.14, GOLD); k.box(x, 2.9, z + s * 0.5, 0.06, 1.7, 0.9, RED); k.cone(x, 2.4, z + s * 0.5, 0.45, 0.5, RED, { rx: Math.PI, s: [0.14, 1, 1] }, 4); k.sph(x + 0.05, 3.2, z + s * 0.5, 0.2, GOLD, { s: [0.2, 1, 1] }); w.circles.push([x, z, 0.3]); }
+    box(76.2, 87.8, 27.9, 29.3); box(76.2, 87.8, 39.7, 41.1); }
   lava(-112, -110, -112, 112, 4); box(-114.5, -109.5, -110, 112); lava(-112, -110, -60, -200, 3); lava(82, -100, 110, -200, 3);
   for (let i = 0; i < 16; i++) { const t = i / 15, x = lerp(0, 26, t) + Math.sin(t * 9) * 2.2, z = lerp(-97, -148, t); k.box(x, H(x, z) + 0.03, z, 0.5, 0.08, 2.6, LAVA, { glow: 1, ry: 0.4 + Math.sin(i) }); }
   for (let i = 0; i < 40; i++) { const x = -140 + R() * 280, z = -105 - R() * 80; if (Math.hypot(x - 26, z + 150) < 16 || Math.abs(x - lerp(0, 26, (-97 - z) / 51)) < 6) continue; const y = H(x, z), s = 1.5 + R() * 3, rr = R(); if (NAT) sc.add(['Rock_Medium_1', 'Rock_Medium_2', 'Rock_Medium_3'][i % 3], x, y - 0.3, z, rr * 6, s * 0.9); else k.cone(x, y - 0.5, z, s, s * 2, 0x33262a, { ry: rr * 3 }, 5); w.circles.push([x, z, s * 0.75]); }
