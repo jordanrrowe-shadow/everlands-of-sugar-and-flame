@@ -125,6 +125,12 @@ button { font: inherit; color: inherit; border: 0; background: none; padding: 0;
 #cutT { position: absolute; bottom: calc(96px + var(--sb)); left: 50%; height: 21%; transform: translate(-50%, 30%) scale(.7); opacity: 0; transition: opacity .4s, transform .4s; z-index: 2; pointer-events: none; filter: drop-shadow(0 4px 10px #0008); }
 #cutT.in { opacity: 1; transform: translate(-50%, 0); animation: tiraBob 2.6s ease-in-out infinite; }
 #cut.solo #cutT.in { left: 62%; }
+/* a creature the story has just mentioned pops up between the speakers */
+#cutC { position: absolute; bottom: calc(190px + var(--sb)); left: 37%; height: 24%; transform: translate(-50%, 40%) scale(.4) rotate(-12deg); opacity: 0; transition: opacity .35s, transform .5s cubic-bezier(.3, 1.6, .5, 1); z-index: 2; pointer-events: none; filter: drop-shadow(0 6px 14px #0008); }
+#cutC.in { opacity: 1; transform: translate(-50%, 0); animation: tiraBob 2.2s ease-in-out infinite; }
+#cut.solo #cutC.in { left: 46%; }
+@media (min-width: 700px) and (min-height: 700px) { #cutC { bottom: calc(260px + var(--sb)); height: 22%; } }
+@media (orientation: portrait) { #cutC { height: 15%; bottom: calc(260px + var(--sb)); left: 50%; } }
 #cutT.in.dim { animation: none; filter: brightness(.6) saturate(.75) drop-shadow(0 4px 10px #0008); transform: translate(-50%, 4%) scale(.9); }
 @keyframes tiraBob { 0%, 100% { margin-bottom: 0; } 50% { margin-bottom: 6px; } }
 @media (min-width: 700px) and (min-height: 700px) { #cutT { bottom: calc(170px + var(--sb)); height: 17%; } }
