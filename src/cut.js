@@ -11,7 +11,7 @@ export const WHO = { Amber: 'amber', Kim: 'kim', 'Kimbrûlée': 'kim', Ruby: 'ru
 const CAST = ['amber', 'kim', 'ruby', 'king', 'praline'];
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // Creatures the story mentions appear in the scene as it does: [what the line says, the picture].
-const CREATURES = [[/bonbon sprite|\bsprite\b/i, '/art/cut/creature-sprite.webp'], [/turtle/i, '/art/sprite/turtle.webp'], [/\bcat\b|\bkitten\b|purr/i, '/art/cut/creature-cat.webp'], [/\bfish\b/i, '/art/sprite/fish.webp'], [/butterfl/i, '/art/sprite/butterfly.webp']];
+const CREATURES = [[/\bCinder\b|emberwing|\bhound\b/i, '/art/cut/creature-cinder.webp'], [/bonbon sprite|\bsprite\b/i, '/art/cut/creature-sprite.webp'], [/turtle/i, '/art/sprite/turtle.webp'], [/\bcat\b|\bkitten\b|purr/i, '/art/cut/creature-cat.webp'], [/\bfish\b/i, '/art/sprite/fish.webp'], [/butterfl/i, '/art/sprite/butterfly.webp']];
 const creatureIn = (line) => CREATURES.find(([re]) => re.test(line))?.[1];
 // Amber's portraits follow what she is wearing (the cream coat), and Kim's follow her tiramisu outfit once she has it.
 const art = (c, mood, G) => `/art/cut/${c === 'amber' && G?.f?.coat && !G.f.coatOff ? 'amber-coat' : c === 'kim' && G?.S?.vis?.kimTira && G.S.opt.tira !== false ? 'kim-tira' : c}-${mood}.webp`;

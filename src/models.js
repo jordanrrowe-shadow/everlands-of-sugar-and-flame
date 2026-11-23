@@ -119,6 +119,7 @@ export function makeCritter(kind) {
   const g = new THREE.Group();
   if (kind === 'turtle') { g.add(sprite('turtle', 1.5)); return g; }
   if (kind === 'sprite') { g.add(sprite('bonbon', 1.5)); return g; }
+  if (kind === 'cinder') { g.add(sprite('cinder', 1.7)); return g; }
   if (kind === 'cat') { g.add(sprite('cat', 1.3)); return g; }
   if (kind === 'tira' && getHero('tira')) { const t = heroStatic('tira', 0.5); g.add(t); return g; }
   if (kind === 'tira') { g.add(part(GEO.sph, 0x6b4630, 0, 0.15, -0.02, 0.15, 0.14, 0.2), part(GEO.sph, 0xf3e3cf, 0, 0.11, 0.06, 0.11, 0.09, 0.13), part(GEO.sph, 0x6b4630, 0, 0.27, 0.15, 0.12, 0.11, 0.11), part(GEO.sph, 0xf3e3cf, 0, 0.245, 0.215, 0.075, 0.065, 0.06), part(GEO.cone, 0x6b4630, -0.075, 0.4, 0.13, 0.04, 0.11, 0.04), part(GEO.cone, 0x6b4630, 0.075, 0.4, 0.13, 0.04, 0.11, 0.04), part(GEO.sph, 0x1a1210, -0.045, 0.29, 0.245, 0.017, 0.02, 0.012), part(GEO.sph, 0x1a1210, 0.045, 0.29, 0.245, 0.017, 0.02, 0.012), part(GEO.sph, 0xf2a0b0, 0, 0.255, 0.272, 0.014, 0.011, 0.01), part(GEO.sph, 0x6b4630, 0, 0.2, -0.22, 0.05, 0.06, 0.07)); for (const [x, z] of [[-0.08, 0.1], [0.08, 0.1], [-0.09, -0.1], [0.09, -0.1]]) g.add(part(GEO.sph, 0xf3e3cf, x, 0.03, z, 0.04, 0.03, 0.05)); g.traverse((o) => { if (o.isMesh) o.castShadow = true; }); }
@@ -138,7 +139,7 @@ export function makeProp(name) {
   else if (name === 'herbs') g.add(part(GEO.cone, 0x7fc98a, 0, 0.25, 0, 0.25, 0.5, 0.25), part(GEO.sph, 0xbfa0e8, 0, 0.5, 0, 0.1, 0.1, 0.1));
   else if (name === 'sapling') { for (const x of [-0.4, 0.4]) g.add(part(GEO.cyl, 0xb9774a, x, 0.15, 0, 0.2, 0.3, 0.2), part(GEO.cyl, 0xffffff, x, 0.8, 0, 0.05, 1.0, 0.05), part(GEO.cyl, 0xe23a4a, x, 0.6, 0, 0.055, 0.14, 0.055), part(GEO.cyl, 0xe23a4a, x, 1.0, 0, 0.055, 0.14, 0.055), part(GEO.sph, 0x9fe0b0, x, 1.4, 0, 0.25, 0.2, 0.25)); }
   else if (name === 'pouch') g.add(part(GEO.sph, 0xc9a0dc, 0, 0.2, 0, 0.25, 0.2, 0.2), part(GEO.box, 0xfff1d6, 0, 0.36, 0, 0.3, 0.05, 0.22));
-  else if (name === 'turtle' || name === 'cat' || name === 'sprite' || name === 'tira') return makeCritter(name);
+  else if (name === 'turtle' || name === 'cat' || name === 'sprite' || name === 'tira' || name === 'cinder') return makeCritter(name);
   return g;
 }
 // ring to fly through

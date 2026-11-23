@@ -14,7 +14,7 @@ import { playCut, WHO as CUTWHO } from './cut.js';
 import { makeRoom, deckZone } from './rooms.js';
 const PLAYS = {
   sugar: [{ id: 'stars', at: [95, 43], label: 'Star-hop the Marshmallow Meadows' }, { id: 'bounce', at: [93, 28], label: 'Bounce-off with Kim' }, { id: 'turtles', at: [-90, 33], label: 'Turtle round-up' }, { id: 'sled', at: [-5.5, -89], label: 'Sled the Ice Cream Mountain' },
-    { id: 'tira', at: [-7, 14], label: 'Tira’s crumb hunt' }, { id: 'outfit', at: [-11, 48], label: 'Madame Praline’s secret order' }, { id: 'kim', at: [24, 3], label: 'Kim’s delivery round' }, { id: 'rubyfish', at: [-22, 141], label: 'Meanwhile, Ruby…', rings: [[-32, 8, 124], [-8, 12, 112], [22, 14, 126], [30, 12, 150], [5, 10, 162], [-26, 12, 156], [-52, 17, 166], [-32, 8, 124]] },
+    { id: 'tira', at: [-7, 14], label: 'Tira’s crumb hunt' }, { id: 'outfit', at: [-11, 48], label: 'Madame Praline’s secret order' }, { id: 'kim', at: [19, 6], label: 'Kim’s delivery round' }, { id: 'rubyfish', at: [-22, 141], label: 'Meanwhile, Ruby…', rings: [[-32, 8, 124], [-8, 12, 112], [22, 14, 126], [30, 12, 150], [5, 10, 162], [-26, 12, 156], [-52, 17, 166], [-32, 8, 124]] },
     { id: 'rings', at: [14, 132], label: 'Ring flight with Ruby', ruby: 1, rings: [[0, 34, 100], [-38, 44, 30], [-60, 52, -40], [0, 66, -96], [42, 62, -70], [86, 44, -62], [108, 48, 10], [40, 36, 90]] }],
   ember: [{ id: 'lanterns', at: [11, 47], label: 'Lantern dash' }, { id: 'seafish', at: [127, 42], label: 'Ruby goes fishing', ruby: 1 },
     { id: 'rings', at: [-22, 16], label: 'Ring flight with Ruby', ruby: 1, rings: [[-58, 40, -8], [-52, 48, -52], [-34, 56, -78], [0, 64, -112], [34, 56, -78], [52, 50, -58], [58, 42, -6], [0, 34, 34]] }],
@@ -266,7 +266,7 @@ export class Game {
     }
   }
   // Recorded voice lines: public/voice/<id>.mp3, listed in public/voice/index.json (see tools/voices.mjs).
-  voice(name, text) { if (!this.S.opt.sound) return; if (!this.voiceSet) { this.voiceSet = new Set(); fetch('voice/index.json').then((r) => r.json()).then((a) => (this.voiceSet = new Set(a))).catch(() => {}); return; } const id = hash(name + '|' + text); if (!this.voiceSet.has(id)) return; const a = (this.voiceEl = this.voiceEl || new Audio()); a.src = 'voice/' + id + '.mp3?v=2'; a.play().catch(() => {}); }
+  voice(name, text) { if (!this.S.opt.sound) return; if (!this.voiceSet) { this.voiceSet = new Set(); fetch('voice/index.json').then((r) => r.json()).then((a) => (this.voiceSet = new Set(a))).catch(() => {}); return; } const id = hash(name + '|' + text); if (!this.voiceSet.has(id)) return; const a = (this.voiceEl = this.voiceEl || new Audio()); a.src = 'voice/' + id + '.mp3?v=4'; a.play().catch(() => {}); }
   // The reply you tap is spoken aloud by the character you are playing (unless it is a silent action or thought).
   async speakChoice(text, next) { const who = this.player.who === 'kim' ? 'Kim' : 'Amber', sp = spokenLine(text, who); if (!sp) return; const first = Array.isArray(next) && next.find((x) => x && typeof x !== 'object' || Array.isArray(x)); if (Array.isArray(first) && first[0] === sp[0] && first[1].startsWith(sp[1].slice(0, 24))) return; this.sound.sfx('page'); this.voice(sp[0], sp[1]); await UI.say(sp[0], sp[1]); this.voiceEl?.pause(); }
   speaker(name) { const n = this.npcs.find((x) => x.name === name); if (n) { n.face(this.player.x, this.player.z); if (!this.riding) this.player.tyaw = Math.atan2(n.x - this.player.x, n.z - this.player.z); } }
@@ -513,6 +513,7 @@ export class Game {
   updateLife(dt) {
     const W = this.W, t = this.t; if (W.sea) return;
     if (!W.life) { const L = (W.life = { g: new THREE.Group(), turtles: [], fish: [], fl: [], bon: [] }), add = (s) => (L.g.add(s), s); W.group.add(L.g);
+      if (W.name === 'ember') { L.hounds = [[-76, 12, 8], [124, 38, 7], [0, 112, 6]].map(([cx, cz, r], i) => ({ s: add(sprite('cinder', 1.5)), cx, cz, r, a: i * 2.1, sp: 0.35 + i * 0.08, ph: i * 1.9 })); } // other Emberwing Hounds: the garden, the quay, beyond the square
       if (W.name === 'sugar') { // Bonbon Sprites dart about wherever there are sweets: the market, the signpost, Praline's, the meadows, the forest path
         [[0, 20, 9], [4, 60, 6], [-15, 44, 5], [108, 32, 13], [120, 24, 9], [0, 100, 7], [34, 10, 6], [-30, 124, 8], [60, -6, 6]].forEach(([cx, cz, r], i) => L.bon.push({ s: add(sprite('bonbon', 1.05 + (i % 3) * 0.15)), cx, cz, r, a: i * 2.4, sp: 0.5 + (i % 4) * 0.12, ph: i * 1.7 }));
         for (let i = 0; i < 5; i++) L.turtles.push({ s: add(sprite('turtle', 1.2 + (i % 3) * 0.25)), a: i * 1.3, r: 20.5 + (i % 2) * 1.6, sp: 0.03 + i * 0.006 });
@@ -521,6 +522,8 @@ export class Game {
         for (let i = 0; i < 9; i++) L.fl.push({ s: add(sprite('butterfly', 0.5)), ph: i * 1.9, ox: Math.cos(i * 2.4) * (6 + i), oz: Math.sin(i * 2.4) * (6 + i) }); }
       else for (let i = 0; i < 8; i++) L.fl.push({ s: add(sprite('ember', 0.55)), ph: i * 1.9, ox: Math.cos(i * 2.4) * (5 + i * 1.5), oz: Math.sin(i * 2.4) * (5 + i * 1.5), ember: 1 }); }
     const L = W.life, p = this.player; L.g.visible = !this.zone;
+    if (W.shell) { const b = W.shell.box, q = this.player, inside = q.x > b[0] && q.x < b[1] && q.z > b[2] && q.z < b[3] + (W.shell.mesh.visible ? 0 : 0.8); W.shell.mesh.visible = !inside; }
+    for (const q of L.hounds || []) { q.a += dt * q.sp * (0.5 + 0.5 * Math.sin(t * 0.5 + q.ph)); const rr = q.r * (0.5 + 0.5 * Math.sin(q.a * 0.31 + q.ph)), x = q.cx + Math.cos(q.a) * rr, z = q.cz + Math.sin(q.a * 1.2) * rr; this.faceSprite(q.s, x - q.s.position.x, z - q.s.position.z); q.s.position.set(x, W.height(x, z) + Math.abs(Math.sin(t * 9 + q.ph)) * 0.12, z); }
     for (const q of L.bon) { q.a += dt * q.sp * (0.6 + 0.4 * Math.sin(t * 0.7 + q.ph)); const rr = q.r * (0.55 + 0.45 * Math.sin(q.a * 0.37 + q.ph)), x = q.cx + Math.cos(q.a) * rr, z = q.cz + Math.sin(q.a * 1.3) * rr; this.faceSprite(q.s, x - q.s.position.x, z - q.s.position.z); q.s.position.set(x, W.height(x, z) + 0.5 + Math.abs(Math.sin(t * 3.2 + q.ph)) * 1.1, z); }
     for (const q of L.turtles) { q.a += dt * q.sp; const x = -116 + Math.cos(q.a) * q.r, z = 20 + Math.sin(q.a) * q.r; this.faceSprite(q.s, x - q.s.position.x, z - q.s.position.z); q.s.position.set(x, Math.max(-1.95, W.height(x, z)) + Math.abs(Math.sin(t * 2 + q.a * 9)) * 0.05, z); }
     for (const q of L.fish) { const cyc = (t * 0.22 + q.ph) % 1, up = cyc < 0.22 ? Math.sin(cyc / 0.22 * Math.PI) : 0, a = q.a + Math.floor(t * 0.22 + q.ph) * 2.1; q.s.visible = up > 0; q.s.position.set(-32 + Math.cos(a) * q.r + cyc * 3, W.height(-32, 124) + 0.1 + up * 1.5, 124 + Math.sin(a) * q.r); q.s.material.rotation = (0.5 - cyc / 0.22) * 1.2; if (up > 0 && cyc < 0.02 && Math.hypot(p.x + 32, p.z - 124) < 30 && !q.sp) { q.sp = 1; this.puff(q.s.position.x, q.s.position.y, q.s.position.z, 0xffc8dc, 8, 0.5, 1.4, 0.6); } if (!up) q.sp = 0; }
@@ -551,6 +554,18 @@ export class Game {
       n.fx.rotation.set(1.1 + Math.sin(t * 3 + ph) * 0.5, t * 5 + ph, 0); if (still) return;
       m.position.set(n.x + Math.cos(t * 0.9 + ph) * 1.5, n.y + Math.abs(Math.sin(t * 5 + ph)) * 0.22, n.z + Math.sin(t * 0.9 + ph) * 1.5); m.rotation.y = t * 2.6 + ph; }
   }
+  // Cinder, an Emberwing Hound, has attached herself to Amber: in Emberland she trots along behind, sits when Amber stops, and keeps out from underfoot.
+  updateCinder(dt) { const p = this.player, on = this.W.name === 'ember' && p.who === 'amber' && !this.riding && !this.mode && !this.zone && this.started;
+    if (!this.cinder) { this.cinder = { m: makeProp('cinder'), x: 0, z: 0, tx: 0, tz: 0, go: false, w: 3, here: false }; this.cinder.m.visible = false; this.scene.add(this.cinder.m); }
+    const C = this.cinder; if (!on) { C.m.visible = false; C.here = false; return; }
+    if (!C.here) { C.here = true; C.x = p.x - 1.6; C.z = p.z - 1.2; C.tx = C.x; C.tz = C.z; C.go = false; if (!this.S.vis.cinderMet && !this.busy) { this.S.vis.cinderMet = 1; UI.tip('Cinder, an Emberwing Hound, has taken a liking to you. She will follow wherever you walk in Emberland.', 7); } }
+    const dk = Math.hypot(p.x - C.x, p.z - C.z);
+    if (dk > 14) { C.x = p.x - Math.sin(p.yaw) * 2; C.z = p.z - Math.cos(p.yaw) * 2; C.go = false; }
+    else if (!C.go && (dk > 3.6 || (C.w -= dt) <= 0)) { const a = dk > 3.6 ? Math.atan2(C.x - p.x, C.z - p.z) + (Math.random() - 0.5) * 1.2 : Math.random() * 6.283, r = 1.6 + Math.random() * 0.9; C.tx = p.x + Math.sin(a) * r; C.tz = p.z + Math.cos(a) * r; C.go = true; C.w = 6 + Math.random() * 7; }
+    let hop = 0; const d = Math.hypot(C.tx - C.x, C.tz - C.z);
+    if (C.go && d > 0.25) { const sp = Math.min(d, (dk > 6 ? 8 : 4) * dt), [nx, nz] = this.collide(C.x + (C.tx - C.x) / d * sp, C.z + (C.tz - C.z) / d * sp, 0.3); if (Math.hypot(nx - C.x, nz - C.z) < 0.003) C.go = false; this.faceSprite(C.m.children[0], nx - C.x, nz - C.z); C.x = nx; C.z = nz; hop = Math.abs(Math.sin(this.t * 11)) * 0.16; }
+    else { C.go = false; this.faceSprite(C.m.children[0], p.x - C.x, p.z - C.z); hop = Math.abs(Math.sin(this.t * 2.2)) * 0.03; }
+    C.m.visible = true; C.m.position.set(C.x, this.H(C.x, C.z) + hop, C.z); }
   faceSprite(s, vx, vz) { if (!s || !s.isSprite || Math.hypot(vx, vz) < 1e-5) return; const e = this.cam.matrixWorld.elements, side = vx * e[0] + vz * e[2]; if (Math.abs(side) > 1e-5) s.scale.x = Math.abs(s.scale.x) * (side < 0 ? -1 : 1); }
   updateTira(dt) { // Kim's ferret: sometimes rides in the bag, sometimes comes out to potter about. She sits and watches unless Kim gets ahead of her.
     const k = this.comp?.id === 'kim' ? this.comp : this.player.who === 'kim' ? this.player : null;
@@ -667,7 +682,7 @@ export class Game {
     // people
     for (const n of this.npcs) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < 7 && !this.riding && n.id !== 'warden1' && n.id !== 'warden2') n.tyaw = Math.atan2(p.x - n.x, p.z - n.z); n.yaw += wrap((n.tyaw ?? n.yaw) - n.yaw) * Math.min(1, dt * 5); n.model.rotation.y = n.yaw; this.poseNpc(n); n.model.visible = d < 110; if (d < 55) { n.model.userData.pose = this.busy && d < 6 ? 'talk' : null; animPerson(n.model, dt, !!n.walk); } }
     if (this.comp) this.updateComp(dt);
-    this.updateRuby(dt); this.updateFire(dt); this.updateTorches(dt); this.updateLamps(dt); this.updateWeather(dt); this.updatePin(dt); this.updateLife(dt); if ((this.mapT = (this.mapT || 0) - dt) <= 0) { this.mapT = 0.12; discover(this, dt); const mc = document.getElementById('mini'); mc.style.display = this.zone || this.W.sea ? 'none' : ''; if (!this.zone && !this.W.sea) drawMini(mc, this); } this.updateSound(dt, mx, my); this.updateTira(dt); this.updateHint(dt);
+    this.updateRuby(dt); this.updateFire(dt); this.updateTorches(dt); this.updateLamps(dt); this.updateWeather(dt); this.updatePin(dt); this.updateLife(dt); if ((this.mapT = (this.mapT || 0) - dt) <= 0) { this.mapT = 0.12; discover(this, dt); const mc = document.getElementById('mini'); mc.style.display = this.zone || this.W.sea ? 'none' : ''; if (!this.zone && !this.W.sea) drawMini(mc, this); } this.updateSound(dt, mx, my); this.updateTira(dt); this.updateCinder(dt); this.updateHint(dt);
     for (const t of this.things) if (t.prop) t.prop.rotation.y += dt * (t.def.prop === 'turtle' || t.def.prop === 'cat' ? 0 : 1.2);
     for (const [, m] of this.lits) { const s = 1 + Math.sin(this.t * 9 + m.position.x) * 0.15; m.scale.y = (m.scale.x < 0.5 ? 0.8 : 1.3) * s; }
     for (let i = this.sparks.length - 1; i >= 0; i--) { const m = this.sparks[i], u = m.userData, a = m.geometry.attributes.position; u.age += dt; for (let j = 0; j < a.count; j++) a.setXYZ(j, a.getX(j) + u.vel[j * 3] * dt, a.getY(j) + u.vel[j * 3 + 1] * dt, a.getZ(j) + u.vel[j * 3 + 2] * dt); a.needsUpdate = true; m.material.opacity = 0.9 * (1 - u.age / u.life); if (u.c1) { const k = Math.min(1, u.age / u.life); m.material.color.lerpColors(u.c1, u.c2, Math.min(1, k * 1.5)); m.material.size = u.sz * (1 - 0.55 * k); } if (u.age > u.life) { this.scene.remove(m); m.geometry.dispose(); m.material.dispose(); this.sparks.splice(i, 1); } }

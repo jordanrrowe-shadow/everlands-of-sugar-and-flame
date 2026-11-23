@@ -388,6 +388,7 @@ export function buildSugar() {
     let h = 1.3 * noise2(x * 0.035, z * 0.035) + 0.5 * noise2(x * 0.1, z * 0.1) - 0.5;
     h *= smooth(10, 40, Math.hypot(x, z - 20) - 20) * 0.8 + 0.2;
     h -= 2.6 * smooth(27, 16, Math.hypot(x + 116, z - 20));
+    { const ex = Math.max(Math.abs(x - 34) - 13.5, Math.abs(z + 16) - 20.5); if (ex < 4) { const t = Math.max(0, ex / 4); h = 0.25 + (h - 0.25) * t * t; } } // level ground under the confectionery castle
     const m = smooth(-100, -172, z) * 53 + smooth(-118, -160, z) * (noise2(x * 0.05, z * 0.05) - 0.4) * 14 * smooth(16, 44, Math.abs(x));
     h += m; h = lerp(h, 49.5, smooth(15, 8, Math.hypot(x, z + 160)));
     h -= smooth(160, 172, x) * 6 * (1 - smooth(4, 2, Math.abs(z - 100)) * (x < 168 ? 1 : 0));
@@ -398,8 +399,8 @@ export function buildSugar() {
     clearing: [0, 140], clearing_ruby: [9, 147], clearing_rock: [3.5, 141], bun_stone: [-6, 133], lake_shore: [-21, 127], lake_ruby: [-17, 134], cave: [-43, 142], cave_ruby: [-40, 138],
     forest_path: [0, 114], forest_mid: [0, 127], signpost: [0, 62], signpost_kim: [3, 59.5], praline: [-15, 44], mint: [7, 40], ribbon: [-7, 30], kids: [5, 33], inn: [18, 54],
     market: [0, 14], tart: [8, 9.5], fountain: [0, 23], balloon_gate: [-22, 2], balloon: [-36, -4], gift_boy: [-4.5, 26], gift_girl: [4.5, 27], gift_cider: [-8, 7], gift_trees: [3, 104],
-    workshop: [34, -25], workshop_door: [34, 7], wtable: [34, -27], wwindow: [28, -31], wshelf: [40, -31], wcat: [39, -24.5], workshop_s: [30.5, -23], workshop_t: [37, -32],
-    house_door: [60, -8], house_s: [56, -18], house_t: [63, -16], cradle: [64, -27.5], cradle_a: [62, -26], cradle_b: [66, -26], cradle_s: [59.5, -28.5], cradle_t: [68, -28.5], garden_herbs: [74, -16],
+    workshop: [34, -3], workshop_door: [34, 7], wtable: [34, -5], wwindow: [28, -9], wshelf: [40, -9], wcat: [39, -2.5], workshop_s: [30.5, -1], workshop_t: [37, -10],
+    house_door: [34, -13.2], house_s: [30, -20], house_t: [37, -18], cradle: [38, -29.5], cradle_a: [36, -28], cradle_b: [40, -28], cradle_s: [33.5, -30.5], cradle_t: [42, -30.5], garden_herbs: [48.5, -18],
     lava: [29, 10], marsh: [39, 10], meadows: [100, 34], mound_top: [128, 22], lift: [0, -92], lift_cider: [6, -89], summit: [0, -160], summit_sled: [4.5, -158],
     boat: [72, -56], choc_shore: [-93, 24], turtle: [-98.5, 21.5], bench: [-92, 40], bench1: [-93.2, 41.5], bench2: [-90.8, 41.5], dock: [150, 100], dock_s: [146, 97.5], dock_t: [148.5, 102.5],
   };
@@ -479,10 +480,12 @@ export function buildSugar() {
   const balloons = []; const bal = (x, y, z, c, c2) => { const kk = new Kit(); kk.sph(0, 5.2, 0, 3, c, { s: [1, 0.9, 1] }); kk.sph(1.4, 6.2, 0.6, 1.8, c2); kk.sph(-1.3, 4.6, -0.8, 1.9, c2); kk.cyl(0, 0, 0, 1.1, 0.9, 1, 0xc9a0f0, {}, 12); kk.cyl(0, 1, 0, 1.2, 1.2, 0.3, 0xfff1d6, {}, 12); for (const s of [-1, 1]) kk.cyl(s * 0.9, 1, 0, 0.03, 0.03, 2.4, 0xffffff, {}, 4); const m = kk.build(); m.position.set(x, y, z); g.add(m); balloons.push(m); m.userData.y = y; return m; };
   w.balloon = bal(-38, H(-38, -6), -6, 0xffb0d0, 0xffd0e4); bal(-60, 46, -40, 0xa8d8f5, 0xd0ecff); bal(40, 60, -70, 0xfff3a8, 0xfffad0); bal(-90, 52, 70, 0xc9a0f0, 0xe4d0ff); bal(110, 58, -30, 0xa8e8c4, 0xd0f8e0);
   // workshop (open to the south) with stained sugarglass
-  // The whole workshop is built 22 further north than its numbers say, behind the confectionery that fronts it on the market.
-  { const K0 = k, S0 = sc, B0 = box, DZ = -22; { const sh = (f) => (x, yy, z, ...r) => f(x, yy, z + DZ, ...r), k = { box: sh(K0.box.bind(K0)), cyl: sh(K0.cyl.bind(K0)), cone: sh(K0.cone.bind(K0)), sph: sh(K0.sph.bind(K0)), torus: sh(K0.torus.bind(K0)) }, sc = { add: (n, x, yy, z, ...r) => S0.add(n, x, yy, z + DZ, ...r) }, box = (x0, x1, z0, z1) => B0(x0, x1, z0 + DZ, z1 + DZ), circ = (c) => w.circles.push([c[0], c[1] + DZ, c[2]]);
-    const y = H(34, -27), W = 0xffe8d0; k.box(34, y - 0.2, -5, 16, 0.3, 14, 0xf3d8b8); k.box(34, y, -12, 16, 6, 0.5, W); box(26, 42, -12.4, -11.6); k.box(26, y, -5, 0.5, 6, 14, W); box(25.6, 26.4, -12, 2); k.box(42, y, -5, 0.5, 6, 14, W); box(41.6, 42.4, -12, 2);
-    const sg = [0xff7ab0, 0xb48aff, 0xffd24a, 0x7ad8ff, 0xff9a5a]; for (let i = 0; i < 5; i++) { k.box(28.5 + i * 2.8, y + 1.4, -11.7, 2, 3.6, 0.15, sg[i], { glow: 1 }); k.sph(28.5 + i * 2.8, y + 5, -11.7, 1, sg[(i + 2) % 5], { glow: 1, s: [1, 0.5, 0.1] }); } for (let i = 0; i < 3; i++) k.box(26.3, y + 1.4, -9.5 + i * 3.6, 0.15, 3.4, 2.2, sg[(i + 1) % 5], { glow: 1 });
+  // The confectionery castle holds the family workshop (the front hall) and the family home (behind it). Both are built in place
+  // and the castle shell around them lifts away while you are inside.
+  const moved = (K0, S0, B0, dx, dz) => { const sh = (f) => (x, yy, z, ...r) => f(x + dx, yy, z + dz, ...r); return { k: { box: sh(K0.box.bind(K0)), cyl: sh(K0.cyl.bind(K0)), cone: sh(K0.cone.bind(K0)), sph: sh(K0.sph.bind(K0)), torus: sh(K0.torus.bind(K0)) }, sc: { add: (n, x, yy, z, ...r) => S0.add(n, x + dx, yy, z + dz, ...r) }, box: (x0, x1, z0, z1) => B0(x0 + dx, x1 + dx, z0 + dz, z1 + dz), circ: (c) => w.circles.push([c[0] + dx, c[1] + dz, c[2]]) }; };
+  { const K0 = k, S0 = sc, B0 = box, DZ = 0; { const { k, sc, box, circ } = moved(K0, S0, B0, 0, 0);
+    const y = H(34, -5), W = 0xffe8d0; k.box(34, y - 0.2, -5, 16, 0.3, 14, 0xf3d8b8); k.box(29.25, y, -12, 6.5, 6, 0.5, W); k.box(38.75, y, -12, 6.5, 6, 0.5, W); k.box(34, y + 3.3, -12, 3, 2.7, 0.5, W); box(26, 32.5, -12.4, -11.6); box(35.5, 42, -12.4, -11.6); k.box(26, y, -5, 0.5, 6, 14, W); box(25.6, 26.4, -12, 2); k.box(42, y, -5, 0.5, 6, 14, W); box(41.6, 42.4, -12, 2);
+    const sg = [0xff7ab0, 0xb48aff, 0xffd24a, 0x7ad8ff, 0xff9a5a]; for (let i = 0; i < 5; i++) { if (i === 2) continue; k.box(28.5 + i * 2.8, y + 1.4, -11.7, 2, 3.6, 0.15, sg[i], { glow: 1 }); k.sph(28.5 + i * 2.8, y + 5, -11.7, 1, sg[(i + 2) % 5], { glow: 1, s: [1, 0.5, 0.1] }); } for (let i = 0; i < 3; i++) k.box(26.3, y + 1.4, -9.5 + i * 3.6, 0.15, 3.4, 2.2, sg[(i + 1) % 5], { glow: 1 });
     k.box(34, y + 6, -5, 17, 0.4, 15, 0xff9ec0, { rz: 0.03 }); k.box(39, y + 6.4, -9, 1.3, 3, 1.3, 0xc98a5a, { rz: 0.22 }); k.sph(39.6, y + 9.6, -9, 0.9, 0xffffff);
     if (hasModel('workbench')) sc.add('workbench', 34, y, -6.4, 0, 5.2); else { k.box(34, y, -6.4, 5, 1, 1.8, 0xd9a070, { wood: 1 }); k.sph(33, y + 1.2, -6.4, 0.3, 0xffb0d0); k.sph(35, y + 1.15, -6.4, 0.2, 0x2a1a1a); } box(31.5, 36.5, -7.3, -5.5);
     // dressing: a rug, stools, sugar sacks, crates, copper pots on a rail, bunting under the eaves, a jar of lollipops, the oven
@@ -498,8 +501,8 @@ export function buildSugar() {
     if (hasModel('sweetshelf')) sc.add('sweetshelf', 40.8, y, -8.5, -Math.PI / 2, 5); else { k.box(40.6, y, -8.5, 1.4, 3.4, 5, 0xc98a5a); for (let i = 0; i < 6; i++) k.sph(40.3, y + 1.3 + (i % 3) * 0.9, -10.3 + i * 0.7, 0.24, sg[i % 5], { glow: 1 }); } box(39.9, 41.6, -11, -6);
     k.cyl(39.5, y, -1.6, 0.5, 0.6, 0.7, 0xc98a5a); circ([39.5, -1.6, 0.7]);
     // The family confectionery is the landmark of the town: a tall front with a great rose window of stained sugar-glass, twin spires and a striped arch
-    if (hasModel('confectionery')) { S0.add('confectionery', 34, H(34, -6) - 0.2, -6, 0, 15); w.boxes.push([26.7, 41.3, -13, 1]);
-      w.doors.push({ x: 34, z: 2.4, label: 'Go through to the workshop', to: [34, -17.6] }, { x: 34, z: -14.6, label: 'Go out through the shop', to: [34, 4.4] }); } else {
+    if (hasModel('confectionery')) { const shell = new Scatter().add('confectionery', 34, H(34, -16) - 0.2, -16, 0, [25.5, 20, 40]).build(); g.add(shell); w.shell = { mesh: shell, box: [22.2, 45.8, -35, 2.9] };
+      for (const q of [[21.4, 32.4, 2.6, 3.4], [35.6, 46.6, 2.6, 3.4], [21.4, 22.2, -35.4, 3.4], [45.8, 46.6, -35.4, 3.4], [21.4, 46.6, -35.6, -34.8]]) w.boxes.push(q); } else {
     const fz = 2.3, cy = y + 11.2; for (const s of [-1, 1]) { k.box(34 + s * 7.4, y, fz, 1.6, 9, 1.6, W); k.box(34 + s * 7.4, y + 9, fz, 2, 0.5, 2, 0xff9ec0); k.cyl(34 + s * 7.4, y + 9.5, fz, 1, 1.15, 6.5, 0xfff6ee, {}, 10); for (let i = 0; i < 5; i++) k.cyl(34 + s * 7.4, y + 9.9 + i * 1.3, fz, 1.03, 1.17, 0.5, 0xff8ab0, {}, 10); k.cone(34 + s * 7.4, y + 16, fz, 1.5, 3.6, 0xff6a9a, {}, 10); k.sph(34 + s * 7.4, y + 19.9, fz, 0.42, 0xe8243c); circ([34 + s * 7.4, fz, 1.3]); for (const q of [3, 6]) k.box(34 + s * 7.4, y + q, fz + 0.82, 0.8, 1.5, 0.08, sg[q % 5], { glow: 1 }); }
     k.box(34, y + 5.6, fz, 13.4, 1, 1.3, 0xff9ec0); k.box(34, y + 6.6, fz, 13.4, 9.6, 0.9, W); k.box(34, y + 16.2, fz, 9.5, 2.4, 0.9, W); k.box(34, y + 18.6, fz, 5.4, 1.8, 0.9, W); k.box(34, y + 16.2, fz, 14.2, 0.4, 1.3, 0xff9ec0); k.cone(34, y + 20.4, fz, 2.2, 3, 0xff6a9a, {}, 4); k.sph(34, y + 23.7, fz, 0.5, 0xe8243c);
     for (let i = 0; i < 7; i++) k.sph(27.6 + i * 2.13, y + 5.5, fz + 0.6, 0.62, i % 2 ? 0xffffff : 0xffd0e0);
@@ -508,8 +511,9 @@ export function buildSugar() {
     for (const zz of [fz + 0.5, fz - 0.5]) { k.sph(34, cy, zz, 0.75, 0xffe08a, { glow: 1, s: [1, 1, 0.12] }); k.sph(34, cy, zz, 0.4, 0xff7ab0, { glow: 1, s: [1, 1, 0.2] }); }
     for (const s of [-1, 1]) for (const zz of [fz + 0.47, fz - 0.47]) { k.box(34 + s * 4.9, y + 8, zz, 1.3, 2.6, 0.05, sg[s > 0 ? 1 : 3], { glow: 1 }); k.sph(34 + s * 4.9, y + 9.3, zz, 0.65, sg[s > 0 ? 4 : 0], { glow: 1, s: [1, 1, 0.08] }); }
     k.box(34, y + 6.75, fz + 0.5, 6.4, 1.1, 0.14, 0xfff1d6); k.box(34, y + 6.75, fz + 0.58, 5.8, 0.7, 0.06, 0xf58ab5); } } }
-  // Kim's house (open to the south) with the back room and the cradle
-  { const y = H(60, -22), W = 0xfff1d6; k.box(60, y - 0.2, -22, 22, 0.3, 20, 0xf5dcc0); k.box(60, y, -32, 22, 5, 0.5, W); box(49, 71, -32.4, -31.6); k.box(49, y, -22, 0.5, 5, 20, W); box(48.6, 49.4, -32, -12); k.box(71, y, -22, 0.5, 5, 20, W); box(70.6, 71.4, -32, -12);
+  // The family home, in the back of the castle (built 26 west and 2 north of where its numbers say)
+  { const K0 = k, S0 = sc, B0 = box; { const { k, sc, box, circ } = moved(K0, S0, B0, -26, -2);
+    const y = H(34, -24), W = 0xfff1d6; k.box(60, y - 0.2, -22, 22, 0.3, 20, 0xf5dcc0); k.box(60, y, -32, 22, 5, 0.5, W); box(49, 71, -32.4, -31.6); k.box(49, y, -22, 0.5, 5, 20, W); box(48.6, 49.4, -32, -12); k.box(71, y, -22, 0.5, 5, 20, W); box(70.6, 71.4, -32, -12);
     k.box(54.5, y, -24, 11, 5, 0.4, W); box(49, 60, -24.3, -23.7); k.box(60, y + 5, -22, 23, 0.4, 21, 0xf58ab5, { rz: -0.03 }); k.sph(60, y + 5.6, -22, 1, 0xe8243c);
     if (hasModel('teatable')) { sc.add('teatable', 56, y, -20.8, 0.4, 3.7); box(54.2, 57.8, -22.6, -19); } else { k.box(56, y, -19.5, 4, 0.9, 2, 0xc98a5a); box(54, 58, -20.6, -18.4); }
     if (hasModel('candyoven')) sc.add('candyoven', 50.8, y, -15, Math.PI / 2, 2.9); else { k.box(51, y, -15, 2.4, 2.6, 2.4, 0xb9774a); k.box(52.25, y + 0.8, -15, 0.1, 1, 1.2, 0xffa23a, { glow: 1 }); } box(49.6, 52.3, -16.3, -13.7); k.box(53.6, y, -14.6, 1, 0.5, 1, 0xf7a8c8); k.box(53.6, y + 0.5, -14.6, 1.05, 0.12, 1.05, 0xfff1d6);
@@ -518,17 +522,17 @@ export function buildSugar() {
     const PK = 0xf7a8c8, CR = 0xfff1d6, cols = [0xff9ec0, 0xa8d8f5, 0xfff3a8, 0xc9a0f0, 0xa8e8c4, 0xffb88a];
     k.cyl(61, y + 0.1, -16.5, 3.4, 3.4, 0.04, PK, {}, 24); k.cyl(61, y + 0.12, -16.5, 2.8, 2.8, 0.04, CR, {}, 24); k.cyl(61, y + 0.14, -16.5, 1.6, 1.6, 0.04, 0xffd0e0, {}, 24);
     for (const z of [-14.2, -18]) { k.box(68, y, z, 1.5, 0.55, 1.5, 0xc9a0f0); k.box(68.6, y + 0.55, z, 0.35, 1, 1.5, 0xb48ae0); for (const dz of [-0.65, 0.65]) k.box(68, y + 0.55, z + dz, 1.3, 0.35, 0.22, 0xb48ae0); k.sph(67.8, y + 0.7, z, 0.4, CR, { s: [1, 0.5, 1] }); box(67.2, 68.9, z - 0.8, z + 0.8); }
-    k.cyl(67.9, y, -16.1, 0.12, 0.3, 0.7, 0xc98a5a, {}, 8); k.cyl(67.9, y + 0.7, -16.1, 0.5, 0.5, 0.08, 0xd9a070, {}, 12); k.cyl(67.9, y + 0.78, -16.1, 0.14, 0.1, 0.22, CR, {}, 8); k.sph(67.9, y + 1.15, -16.1, 0.2, 0xffe08a, { glow: 1 }); w.circles.push([67.9, -16.1, 0.5]);
+    k.cyl(67.9, y, -16.1, 0.12, 0.3, 0.7, 0xc98a5a, {}, 8); k.cyl(67.9, y + 0.7, -16.1, 0.5, 0.5, 0.08, 0xd9a070, {}, 12); k.cyl(67.9, y + 0.78, -16.1, 0.14, 0.1, 0.22, CR, {}, 8); k.sph(67.9, y + 1.15, -16.1, 0.2, 0xffe08a, { glow: 1 }); circ([67.9, -16.1, 0.5]);
     k.box(70.3, y, -21.5, 0.7, 3.4, 3.4, 0xd9a070, { wood: 1 }); for (let r = 0; r < 4; r++) for (let i = 0; i < 9; i++) k.box(69.98, y + 0.25 + r * 0.8, -23 + i * 0.36, 0.3, 0.5 + ((i * 7 + r * 3) % 4) * 0.05, 0.26, cols[(i + r * 2) % 6]); box(69.8, 70.7, -23.3, -19.7);
     for (let i = 0; i < 3; i++) { const x = 51.6 + i * 2.6; k.box(x, y + 2.2, -23.75, 1.5, 1.2 + (i % 2) * 0.4, 0.08, 0xd9a070); k.box(x, y + 2.3, -23.7, 1.25, 1 + (i % 2) * 0.4, 0.06, cols[i * 2], { glow: 1 }); k.sph(x, y + 2.8 + (i % 2) * 0.2, -23.66, 0.26, cols[i * 2 + 1], { s: [1, 1, 0.1] }); }
-    for (const [x, z] of [[50, -22.8], [70.2, -13], [58.6, -23]]) { k.cyl(x, y, z, 0.36, 0.28, 0.6, 0xffb88a, {}, 10); for (let i = 0; i < 5; i++) k.sph(x + Math.cos(i * 1.26) * 0.25, y + 1 + (i % 2) * 0.25, z + Math.sin(i * 1.26) * 0.25, 0.3, i % 2 ? 0x8ad8a0 : 0x7fc98a); k.sph(x, y + 1.5, z, 0.16, cols[0]); w.circles.push([x, z, 0.5]); }
+    for (const [x, z] of [[50, -22.8], [70.2, -13], [58.6, -23]]) { k.cyl(x, y, z, 0.36, 0.28, 0.6, 0xffb88a, {}, 10); for (let i = 0; i < 5; i++) k.sph(x + Math.cos(i * 1.26) * 0.25, y + 1 + (i % 2) * 0.25, z + Math.sin(i * 1.26) * 0.25, 0.3, i % 2 ? 0x8ad8a0 : 0x7fc98a); k.sph(x, y + 1.5, z, 0.16, cols[0]); circ([x, z, 0.5]); }
     for (const z of [-17.5, -27]) { k.box(70.7, y + 1.6, z, 0.12, 2.2, 2.2, 0xa8d8f5, { glow: 1 }); for (const dz of [-1.25, 1.25]) k.box(70.55, y + 1.3, z + dz, 0.14, 2.8, 0.5, PK); k.box(70.55, y + 4, z, 0.2, 0.25, 3.2, 0xff9ec0); }
     k.box(52.2, y, -28.4, 2.6, 0.55, 4.4, 0xd9a070, { wood: 1 }); k.box(52.2, y + 0.55, -28.3, 2.4, 0.3, 4, CR); k.box(52.2, y + 0.63, -27.7, 2.5, 0.3, 2.8, 0xc9a0f0); k.box(52.2, y + 0.8, -30, 1.6, 0.25, 0.7, 0xffffff); k.box(52.2, y, -30.75, 2.8, 1.7, 0.2, 0xd9a070, { wood: 1 }); box(50.8, 53.6, -31, -26.2);
     for (let i = 0; i < 5; i++) k.sph(51.4 + i * 0.4, y + 0.98, -27.9 + (i % 2) * 0.5, 0.2, cols[i], { s: [1, 0.3, 1] });
     k.box(55, y, -30.6, 1.5, 0.9, 0.9, 0xff9ec0); k.box(55, y + 0.9, -30.6, 1.6, 0.12, 1, CR); k.sph(55, y + 1.3, -30.6, 0.24, 0xffe08a, { glow: 1 }); k.cyl(55, y + 1.02, -30.6, 0.1, 0.14, 0.2, 0xc98a5a, {}, 8); box(54.2, 55.8, -31.1, -30.1);
     for (let i = 0; i < 5; i++) { const a = i * 1.257; k.box(64 + Math.cos(a) * 0.5, y + 3.2, -28.6 + Math.sin(a) * 0.5, 0.02, 1.1, 0.02, 0xffffff); k.sph(64 + Math.cos(a) * 0.5, y + 3.1, -28.6 + Math.sin(a) * 0.5, 0.14, cols[i], { glow: 1 }); } k.torus(64, y + 4.3, -28.6, 0.5, 0.03, 0xffffff, { rx: Math.PI / 2 });
-    k.sph(64, y + 0.75, -28.6, 0.8, 0xf2c14a, { s: [1.5, 0.8, 0.9], glow: 1 }); k.sph(64, y + 1.1, -28.6, 0.75, 0xffe08a, { s: [1.4, 0.7, 0.85] }); k.cone(64, y + 1.6, -28.6, 0.14, 0.4, 0xffb23a, { glow: 1 }); k.box(64, y, -28.6, 1.6, 0.3, 1, 0xc98a5a); w.circles.push([64, -28.8, 1.1]);
-    for (let i = 0; i < 10; i++) { const x = 73 + R() * 4, z = -19 + R() * 6; k.cone(x, H(x, z) + 0.2, z, 0.2, 0.5, 0x7fc98a); k.sph(x, H(x, z) + 0.6, z, 0.1, 0xbfa0e8); } }
+    k.sph(64, y + 0.75, -28.6, 0.8, 0xf2c14a, { s: [1.5, 0.8, 0.9], glow: 1 }); k.sph(64, y + 1.1, -28.6, 0.75, 0xffe08a, { s: [1.4, 0.7, 0.85] }); k.cone(64, y + 1.6, -28.6, 0.14, 0.4, 0xffb23a, { glow: 1 }); k.box(64, y, -28.6, 1.6, 0.3, 1, 0xc98a5a); circ([64, -28.8, 1.1]);
+    for (let i = 0; i < 10; i++) { const x = 73 + R() * 4, z = -19 + R() * 6; k.cone(x, H(x, z) + 0.2, z, 0.2, 0.5, 0x7fc98a); k.sph(x, H(x, z) + 0.6, z, 0.1, 0xbfa0e8); } } }
   // marshmallow meadows
   w.bouncers.forEach(([x, z, r, top], i) => { const y = base(x, z), c = [0xffffff, 0xffe0ec, 0xfff6d0][i % 3]; k.cyl(x, y - 0.5, z, r, r, top + 0.2, c, {}, 16); k.sph(x, y + top - 0.3, z, r * 0.98, c, { s: [1, 0.22, 1] }); });
   // licorice lift + mountain dressing

@@ -8,7 +8,7 @@ export const INTERLUDES = {
   4: { title: 'A scone for the stranger', at: [34, 9], steps: [
     'Meanwhile, Kim cannot stop thinking about the stranger in the red dress, who ate one tart as though it were a state occasion.',
     [K, 'She’ll be hungry. Travellers are always hungry. Dad! I’m taking a scone!'],
-    { go: [37, -28], label: 'Fetch a warm scone from the workshop, behind the confectionery' },
+    { go: [37, -6], label: 'Fetch a warm scone from the workshop, inside the confectionery' },
     'The scone is still warm through the napkin. Tira rides on Kim’s shoulder, guarding it with great seriousness.',
     { go: [18, 51], label: 'Carry it to the inn' },
     'The innkeeper shakes his head. The room was taken, and paid for, and the bed has not been slept in.',
@@ -36,7 +36,7 @@ export const INTERLUDES = {
   7: { title: 'Crumbs for a dragon', at: [34, 9], steps: [
     'Meanwhile, Kim has met a dragon, and cannot think about anything else.',
     [K, 'What do dragons eat? Tira, what do dragons eat? Don’t look at me like that. Not ferrets.'],
-    { find: [[37, -28], [8, 11], [-7, 30]], label: 'Gather a basket: pastries, tarts, a red ribbon' },
+    { find: [[37, -6], [8, 11], [-7, 30]], label: 'Gather a basket: pastries, tarts, a red ribbon' },
     'A basket of yesterday’s pastries, six lemon tarts, and a red ribbon for the handle, because a present ought to look like one.',
     { go: [0, 112], label: 'Take the forest path' }, { go: [-38, 139], label: 'Leave the basket by the cave' },
     'Two points of red open in the dark of the cave. Kim sets the basket down very carefully and takes four polite steps backwards.',
@@ -46,6 +46,6 @@ export const INTERLUDES = {
     [K, 'Rose, mint and lemon. Rose, mint and lemon. If I say it the whole way I shan’t come back with liquorice again.'],
     { find: [[-13, 7], [-11, 30], [9, 42]], label: 'Collect three colours of sugar-glass' },
     'Three paper twists of glass, one from each stall, and a fourth pressed on her for luck that is plainly liquorice.',
-    { go: [34, -21], label: 'Run them back to the workshop' },
+    { go: [34, -2], label: 'Run them back to the workshop' },
     [K, 'Rose, mint, lemon. And liquorice. Don’t say anything.']] },
 };
