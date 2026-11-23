@@ -2,24 +2,26 @@
 // Both share one skeleton and a flat-colour style, so skin, hair and clothes are painted exactly per character.
 // Gowns, robes, capes, crowns and the other story-specific pieces are added on top and follow the bones.
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { gltf } from './gltf.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { GEO, part, mat } from './kit.js';
-import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
-const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder), src = {}, clips = { lady: {}, man: {} };
+const loader = gltf, src = {}, clips = { lady: {}, man: {} };
 // Sculpted hero models (generated from the authors' character art): Amber, Kim and the King are rigged and animated; Ruby and Tira are statues the game moves itself.
-const hero = {}, HEROES = ['amber', 'amber-coat', 'amber-cape', 'orin', 'steward', 'aldren', 'mistress', 'kim', 'king', 'ruby', 'tira', 'lava', 'smorella', 'tafford', 'praline', 'ashlock', 'emman', 'emwoman', 'emdancer', 'emchild', 'warden', 'guard', 'scholar', 'suman', 'suwoman', 'suchild', 'sugirl', 'traveller', 'traveller2'], HERO_OF = { Amber: 'amber', Kim: 'kim', 'The King': 'king', 'Grandma Lava': 'lava', Smorella: 'smorella', Tafford: 'tafford', 'Madame Praline': 'praline', 'Lord Ashlock': 'ashlock', 'Master Orin': 'orin', 'The Steward': 'steward', 'Master Aldren': 'aldren', 'Etiquette Mistress': 'mistress' }, HERO_H = { kim: 1.07, king: 1.15, amber: 1.12, 'amber-coat': 1.12, 'amber-cape': 1.12, orin: 1.2, steward: 1.15, aldren: 1.1, mistress: 1.17, lava: 1.0, smorella: 1.1, tafford: 1.2, praline: 0.98, ashlock: 1.2, emman: 1.15, emwoman: 1.1, emdancer: 1.08, emchild: 0.8, warden: 1.22, guard: 1.2, scholar: 1.13, suman: 1.13, suwoman: 1.08, suchild: 0.76, sugirl: 0.66, traveller: 1.15, traveller2: 1.1 };
+const hero = {}, HEROES = { all: ['amber', 'amber-coat', 'amber-cape', 'kim', 'ruby', 'tira'], ember: ['orin', 'steward', 'aldren', 'mistress', 'king', 'ashlock', 'emman', 'emwoman', 'emdancer', 'emchild', 'warden', 'guard', 'scholar'], sugar: ['lava', 'smorella', 'tafford', 'praline', 'suman', 'suwoman', 'suchild', 'sugirl', 'traveller', 'traveller2'], guests: ['praline', 'smorella', 'tafford', 'lava', 'suman'] }, HERO_OF = { Amber: 'amber', Kim: 'kim', 'The King': 'king', 'Grandma Lava': 'lava', Smorella: 'smorella', Tafford: 'tafford', 'Madame Praline': 'praline', 'Lord Ashlock': 'ashlock', 'Master Orin': 'orin', 'The Steward': 'steward', 'Master Aldren': 'aldren', 'Etiquette Mistress': 'mistress' }, HERO_H = { kim: 1.07, king: 1.15, amber: 1.12, 'amber-coat': 1.12, 'amber-cape': 1.12, orin: 1.2, steward: 1.15, aldren: 1.1, mistress: 1.17, lava: 1.0, smorella: 1.1, tafford: 1.2, praline: 0.98, ashlock: 1.2, emman: 1.15, emwoman: 1.1, emdancer: 1.08, emchild: 0.8, warden: 1.22, guard: 1.2, scholar: 1.13, suman: 1.13, suwoman: 1.08, suchild: 0.76, sugirl: 0.66, traveller: 1.15, traveller2: 1.1 };
 export const getHero = (n) => hero[n];
 export function heroStatic(n, size) { const h = hero[n]; if (!h) return null; const m = h.scene.clone(true), box = new THREE.Box3().setFromObject(m), sz = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3()), k = size / Math.max(sz.x, sz.y, sz.z), g = new THREE.Group(); m.position.set(-c.x * k, -box.min.y * k, -c.z * k); m.scale.multiplyScalar(k); g.add(m); g.userData.size = sz.multiplyScalar(k); m.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material.envMapIntensity = 0.5; o.material.metalness = 0; o.material.roughness = 0.85; } }); return g; }
 const LADIES = ['Formal', 'Witch'], MEN = ['King', 'Farmer', 'Adventurer', 'Worker', 'Suit', 'Casual'];
 let ready = false, loading = null;
 export const peopleReady = () => ready;
-export function loadPeople() {
+// Each realm loads only the sculpted figures who live there (plus Sugarland's guests once they sail to Emberland), so a tablet never holds them all at once.
+const heroJobs = {};
+function loadHero(n) { return heroJobs[n] || (heroJobs[n] = loader.loadAsync(`models/hero/${n}.glb?v=2`).then((g) => { for (const c of g.animations) if (/Walk|Run/.test(c.name)) for (const t of c.tracks) if (/Hips\.position$/.test(t.name)) for (let i = 0; i < t.values.length; i += 3) { t.values[i] = t.values[0]; t.values[i + 2] = t.values[2]; } hero[n] = { scene: g.scene, clips: Object.fromEntries(g.animations.map((c) => [c.name, c])) }; }).catch((e) => console.warn('hero model missing', n, e?.message))); }
+export function loadPeople(world, ch = 0) {
   const get = (dir, n, kind) => loader.loadAsync(`models/${dir}/${n}.glb`).then((g) => { src[n] = g.scene; for (const c of g.animations) clips[kind][c.name] = clips[kind][c.name] || c; });
-  if (!loading) loading = Promise.all([...LADIES.map((n) => get('umw', n, 'lady')), ...MEN.map((n) => get('men', n, 'man'))])
-    .then(() => { ready = true; return Promise.all(HEROES.map((n) => loader.loadAsync(`models/hero/${n}.glb`).then((g) => { for (const c of g.animations) if (/Walk|Run/.test(c.name)) for (const t of c.tracks) if (/Hips\.position$/.test(t.name)) for (let i = 0; i < t.values.length; i += 3) { t.values[i] = t.values[0]; t.values[i + 2] = t.values[2]; } hero[n] = { scene: g.scene, clips: Object.fromEntries(g.animations.map((c) => [c.name, c])) }; }).catch((e) => console.warn('hero model missing', n, e?.message)))); }).catch((e) => { console.warn('character models unavailable, using simple figures', e?.message); });
-  return loading;
+  if (!loading) loading = Promise.all([...LADIES.map((n) => get('umw', n, 'lady')), ...MEN.map((n) => get('men', n, 'man'))]).then(() => { ready = true; }).catch((e) => { console.warn('character models unavailable, using simple figures', e?.message); });
+  const want = [...HEROES.all, ...(HEROES[world] || []), ...(world === 'ember' && ch >= 16 ? HEROES.guests : [])];
+  return loading.then(() => Promise.all(want.map(loadHero)));
 }
 const MALE = /King|Ashlock|Aldren|Steward|Boy|Orin|Brand|Tafford|Marsh|Guard|Warden|Attendant|Baker|Confectioner|Merchant|Seller|Balloonist|Archivist|^Traveller$/;
 const partOf = (o) => (/Head|Body|Feet|Legs|Pants|Backpack|Pistol/.test(o.name) ? o.name : o.parent.name);
@@ -64,7 +66,7 @@ function extras(L, on, lady) {
 }
 export function makeRig(L) {
   const male = L.style === 'man' || L.style === 'guard' || (L.style !== 'woman' && L.style !== 'girl' && MALE.test(L.name || ''));
-  let hk = L.hero || HERO_OF[L.name]; if (hk === 'amber' && L.collar) hk = 'amber-coat'; else if (hk === 'amber' && L.cape && hero['amber-cape']) hk = 'amber-cape'; if (hk && hero[hk]) return makeHero(L, hk);
+  let hk = L.hero || HERO_OF[L.name]; if (hk && !hero[hk]) loadHero(hk); if (hk === 'amber' && L.collar) hk = 'amber-coat'; else if (hk === 'amber' && L.cape && hero['amber-cape']) hk = 'amber-cape'; if (hk && hero[hk]) return makeHero(L, hk);
   return male ? makeMan(L) : makeLady(L);
 }
 function makeHero(L, key) {

@@ -8,6 +8,7 @@ import { InkPass } from './ink.js';
 import { discover, drawMini } from './map.js';
 import { loadPack, WORLD_PACKS } from './assets.js';
 import { loadPeople } from './people.js';
+import { initGltf } from './gltf.js';
 import { playCut, WHO as CUTWHO } from './cut.js';
 import { makeRoom, deckZone } from './rooms.js';
 const PLAYS = {
@@ -43,6 +44,10 @@ export class Game {
     this.S = this.blank(); this.mk = makePerson; this.tmp = {}; this.busy = 0; this.paused = true; this.t = 0; this.worlds = {}; this.npcs = []; this.things = []; this.inside = new Set(); this.lits = new Map(); this.rings = []; this.fxs = []; this.bolts = []; this.breaks = [];
     this.sound = new Sound();
     const r = (this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }));
+    // phones and tablets get a smaller drawing budget; if the graphics memory is ever lost, come back in a lighter mode instead of a black screen
+    this.touchy = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 1; try { this.lite = sessionStorage.getItem('everlands.lite') === '1'; } catch (e) {}
+    canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); try { if (sessionStorage.getItem('everlands.lite') === '1') return; sessionStorage.setItem('everlands.lite', '1'); } catch (er) { return; } this.save?.(); location.reload(); });
+    initGltf(r);
     r.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
     this.scene = new THREE.Scene(); this.scene.fog = new THREE.FogExp2(0xffffff, 0.003);
     this.cam = new THREE.PerspectiveCamera(58, 1, 0.3, 1800);
@@ -74,7 +79,7 @@ export class Game {
   get W() { return this.worlds[this.S.world]; }
   blank() { return { ch: 1, max: 1, flags: {}, leads: [], items: {}, codex: [], vis: {}, sparks: 0, hp: 3, world: 'ember', time: 'day', pos: null, opt: { sound: true, invert: false, fast: false } }; }
   resize() { // one renderer budget for every screen, from an iPhone to a 12.9" iPad
-    const box = this.renderer.domElement.getBoundingClientRect(), w = Math.max(innerWidth, Math.round(box.width) || 0), h = Math.max(innerHeight, Math.round(box.height) || 0), a = w / h; this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2, Math.sqrt(2.8e6 / (w * h))) * (this.resScale || 1));
+    const box = this.renderer.domElement.getBoundingClientRect(), w = Math.max(innerWidth, Math.round(box.width) || 0), h = Math.max(innerHeight, Math.round(box.height) || 0), a = w / h; this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2, Math.sqrt((this.lite ? 1.1e6 : this.touchy ? 1.9e6 : 2.8e6) / (w * h))) * (this.resScale || 1));
     this.renderer.setSize(w, h, false); if (this.composer) { this.composer.setPixelRatio(this.renderer.getPixelRatio()); this.composer.setSize(w, h); } this.cam.aspect = a; this.cam.fov = a < 0.8 ? 74 : a < 1.6 ? 64 : 58; this.cam.updateProjectionMatrix(); this.camDist = a < 0.8 ? 8.5 : 7.5; }
 
   // ───────── saving ─────────
@@ -113,7 +118,7 @@ export class Game {
 
   // ───────── world / sky ─────────
   async enterWorld(name, time) {
-    await loadPeople();
+    await loadPeople(name, this.S.ch);
     if (!this.rubySwapped) { this.rubySwapped = true; const m = makeDragon(); if (m.userData.heroRuby) { const old = this.ruby.model; m.visible = old.visible; m.rotation.order = old.rotation.order; old.parent?.add(m); old.parent?.remove(old); this.ruby.model = m; } if (this.tira) { this.scene.remove(this.tira.m); this.tira = null; } }
     if (!this.worlds[name]) { await Promise.all((WORLD_PACKS[name] || []).map(loadPack)); this.worlds[name] = BUILD[name](); await wait(0); }
     this.worlds[name].group.traverse((o) => { if (o.isMesh && !o.userData.sh) { o.userData.sh = 1; const lit = !!o.material.isMeshStandardMaterial; o.receiveShadow = lit; o.castShadow = lit && !o.userData.ground; } });
@@ -328,8 +333,11 @@ export class Game {
     for (const b of this.breaks) consider(b.x, b.z, b.mesh.position.y + 0.5);
     for (const t of this.things) if (t.def.flame && !t.def.self && this.W.P[t.def.at]) { const q = this.W.P[t.def.at]; consider(q[0], q[1], this.H(q[0], q[1]) + 1.6); }
     if (best) yaw = Math.atan2(best[0], best[1]); if (!src) p.tyaw = p.yaw = yaw; else p.yaw = yaw;
-    const m = new THREE.Mesh(GEO.sph, new THREE.MeshBasicMaterial({ color: new THREE.Color(kim ? 0xff7ab0 : 0xffa030).multiplyScalar(2.2) })), sc = kim ? 0.16 : 0.24 + Math.min(0.14, (this.S.sparks || 0) / 200); m.scale.setScalar(sc);
-    const bolt = { x: p.x + Math.sin(yaw) * 0.6, y: p.y + 1.25, z: p.z + Math.cos(yaw) * 0.6, yaw, left: range, kim, mesh: m, sc, vy: best ? (ty - (p.y + 1.25)) / (bd / 28) : 0, tr: 0 }; m.position.set(bolt.x, bolt.y, bolt.z); this.scene.add(m); this.bolts.push(bolt);
+    const m = new THREE.Group(), sc = kim ? 0.24 : 0.42 + Math.min(0.16, (this.S.sparks || 0) / 200), lay = (geo, col, k, op, sx, sy, sz, z, add) => { const q = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(k), transparent: true, opacity: op, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: false })); q.scale.set(sx, sy, sz); q.position.z = z; if (geo === GEO.cone) q.rotation.x = -Math.PI / 2; m.add(q); return q; };
+    // a fireball: white-hot heart, a yellow body, and orange and red tongues streaming out behind it
+    lay(GEO.cone, kim ? 0xc02a78 : 0xc81e06, 1, 0.8, 1.7, 5.2, 1.7, -2.2); lay(GEO.sph, kim ? 0xe04a90 : 0xe83a0a, 1, 0.85, 1.5, 1.5, 1.7, -0.25); lay(GEO.cone, kim ? 0xff6aa8 : 0xff7a10, 1.15, 0.9, 1.15, 3.6, 1.15, -1.5); lay(GEO.sph, kim ? 0xff8ac0 : 0xff9a14, 1.2, 0.95, 1.05, 1.05, 1.2, -0.1); lay(GEO.sph, kim ? 0xffd0e8 : 0xffe060, 1.6, 1, 0.68, 0.68, 0.74, 0.08); lay(GEO.sph, 0xffffff, 2.6, 0.9, 0.36, 0.36, 0.36, 0.16, 1);
+    m.scale.setScalar(sc); m.rotation.y = yaw;
+    const bolt = { x: p.x + Math.sin(yaw) * 0.6, y: p.y + 1.25, z: p.z + Math.cos(yaw) * 0.6, yaw, left: range, kim, mesh: m, sc, vy: best ? (ty - (p.y + 1.25)) / (bd / 28) : 0, tr: 0 }; m.position.set(bolt.x, bolt.y, bolt.z); this.scene.add(m); this.bolts.push(bolt); this.fireFx(bolt.x, bolt.y, bolt.z, kim, 16, 0.5, 1.6, 0.45, 1.5); this.puff(bolt.x, bolt.y, bolt.z, kim ? 0xffc0dc : 0xffd060, 10, 0.9, 2.4, 0.5);
     this.sound.sfx('flame'); this.sound.tone(kim ? 900 : 520, 0.25, 'sawtooth', 0.05, kim ? 1400 : 220); (src ? src.model : p.model).userData.cast?.(); if (!src && p.model.userData.armR) p.model.userData.armR.rotation.x = -1.5;
     if (!src && this.comp?.id === 'kim' && this.S.ch >= 15) setTimeout(() => { if (this.comp && !this.busy) this.castBolt(this.comp); }, 380);
   }
@@ -351,7 +359,7 @@ export class Game {
   endMed() { if (this.mode === 'med') { this.mode = null; this.flame.visible = false; this.flameLight.intensity = 0; this.player.model.position.y = this.player.y; } }
   updateMed(dt, moved) {
     const p = this.player, S = this.S; if (moved || this.busy) return this.endMed(); this.medT += dt; p.model.position.y = p.y - 0.42; if (p.model.userData.armL) { p.model.userData.armL.rotation.x = -0.9; p.model.userData.armR.rotation.x = -0.9; }
-    const s = 0.2 + Math.sin(this.t * 3) * 0.05 + this.medT * 0.03; this.flame.visible = true; this.flame.position.set(p.x + Math.sin(p.yaw) * 0.45, p.y + 0.75, p.z + Math.cos(p.yaw) * 0.45); this.flame.scale.set(s, s * 1.8, s); this.flame.material.color.set(0xffc040); this.flameLight.position.copy(this.flame.position); this.flameLight.intensity = 20 + this.medT * 8;
+    const s = 0.2 + Math.sin(this.t * 3) * 0.05 + this.medT * 0.03; this.flame.visible = true; this.flame.position.set(p.x + Math.sin(p.yaw) * 0.45, p.y + 0.75, p.z + Math.cos(p.yaw) * 0.45); this.flame.scale.set(s, s * 1.8, s); this.flame.material.color.set(0xffc040); this.flameLight.position.copy(this.flame.position); this.flameLight.intensity = 20 + this.medT * 8; if (Math.random() < dt * 30) this.fireFx(this.flame.position.x, this.flame.position.y, this.flame.position.z, false, 3, s * 1.2, 1.3, 0.55, 0.9 + s);
     if (Math.random() < dt * 14) { const a = Math.random() * 6.28, r = 1.6 - (this.medT % 1.7) * 0.7; this.puff(p.x + Math.cos(a) * r, p.y + 0.2, p.z + Math.sin(a) * r, 0xffb030, 2, 0.1, 1.4, 0.7); }
     if (Math.floor(this.medT / 1.7) > (this.medN || 0)) { this.medN = Math.floor(this.medT / 1.7); S.hp = Math.min(3, S.hp + 1); this.sound.sfx('chime'); UI.setHearts(S.hp, true, true); this.puff(p.x, p.y + 1, p.z, 0xffd060, 30, 2.4, 1.6, 1.2); }
     if (S.hp >= 3) { this.medN = 0; this.endMed(); this.bark(['Amber', 'There. Warm again.']); this.save(); }
@@ -459,6 +467,7 @@ export class Game {
   updateLamps(dt) {
     const W = this.W, p = this.riding ? this.ruby : this.player, night = this.nightNow(), under = (this.kL ?? 1) < 0.8, src = [];
     if (!W.sea && !this.zone && this.S.opt.fx !== false && (night || under)) { for (const t of W.torches || []) if (t.lit) src.push([t.x, t.y + 0.4, t.z, t.pink ? 0xff8ab8 : 0xffa040, 34]); for (const g of W.glows || []) if (under || g[4]) src.push([g[0], g[1], g[2], g[3] || 0xffb060, 30]); for (const [, m] of this.lits) src.push([m.position.x, m.position.y, m.position.z, 0xffa040, 38]); }
+    if (this.S.opt.fx !== false) for (const b of this.bolts) src.push([b.x, b.y, b.z, b.kim ? 0xff8ab8 : 0xff9030, 46]);
     src.sort((a, b) => Math.hypot(a[0] - p.x, a[2] - p.z) - Math.hypot(b[0] - p.x, b[2] - p.z));
     this.lamps.forEach((l, i) => { const s = src[i], d = s ? Math.hypot(s[0] - p.x, s[2] - p.z) : 99, want = s && d < 34 ? s[4] * (0.85 + 0.15 * Math.sin(this.t * 9 + i * 2)) : 0; if (s && d < 34) { l.position.set(s[0], s[1], s[2]); l.color.set(s[3]); } l.intensity = lerp(l.intensity, want, Math.min(1, dt * 6)); });
   }
@@ -494,7 +503,7 @@ export class Game {
   nightNow() { return this.S.time === 'night' || this.S.time === 'dusk'; }
   markTorches() { const W = this.W; if (!W.torches || W.torchGroup) return; W.torchGroup = new THREE.Group(); for (const t of W.torches) { t.m = new THREE.Mesh(GEO.cone, mat(t.pink ? 0xff8ab8 : 0xffa030, true)); t.m.position.set(t.x, t.y + 0.45, t.z); t.m.scale.set(0.3, 0.9, 0.3); t.m.visible = false; const c = new THREE.Mesh(GEO.cone, mat(t.pink ? 0xffd0e4 : 0xffe08a, true)); c.scale.set(0.5, 0.6, 0.5); c.position.y = -0.2; t.m.add(c); W.torchGroup.add(t.m); } W.group.add(W.torchGroup); }
   nearTorch(r = 4.4) { const p = this.player; let best = null, bd = r; if (!this.nightNow()) return null; for (const t of this.W.torches || []) { if (t.lit) continue; const d = Math.hypot(p.x - t.x, p.z - t.z); if (d < bd) { bd = d; best = t; } } return best; }
-  lightTorch(t) { t.lit = true; this.sound.sfx('lit'); this.puff(t.x, t.y + 0.5, t.z, t.pink ? 0xff8ab8 : 0xffb030, 18, 0.5, 2.2); const all = this.W.torches, n = all.filter((x) => x.lit).length; this.S.sparks = (this.S.sparks || 0) + 1;
+  lightTorch(t) { t.lit = true; this.sound.sfx('lit'); this.fireFx(t.x, t.y + 0.3, t.z, !!t.pink, 22, 0.7, 2.4, 0.8, 1.8); this.puff(t.x, t.y + 0.5, t.z, t.pink ? 0xff8ab8 : 0xffb030, 18, 0.5, 2.2); const all = this.W.torches, n = all.filter((x) => x.lit).length; this.S.sparks = (this.S.sparks || 0) + 1;
     if (n === all.length) { this.S.sparks += 6; this.sound.sfx('chapter'); UI.tip(`Every torch in ${this.W.name === 'ember' ? 'Emberland' : 'Sugarland'} is burning. The whole night glows. (+6 cinders)`, 8); } else UI.tip(`Torch lit: ${n} of ${all.length}.`, 2.5); }
   updateTorches(dt) { const W = this.W; if (!W.torches) return; const night = this.nightNow(); if (night && !this.f.tipTorch && this.fireOK() && this.nearTorch(9)) { this.f.tipTorch = 1; UI.tip('An unlit torch. Stand beside it and hold ✦ to light it. There are more along the lanes.', 8); }
     for (const t of W.torches) { if (!t.m) continue; t.m.visible = t.lit && night; if (t.m.visible) { const s = 1 + Math.sin(this.t * 11 + t.x) * 0.16; t.m.scale.set(0.3, 0.9 * s, 0.3); } } }
@@ -537,11 +546,11 @@ export class Game {
       if (dead) { this.puff(b.x, b.y, b.z, b.col, 10, 0.4, 1, 0.5); this.scene.remove(b.mesh); this.shots.splice(i, 1); } }
     for (let i = this.bolts.length - 1; i >= 0; i--) {
       const b = this.bolts[i], st = 28 * dt; b.x += Math.sin(b.yaw) * st; b.z += Math.cos(b.yaw) * st; b.y += b.vy * dt; b.left -= st; const gh = this.H(b.x, b.z); let dead = b.left <= 0 || gh > b.y + 0.4;
-      if (b.y < gh + 0.5) b.y = gh + 0.5; b.mesh.position.set(b.x, b.y, b.z); b.mesh.scale.setScalar(b.sc * (1 + Math.sin(this.t * 40) * 0.2));
-      if ((b.tr += dt) > 0.05) { b.tr = 0; this.puff(b.x, b.y, b.z, b.kim ? 0xff8ab8 : 0xff9a30, 3, 0.25, 0.6, 0.45); }
+      if (b.y < gh + 0.5) b.y = gh + 0.5; b.mesh.position.set(b.x, b.y, b.z); { const f = b.sc * (1 + Math.sin(this.t * 40) * 0.16), c = b.mesh.children; b.mesh.scale.setScalar(f); c[2].scale.y = 3.6 + Math.sin(this.t * 31 + 1) * 1.1; c[0].scale.y = 5.2 + Math.sin(this.t * 23) * 1.6; c[0].scale.x = c[0].scale.z = 1.7 + Math.sin(this.t * 37) * 0.25; }
+      if ((b.tr += dt) > 0.022) { b.tr = 0; this.fireFx(b.x - Math.sin(b.yaw) * 0.6, b.y, b.z - Math.cos(b.yaw) * 0.6, b.kim, 6, 0.45, 1.1, 0.7, 1.5); if (Math.random() < 0.5) this.puff(b.x, b.y, b.z, b.kim ? 0xffc0dc : 0xffd060, 2, 0.5, 1.6, 0.7); }
       for (const k of this.breaks) if (Math.hypot(k.x - b.x, k.z - b.z) < 1.5 && Math.abs(k.mesh.position.y + 0.5 - b.y) < 2.4) { this.smash(k); dead = true; break; }
       if (!dead && !this.busy) for (const t of this.things) { const d = t.def; if (!d.flame || d.self || !this.W.P[d.at]) continue; const q = this.W.P[d.at]; if (Math.hypot(q[0] - b.x, q[1] - b.z) < 2.2) { dead = true; this.puff(q[0], this.H(q[0], q[1]) + 1.8, q[1], b.kim ? 0xff8ab8 : 0xffb030, 18, 0.6, 2.5); this.sound.sfx('lit'); this.run(d.script); break; } }
-      if (dead) { this.puff(b.x, b.y, b.z, b.kim ? 0xff8ab8 : 0xffb030, 12, 0.5, 1.5, 0.6); this.scene.remove(b.mesh); this.bolts.splice(i, 1); }
+      if (dead) { this.fireFx(b.x, b.y, b.z, b.kim, 30, 1.3, 2.6, 0.75, 2.2); this.puff(b.x, b.y, b.z, b.kim ? 0xffc0dc : 0xffd060, 22, 2.6, 4.5, 0.9); this.scene.remove(b.mesh); this.bolts.splice(i, 1); }
     }
     for (const k of this.breaks) { if (!k.fl) continue; k.ph += dt; const d = Math.hypot(p.x - k.x, p.z - k.z); let tx = k.x0 + Math.sin(k.ph * 0.5) * 3, tz = k.z0 + Math.cos(k.ph * 0.37) * 3; k.cd = (k.cd || 0) - dt; if (hostile && d < 11 && Math.hypot(k.x - k.x0, k.z - k.z0) < 15 && k.cd <= 0) { const sp = 3.4 * dt / (d + 0.01); k.x += (p.x - k.x) * sp; k.z += (p.z - k.z) * sp; tx = k.x; tz = k.z;
         if (d < 1.25) { this.hurt(k); k.cd = 2.6; }
@@ -580,9 +589,17 @@ export class Game {
     const core = new THREE.Mesh(GEO.sph, new THREE.MeshBasicMaterial({ color: 0xfff4d0, fog: false, transparent: true, opacity: 0.9 })); core.scale.set(7, 16, 7); crown.add(core); crown.position.set(C.c[0], C.c[1] + 60, C.c[2]); crown.userData.crown = 1; this.scene.add(crown); this.fxs.push(crown);
     this.sound.sfx('chapter'); await wait(5); await UI.fade(true); this.unride('high_rail'); this.camYaw = Math.atan2(C.c[0] - this.player.x, C.c[2] - this.player.z); this.camPitch = -0.25; this.refresh(); await UI.fade(false);
   }
+  softTex() { if (!this.flameTex) { const c = document.createElement('canvas'); c.width = c.height = 64; const q = c.getContext('2d'), gr = q.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.3, 'rgba(255,255,255,0.75)'); gr.addColorStop(0.65, 'rgba(255,255,255,0.22)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); q.fillStyle = gr; q.fillRect(0, 0, 64, 64); this.flameTex = new THREE.CanvasTexture(c); } return this.flameTex; }
+  // soft glowing tongues of fire that start bright yellow, redden and shrink as they rise
+  fireFx(x, y, z, kim, n = 8, spread = 0.5, rise = 1.5, life = 0.6, size = 1.4) {
+    this.softTex(); if (0) { const c = document.createElement('canvas'); c.width = c.height = 64; const q = c.getContext('2d'), gr = q.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.3, 'rgba(255,255,255,0.75)'); gr.addColorStop(0.65, 'rgba(255,255,255,0.22)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); q.fillStyle = gr; q.fillRect(0, 0, 64, 64); this.flameTex = new THREE.CanvasTexture(c); }
+    const pos = new Float32Array(n * 3), vel = []; for (let i = 0; i < n; i++) { pos[i * 3] = x + (Math.random() - 0.5) * spread; pos[i * 3 + 1] = y + (Math.random() - 0.3) * spread; pos[i * 3 + 2] = z + (Math.random() - 0.5) * spread; vel.push((Math.random() - 0.5) * spread * 1.6, rise * (0.4 + Math.random()), (Math.random() - 0.5) * spread * 1.6); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); const c1 = new THREE.Color(kim ? 0xff9ac8 : 0xffb21e).multiplyScalar(1.25), c2 = new THREE.Color(kim ? 0xa01a60 : 0xb01604);
+    const m = new THREE.Points(g, new THREE.PointsMaterial({ map: this.flameTex, color: c1.clone(), size, transparent: true, opacity: 0.95, depthWrite: false })); m.userData = { vel, life, age: 0, c1, c2, sz: size }; this.scene.add(m); this.sparks.push(m);
+  }
   puff(x, y, z, color, n = 20, spread = 1, rise = 2, life = 1.6) {
     const pos = new Float32Array(n * 3), vel = []; for (let i = 0; i < n; i++) { pos[i * 3] = x + (Math.random() - 0.5) * spread; pos[i * 3 + 1] = y + Math.random() * spread * 0.5; pos[i * 3 + 2] = z + (Math.random() - 0.5) * spread; vel.push((Math.random() - 0.5) * spread, rise * (0.5 + Math.random()), (Math.random() - 0.5) * spread); }
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); const m = new THREE.Points(g, new THREE.PointsMaterial({ color, size: 0.5, transparent: true, opacity: 0.9, depthWrite: false })); m.userData = { vel, life, age: 0 }; this.scene.add(m); this.sparks.push(m);
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); const m = new THREE.Points(g, new THREE.PointsMaterial({ map: this.softTex(), color: new THREE.Color(color).multiplyScalar(1.5), size: 0.55, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending })); m.userData = { vel, life, age: 0 }; this.scene.add(m); this.sparks.push(m);
   }
 
   // ───────── per-frame ─────────
@@ -603,7 +620,7 @@ export class Game {
     this.updateRuby(dt); this.updateFire(dt); this.updateTorches(dt); this.updateLamps(dt); this.updateWeather(dt); this.updatePin(dt); this.updateLife(dt); if ((this.mapT = (this.mapT || 0) - dt) <= 0) { this.mapT = 0.12; discover(this, dt); const mc = document.getElementById('mini'); mc.style.display = this.zone || this.W.sea ? 'none' : ''; if (!this.zone && !this.W.sea) drawMini(mc, this); } this.updateSound(dt, mx, my); this.updateTira(dt); this.updateHint(dt);
     for (const t of this.things) if (t.prop) t.prop.rotation.y += dt * (t.def.prop === 'turtle' || t.def.prop === 'cat' ? 0 : 1.2);
     for (const [, m] of this.lits) { const s = 1 + Math.sin(this.t * 9 + m.position.x) * 0.15; m.scale.y = (m.scale.x < 0.5 ? 0.8 : 1.3) * s; }
-    for (let i = this.sparks.length - 1; i >= 0; i--) { const m = this.sparks[i], u = m.userData, a = m.geometry.attributes.position; u.age += dt; for (let j = 0; j < a.count; j++) a.setXYZ(j, a.getX(j) + u.vel[j * 3] * dt, a.getY(j) + u.vel[j * 3 + 1] * dt, a.getZ(j) + u.vel[j * 3 + 2] * dt); a.needsUpdate = true; m.material.opacity = 0.9 * (1 - u.age / u.life); if (u.age > u.life) { this.scene.remove(m); this.sparks.splice(i, 1); } }
+    for (let i = this.sparks.length - 1; i >= 0; i--) { const m = this.sparks[i], u = m.userData, a = m.geometry.attributes.position; u.age += dt; for (let j = 0; j < a.count; j++) a.setXYZ(j, a.getX(j) + u.vel[j * 3] * dt, a.getY(j) + u.vel[j * 3 + 1] * dt, a.getZ(j) + u.vel[j * 3 + 2] * dt); a.needsUpdate = true; m.material.opacity = 0.9 * (1 - u.age / u.life); if (u.c1) { const k = Math.min(1, u.age / u.life); m.material.color.lerpColors(u.c1, u.c2, Math.min(1, k * 1.5)); m.material.size = u.sz * (1 - 0.55 * k); } if (u.age > u.life) { this.scene.remove(m); this.sparks.splice(i, 1); } }
     if (this.council) { const C = this.council; C.ds.forEach((x) => { x.a += dt * 0.35; x.d.position.set(C.c[0] + Math.sin(x.a) * 44, C.c[1] + Math.sin(x.a * 2) * 3, C.c[2] + Math.cos(x.a) * 44); x.d.rotation.y = x.a + Math.PI / 2; x.d.rotation.z = -0.3; animDragon(x.d, dt, true); }); if (this.ruby.state === 'council') { const r = this.ruby; r.ca = (r.ca ?? 0) + dt * 0.35; r.x = C.c[0] + Math.sin(r.ca) * 44; r.z = C.c[2] + Math.cos(r.ca) * 44; r.y = C.c[1]; r.yaw = r.ca + Math.PI / 2; r.bank = -0.3; r.pitch = 0; } }
     for (const m of this.fxs) { if (m.userData.crown) m.rotation.y += dt * 0.5; else { const s = m.userData.src, C = this.council.c, top = C[1] + 60, hgt = Math.max(1, top - s.y); m.position.set(lerp(s.x, C[0], 0.5), s.y + hgt / 2, lerp(s.z, C[2], 0.5)); m.scale.set(1.2, Math.hypot(hgt, Math.hypot(C[0] - s.x, C[2] - s.z)), 1.2); m.lookAt(C[0], top, C[2]); m.rotateX(Math.PI / 2); } }
     if (this.rail) { this.rail.t = Math.min(1, this.rail.t + dt / this.rail.dur); this.rail.f(this.rail.t); } else this.updateCam(dt);

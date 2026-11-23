@@ -1,5 +1,5 @@
 // Offline support: cache everything fetched from our own origin; refresh in the background.
-const C = 'everlands-v1';
+const C = 'everlands-v2';
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== C).map((k) => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', (e) => {
