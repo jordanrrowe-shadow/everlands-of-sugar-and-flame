@@ -11,6 +11,45 @@ const LINES = {
 const FOLK = { ember: ['candle', 'glass', 'baker', 'attendant', 'tender', 'metal'], sugar: ['mint', 'tartman', 'ribbon', 'sledlady', 'cider'] };
 
 
+// Ordinary houses come in three layouts (besides four colourways): the bed-and-table room, a kitchen-parlour, and a children's loft-and-study.
+const HOME = [null,
+  ({ k, X, ox, oz, y, D, hh, accent, wood, trim, block, circles, sugar }) => { const cream = sugar ? 0xffffff : 0xf3e6d8, pot = sugar ? 0xff9ec0 : 0xb8643a;
+    // long table laid for supper, two benches
+    k.box(X(0.2), y + 0.8, oz + 0.9, 3.6, 0.12, 1.3, wood, { wood: !sugar }); for (const [dx, dz] of [[-1.6, -0.5], [1.6, -0.5], [-1.6, 0.5], [1.6, 0.5]]) k.box(X(0.2 + dx), y, oz + 0.9 + dz, 0.14, 0.8, 0.14, wood); block(0.2, 0.9, 3.8, 1.5);
+    k.box(X(0.2), y + 0.92, oz + 0.9, 3.2, 0.02, 0.5, accent); for (let i = 0; i < 4; i++) { k.cyl(X(-1.1 + i * 0.85), y + 0.93, oz + 0.9 + (i % 2 ? 0.38 : -0.38), 0.2, 0.2, 0.03, cream, {}, 12); k.cyl(X(-0.85 + i * 0.85), y + 0.93, oz + 0.9 + (i % 2 ? 0.38 : -0.38), 0.07, 0.06, 0.14, trim, {}, 8); }
+    k.cyl(X(0.2), y + 0.94, oz + 0.9, 0.3, 0.24, 0.2, pot, {}, 12); k.sph(X(0.2), y + 1.2, oz + 0.9, 0.24, sugar ? 0xfff3a8 : 0xd9a05a, { s: [1, 0.6, 1] }); k.cyl(X(1.3), y + 0.94, oz + 0.9, 0.05, 0.05, 0.34, cream, {}, 6); k.sph(X(1.3), y + 1.34, oz + 0.9, 0.07, 0xffd060, { glow: 1 });
+    for (const dz of [-1.15, 1.15]) { k.box(X(0.2), y + 0.42, oz + 0.9 + dz, 3.2, 0.1, 0.4, wood, { wood: !sugar }); for (const dx of [-1.4, 1.4]) k.box(X(0.2 + dx), y, oz + 0.9 + dz, 0.12, 0.42, 0.34, wood); }
+    // dresser with plates and jugs
+    k.box(X(-4.9), y, oz - 1.6, 0.8, 1, 3.2, wood, { wood: !sugar }); k.box(X(-4.95), y + 1, oz - 1.6, 0.5, 2.1, 3.2, wood, { wood: !sugar }); for (let r = 0; r < 3; r++) { k.box(X(-4.75), y + 1.35 + r * 0.62, oz - 1.6, 0.5, 0.05, 3, cream); for (let i = 0; i < 5; i++) { if ((i + r) % 3 === 0) k.cyl(X(-4.7), y + 1.4 + r * 0.62, oz - 2.8 + i * 0.6, 0.1, 0.13, 0.26, [accent, trim, pot][(i + r) % 3], {}, 8); else k.cyl(X(-4.62), y + 1.62 + r * 0.62, oz - 2.8 + i * 0.6, 0.2, 0.2, 0.03, [cream, accent, trim][(i * 2 + r) % 3], { rz: Math.PI / 2 }, 12); } } block(-4.9, -1.6, 1, 3.4);
+    // rocking chair with a cushion and a basket of wool, by the hearth
+    k.box(X(2.6), y + 0.42, oz - 2.6, 0.9, 0.1, 0.9, wood, { wood: !sugar }); k.box(X(2.98), y + 0.5, oz - 2.6, 0.1, 1.2, 0.9, wood, { wood: !sugar }); for (const dz of [-0.42, 0.42]) { k.torus(X(2.6), y + 0.32, oz - 2.6 + dz, 0.55, 0.035, wood, { s: [1, 0.35, 1] }); k.box(X(2.3), y + 0.62, oz - 2.6 + dz, 0.6, 0.06, 0.08, wood); } k.sph(X(2.55), y + 0.6, oz - 2.6, 0.36, accent, { s: [1, 0.35, 1] }); circles.push([X(2.6), oz - 2.6, 0.7]);
+    k.cyl(X(3.6), y, oz - 3.4, 0.36, 0.3, 0.34, sugar ? 0xfff1d6 : 0xb98a5a, {}, 12); for (let i = 0; i < 4; i++) k.sph(X(3.5 + (i % 2) * 0.22), y + 0.42, oz - 3.5 + Math.floor(i / 2) * 0.22, 0.15, [accent, trim, cream, pot][i]); circles.push([X(3.6), oz - 3.4, 0.45]);
+    // wash stand, hanging herbs or sweets, a rag rug
+    k.box(X(4.8), y, oz + 2.6, 0.9, 0.9, 1.4, wood, { wood: !sugar }); k.cyl(X(4.75), y + 0.9, oz + 2.6, 0.38, 0.3, 0.22, cream, {}, 14); k.cyl(X(4.75), y + 0.9, oz + 3.1, 0.1, 0.13, 0.4, trim, {}, 8); block(4.8, 2.6, 1.1, 1.6);
+    k.box(ox, y + hh - 0.5, oz - 1.2, 5.4, 0.05, 0.05, wood); for (let i = 0; i < 9; i++) k.cone(ox - 2.4 + i * 0.6, y + hh - 0.86, oz - 1.2, 0.09, 0.36, sugar ? [0xff9ec0, 0xa8d8f5, 0xfff3a8][i % 3] : [0x7a8a4a, 0xb8643a, 0x9a8a5a][i % 3], { rx: Math.PI }, 6);
+    k.cyl(X(-2.4), y + 0.02, oz + 2.9, 1.3, 1.3, 0.04, accent, {}, 20); k.cyl(X(-2.4), y + 0.04, oz + 2.9, 0.9, 0.9, 0.04, trim, {}, 20); k.cyl(X(-2.4), y + 0.06, oz + 2.9, 0.5, 0.5, 0.04, accent, {}, 20);
+    k.cyl(ox, y + hh - 1.1, oz + 0.9, 0.02, 0.02, 1.1, 0x4a3226, {}, 4); k.sph(ox, y + hh - 1.3, oz + 0.9, 0.3, sugar ? 0xffe4f0 : 0xffc45a, { glow: 1 });
+    return [X(2.2), oz + 2.6]; },
+  ({ k, X, ox, oz, y, D, hh, accent, wood, trim, block, circles, sugar }) => { const cream = sugar ? 0xffffff : 0xf3e6d8, toy = sugar ? [0xff9ec0, 0xa8d8f5, 0xfff3a8, 0xc9a0f0] : [0xb8483a, 0xe2b24a, 0x5a7a9a, 0x7a8a4a];
+    // bunk beds with a ladder and patchwork quilts
+    for (const yy of [0.35, 1.75]) { k.box(X(-4.2), y + yy, oz - 2, 1.9, 0.14, 3.4, wood, { wood: !sugar }); k.box(X(-4.2), y + yy + 0.14, oz - 1.9, 1.7, 0.22, 3.1, cream); for (let i = 0; i < 6; i++) k.box(X(-4.55 + (i % 2) * 0.72), y + yy + 0.37, oz - 2.5 + Math.floor(i / 2) * 0.72, 0.7, 0.03, 0.7, toy[(i + (yy > 1 ? 1 : 0)) % 4]); k.box(X(-4.2), y + yy + 0.32, oz - 3.3, 1.2, 0.2, 0.5, 0xfff6ea); }
+    for (const [dx, dz] of [[-0.9, -1.65], [0.9, -1.65], [-0.9, 1.65], [0.9, 1.65]]) k.box(X(-4.2 + dx), y, oz - 2 + dz, 0.14, 2.7, 0.14, wood); for (const dz of [-0.24, 0.24]) k.box(X(-3.15), y, oz - 0.7 + dz, 0.07, 2.1, 0.07, wood); for (let i = 0; i < 5; i++) k.box(X(-3.15), y + 0.3 + i * 0.38, oz - 0.7, 0.07, 0.06, 0.5, wood); block(-4.2, -2, 2.1, 3.7);
+    // writing desk under the window with books, an inkwell, a lamp and a stool
+    k.box(X(4.6), y + 0.78, oz + 0.6, 1.2, 0.1, 2.4, wood, { wood: !sugar }); for (const dz of [-1.05, 1.05]) k.box(X(4.6), y, oz + 0.6 + dz, 1.1, 0.78, 0.12, wood); block(4.6, 0.6, 1.3, 2.6);
+    for (let i = 0; i < 4; i++) k.box(X(4.75), y + 0.88 + i * 0.09, oz - 0.2, 0.5, 0.09, 0.36, toy[i], { ry: i * 0.2 }); k.box(X(4.4), y + 0.89, oz + 0.8, 0.5, 0.02, 0.7, cream, { ry: 0.2 }); k.cyl(X(4.8), y + 0.88, oz + 1.5, 0.07, 0.09, 0.12, 0x2a2430, {}, 8); k.cyl(X(4.8), y + 1, oz + 1.5, 0.012, 0.012, 0.34, cream, { rz: 0.4 }, 4);
+    k.cyl(X(4.9), y + 0.88, oz + 0.2, 0.1, 0.14, 0.3, trim, {}, 8); k.sph(X(4.9), y + 1.32, oz + 0.2, 0.17, 0xffd060, { glow: 1 }); k.cyl(X(3.6), y, oz + 0.6, 0.3, 0.26, 0.5, accent, {}, 10); circles.push([X(3.6), oz + 0.6, 0.4]);
+    // toy chest spilling blocks, a rocking horse, a wardrobe, a little bookshelf
+    k.box(X(-1.4), y, oz + 3.3, 1.5, 0.6, 0.9, accent); k.box(X(-1.4), y + 0.6, oz + 3.6, 1.5, 0.5, 0.08, accent, { rx: -0.5 }); for (let i = 0; i < 7; i++) k.box(X(-2.3 + (i % 4) * 0.34), y + ((i % 3) === 0 ? 0.24 : 0), oz + 2.3 + (i % 2) * 0.3, 0.24, 0.24, 0.24, toy[i % 4], { ry: i * 0.7 }); block(-1.4, 3.3, 1.7, 1.1);
+    k.sph(X(1.4), y + 0.62, oz + 2.7, 0.3, cream, { s: [1.5, 0.9, 0.8] }); k.sph(X(1.9), y + 0.9, oz + 2.7, 0.19, cream, { s: [1.2, 1, 0.8] }); for (const dz of [-0.2, 0.2]) k.torus(X(1.4), y + 0.2, oz + 2.7 + dz, 0.55, 0.03, toy[0], { s: [1, 0.4, 1] }); for (const dx of [-0.3, 0.3]) k.box(X(1.4 + dx), y + 0.2, oz + 2.7, 0.07, 0.36, 0.07, toy[0]); k.cone(X(0.9), y + 0.62, oz + 2.7, 0.07, 0.34, toy[1], { rz: 1.2 }); circles.push([X(1.4), oz + 2.7, 0.7]);
+    k.box(X(2.6), y, oz - 3.7, 1.8, 3, 0.9, wood, { wood: !sugar }); k.box(X(2.6), y + 0.2, oz - 3.22, 0.04, 2.5, 0.04, 0x2a1a16); for (const dx of [-0.2, 0.2]) k.sph(X(2.6 + dx), y + 1.5, oz - 3.2, 0.05, trim); block(2.6, -3.7, 2, 1.1);
+    k.box(X(-2.2), y, oz - 3.9, 1.4, 1.6, 0.5, wood, { wood: !sugar }); for (let r = 0; r < 2; r++) for (let i = 0; i < 6; i++) k.box(X(-2.75 + i * 0.22), y + 0.2 + r * 0.7, oz - 3.8, 0.18, 0.5 - (i % 3) * 0.05, 0.3, toy[(i + r) % 4]); block(-2.2, -3.9, 1.6, 0.7);
+    // paper stars strung across the beams, a round rug
+    for (let i = 0; i < 9; i++) { k.cyl(ox - 3.2 + i * 0.8, y + hh - 0.7 + Math.sin(i * 0.39) * -0.3, oz + 1.8, 0.01, 0.01, 0.4, cream, {}, 4); k.sph(ox - 3.2 + i * 0.8, y + hh - 0.85 + Math.sin(i * 0.39) * -0.3, oz + 1.8, 0.11, toy[i % 4], { s: [1, 1, 0.3], glow: i % 3 === 0 }); }
+    k.cyl(ox, y + 0.02, oz + 0.6, 1.9, 1.9, 0.04, accent, {}, 24); k.cyl(ox, y + 0.04, oz + 0.6, 1.4, 1.4, 0.04, cream, {}, 24); k.cyl(ox, y + 0.06, oz + 0.6, 0.8, 0.8, 0.04, trim, {}, 24);
+    k.cyl(ox, y + hh - 1.1, oz + 0.6, 0.02, 0.02, 1.1, 0x4a3226, {}, 4); k.sph(ox, y + hh - 1.3, oz + 0.6, 0.3, sugar ? 0xffe4f0 : 0xffc45a, { glow: 1 });
+    return [X(0.6), oz - 2.2]; },
+];
+
 // Shops have rooms of their own. Each builder furnishes the shared shell and returns where the keeper stands.
 const KINDS = ['bakery', 'forge', 'glassworks', 'candleshop', 'emberinn', 'tailor', 'inn'];
 const KEEP = { bakery: ['baker', 'Fresh from the oven, Highness. Mind your fingers; mind the price even more.'], forge: ['metal', 'Stand clear of the sparks. Iron has no manners.'], glassworks: ['glass', 'Look, but breathe gently. That one took me four days.'],
@@ -72,10 +111,10 @@ function innRoom({ k, X, oz, y, D, wood, trim, block, circles, sugar }, cloth, c
 }
 
 export function makeRoom(world, seed, kind) {
-  if (!SHOP[kind]) kind = null; const sugar = world === 'sugar', KI = kind ? KINDS.indexOf(kind) : -1, v = seed % 4, key = world + (kind || v); let room = cache.get(key);
+  if (!SHOP[kind]) kind = null; const sugar = world === 'sugar', KI = kind ? KINDS.indexOf(kind) : -1, v = seed % 6, key = world + (kind || v); let room = cache.get(key);
   if (!room) {
-    const k = new Kit(), R = rnd(seed * 13 + 5), ox = 1000 + (KI >= 0 ? 4 + KI : v) * 60, oz = sugar ? 1400 : 1000, y = 300, W = 11, D = 9, hh = 4.3, f = v % 2 ? -1 : 1, X = (x) => ox + x * f, circles = [], boxes = [];
-    const pal = sugar ? [[0xffe4ee, 0xff9ec0, 0xfff6dc, 0xa8e0d0], [0xe4f4ff, 0x9ad0f5, 0xfff1d6, 0xffb0c8], [0xfff3c8, 0xc9a0f0, 0xffffff, 0xff9ec0], [0xe6fbe8, 0xffb0c8, 0xfff6dc, 0xc9a0f0]][v] : [[0xead8bc, 0xa3182c, 0x8a5a3a, 0xe2b24a], [0xe2cdb0, 0x7a3a4a, 0x7a4a2e, 0xd98a2b], [0xf0e0c8, 0xb8483a, 0x6b4a36, 0xe9b949], [0xddc7a6, 0x8e1b2c, 0x8a6248, 0xc8632b]][v];
+    const k = new Kit(), R = rnd(seed * 13 + 5), ox = 1000 + (KI >= 0 ? 8 + KI : v) * 60, oz = sugar ? 1400 : 1000, y = 300, W = 11, D = 9, hh = 4.3, f = v % 2 ? -1 : 1, X = (x) => ox + x * f, circles = [], boxes = [];
+    const pal = sugar ? [[0xffe4ee, 0xff9ec0, 0xfff6dc, 0xa8e0d0], [0xe4f4ff, 0x9ad0f5, 0xfff1d6, 0xffb0c8], [0xfff3c8, 0xc9a0f0, 0xffffff, 0xff9ec0], [0xe6fbe8, 0xffb0c8, 0xfff6dc, 0xc9a0f0]][v % 4] : [[0xead8bc, 0xa3182c, 0x8a5a3a, 0xe2b24a], [0xe2cdb0, 0x7a3a4a, 0x7a4a2e, 0xd98a2b], [0xf0e0c8, 0xb8483a, 0x6b4a36, 0xe9b949], [0xddc7a6, 0x8e1b2c, 0x8a6248, 0xc8632b]][v % 4];
     const [wall, accent, wood, trim] = pal, block = (x, z, w, d) => boxes.push([Math.min(X(x - w / 2), X(x + w / 2)), Math.max(X(x - w / 2), X(x + w / 2)), oz + z - d / 2, oz + z + d / 2]);
     // shell
     k.box(ox, y - 0.3, oz, W, 0.3, D, sugar ? 0xfbe8d0 : 0x9a6a48, { wood: 1 }); k.box(ox, y + hh, oz, W, 0.25, D, sugar ? 0xfff6ee : 0x6b4a36);
@@ -89,7 +128,7 @@ export function makeRoom(world, seed, kind) {
     k.box(ox, y, oz - D / 2 + 0.6, 2.8, 2.3, 1, sugar ? 0xfff1e0 : 0x8a7a72); k.box(ox, y + 2.3, oz - D / 2 + 0.5, 1.6, hh - 2.3, 0.8, sugar ? 0xfff1e0 : 0x7a6a62); k.box(ox, y + 0.25, oz - D / 2 + 1.06, 1.5, 1.2, 0.12, 0x2a1a16);
     k.cone(ox, y + 0.3, oz - D / 2 + 1.0, 0.4, 0.9, sugar ? 0xff8ab8 : 0xffa02a, { glow: 1 }); k.cone(ox - 0.3, y + 0.3, oz - D / 2 + 1.0, 0.22, 0.55, sugar ? 0xffd0e4 : 0xffd060, { glow: 1 }); k.box(ox, y + 2.3, oz - D / 2 + 0.65, 3.1, 0.18, 1.2, sugar ? accent : wood);
     for (let i = -1; i <= 1; i++) k.sph(ox + i * 0.9, y + 2.62, oz - D / 2 + 0.7, 0.16, [trim, accent, 0xffffff][i + 1], i === 0 ? { glow: 1 } : {}); block(0, -D / 2 + 0.6, 3, 1.3);
-    let seat = null; if (kind) seat = SHOP[kind]({ k, X, ox, oz, y, W, D, hh, wall, accent, wood, trim, block, circles, sugar }); else {
+    let seat = null; if (kind) seat = SHOP[kind]({ k, X, ox, oz, y, W, D, hh, wall, accent, wood, trim, block, circles, sugar }); else if (HOME[v % 3]) { seat = HOME[v % 3]({ k, X, ox, oz, y, W, D, hh, wall, accent, wood, trim, block, circles, sugar }); k.box(ox, y + 0.01, oz + 3.4, 1.6, 0.04, 0.9, accent); } else {
     // bed
     k.box(X(-3.7), y, oz - 2.4, 2.1, 0.5, 3.6, wood, { wood: !sugar }); k.box(X(-3.7), y + 0.5, oz - 2.2, 1.9, 0.3, 3.1, sugar ? 0xffffff : 0xf3e6d8); k.box(X(-3.7), y + 0.57, oz - 1.66, 2.0, 0.3, 2.16, accent); k.box(X(-3.7), y + 0.72, oz - 3.6, 1.3, 0.24, 0.6, 0xfff6ea); k.box(X(-3.7), y, oz - 4.32, 2.34, 1.5, 0.2, wood); k.box(X(-3.7), y, oz - 0.5, 2.34, 0.78, 0.16, wood); block(-3.7, -2.4, 2.3, 3.8);
     // table and seats
