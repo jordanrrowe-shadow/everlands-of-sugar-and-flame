@@ -512,13 +512,16 @@ export class Game {
   // ── small painted life: turtles at Chocolate Lake, leaping fish and lilies on Strawberry Lake, butterflies, ember sprites ──
   updateLife(dt) {
     const W = this.W, t = this.t; if (W.sea) return;
-    if (!W.life) { const L = (W.life = { g: new THREE.Group(), turtles: [], fish: [], fl: [] }), add = (s) => (L.g.add(s), s); W.group.add(L.g);
-      if (W.name === 'sugar') { for (let i = 0; i < 5; i++) L.turtles.push({ s: add(sprite('turtle', 1.2 + (i % 3) * 0.25)), a: i * 1.3, r: 20.5 + (i % 2) * 1.6, sp: 0.03 + i * 0.006 });
+    if (!W.life) { const L = (W.life = { g: new THREE.Group(), turtles: [], fish: [], fl: [], bon: [] }), add = (s) => (L.g.add(s), s); W.group.add(L.g);
+      if (W.name === 'sugar') { // Bonbon Sprites dart about wherever there are sweets: the market, the signpost, Praline's, the meadows, the forest path
+        [[0, 20, 9], [4, 60, 6], [-15, 44, 5], [108, 32, 13], [120, 24, 9], [0, 100, 7], [34, 10, 6], [-30, 124, 8], [60, -6, 6]].forEach(([cx, cz, r], i) => L.bon.push({ s: add(sprite('bonbon', 1.05 + (i % 3) * 0.15)), cx, cz, r, a: i * 2.4, sp: 0.5 + (i % 4) * 0.12, ph: i * 1.7 }));
+        for (let i = 0; i < 5; i++) L.turtles.push({ s: add(sprite('turtle', 1.2 + (i % 3) * 0.25)), a: i * 1.3, r: 20.5 + (i % 2) * 1.6, sp: 0.03 + i * 0.006 });
         for (let i = 0; i < 4; i++) L.fish.push({ s: add(sprite('fish', 1.1)), a: i * 1.7, r: 3 + i * 1.6, ph: i * 2.3 });
         for (const [x, z, sz] of [[-36, 121, 1.6], [-28, 127, 1.3], [-33, 130, 1.5], [-26, 120, 1.2], [80, -62, 1.5], [88, -70, 1.3], [84, -60, 1.2]]) { const s = add(sprite('lily', sz)); s.position.set(x, W.height(x, z) + 0.28, z); }
         for (let i = 0; i < 9; i++) L.fl.push({ s: add(sprite('butterfly', 0.5)), ph: i * 1.9, ox: Math.cos(i * 2.4) * (6 + i), oz: Math.sin(i * 2.4) * (6 + i) }); }
       else for (let i = 0; i < 8; i++) L.fl.push({ s: add(sprite('ember', 0.55)), ph: i * 1.9, ox: Math.cos(i * 2.4) * (5 + i * 1.5), oz: Math.sin(i * 2.4) * (5 + i * 1.5), ember: 1 }); }
     const L = W.life, p = this.player; L.g.visible = !this.zone;
+    for (const q of L.bon) { q.a += dt * q.sp * (0.6 + 0.4 * Math.sin(t * 0.7 + q.ph)); const rr = q.r * (0.55 + 0.45 * Math.sin(q.a * 0.37 + q.ph)), x = q.cx + Math.cos(q.a) * rr, z = q.cz + Math.sin(q.a * 1.3) * rr; this.faceSprite(q.s, x - q.s.position.x, z - q.s.position.z); q.s.position.set(x, W.height(x, z) + 0.5 + Math.abs(Math.sin(t * 3.2 + q.ph)) * 1.1, z); }
     for (const q of L.turtles) { q.a += dt * q.sp; const x = -116 + Math.cos(q.a) * q.r, z = 20 + Math.sin(q.a) * q.r; this.faceSprite(q.s, x - q.s.position.x, z - q.s.position.z); q.s.position.set(x, Math.max(-1.95, W.height(x, z)) + Math.abs(Math.sin(t * 2 + q.a * 9)) * 0.05, z); }
     for (const q of L.fish) { const cyc = (t * 0.22 + q.ph) % 1, up = cyc < 0.22 ? Math.sin(cyc / 0.22 * Math.PI) : 0, a = q.a + Math.floor(t * 0.22 + q.ph) * 2.1; q.s.visible = up > 0; q.s.position.set(-32 + Math.cos(a) * q.r + cyc * 3, W.height(-32, 124) + 0.1 + up * 1.5, 124 + Math.sin(a) * q.r); q.s.material.rotation = (0.5 - cyc / 0.22) * 1.2; if (up > 0 && cyc < 0.02 && Math.hypot(p.x + 32, p.z - 124) < 30 && !q.sp) { q.sp = 1; this.puff(q.s.position.x, q.s.position.y, q.s.position.z, 0xffc8dc, 8, 0.5, 1.4, 0.6); } if (!up) q.sp = 0; }
     const night = this.nightNow(); for (const q of L.fl) { const on = q.ember ? night || (this.kL ?? 1) < 0.8 : !night; q.s.visible = on; if (!on) continue; const cx = q.ember ? (Math.hypot(p.x, p.z - 86) < 60 ? 0 : p.x) : p.x, cz = q.ember ? (Math.hypot(p.x, p.z - 86) < 60 ? 86 : p.z) : p.z, x = cx + q.ox + Math.sin(t * 0.5 + q.ph) * 3, z = cz + q.oz + Math.cos(t * 0.4 + q.ph * 1.3) * 3; q.s.position.set(x, W.height(x, z) + (q.ember ? 2.4 : 1.2) + Math.sin(t * 1.7 + q.ph) * 0.7, z); q.s.scale.setScalar((q.ember ? 0.55 : 0.5) * (0.85 + 0.15 * Math.sin(t * (q.ember ? 3 : 11) + q.ph))); }
@@ -599,7 +602,7 @@ export class Game {
 
   // ───────── minigames ─────────
   // The bounce-off: every bounce counts, but not twice running on the same marshmallow. Kim finishes on ten.
-  bounceRound(time) { const p = this.player; this.place(101, 36); this.mode = 'play'; UI.controlsVisible(true); let got = 0, last = -1;
+  bounceRound(time) { const p = this.player, b0 = this.W.bouncers[0]; this.place(b0[0], b0[1]); p.y += 2.4; p.vy = 2; p.ground = false; this.mode = 'play'; UI.controlsVisible(true); UI.setButtons({ jump: true }); let got = 0, last = -1; // she starts already dropping onto the first marshmallow
     return new Promise((res) => { this.playS = { t: time, time, end: () => { this.playS = null; this.mode = null; UI.setTimer(null); res(got); }, onBounce: (i) => { if (i === last) return; last = i; got++; this.sound.sfx('ring'); this.puff(p.x, p.y + 0.4, p.z, 0xffe08a, 10, 0.7, 1.6, 0.7); },
       tick: () => { const S = this.playS, kim = Math.min(10, Math.floor((1 - S.t / time) * 10.6)); UI.setTimer(`You ${got} · Kim ${kim}`, S.t / time); } }; this.playLeft = time; }); }
   async mini_bounce() { let time = 40; if (navigator.webdriver && !window.__playBounce) return;
@@ -825,5 +828,5 @@ export class Game {
   }
   freeRide() { const p = this.player; return p.who === 'amber' && !this.zone && !this.W.sea && (this.chapter.free || (this.f.rideSugar && this.S.world === 'sugar' && Math.hypot(p.x, p.z - 140) < 34)); }
   canWhistle() { return this.S.items.whistle && this.player.who === 'amber' && !this.riding && !this.zone && (this.chapter.canWhistle?.(this.f) || this.freeRide()); }
-  hudButtons(free) { const on = free || this.flying; UI.setButtons({ jump: on && !this.riding && !this.mode, flame: free && !this.riding && !this.mode && (this.anyFlame || this.fireOK()), kim: this.player.who === 'kim', whistle: free && this.canWhistle(), med: free && !this.riding && !this.mode && this.player.who === 'amber' && (this.S.hp ?? 3) < 3 && this.fireOK(), boost: this.riding && on, land: this.riding && free && !this.flying && this.canLand() }); UI.hit('flameTap'); UI.hit('boostTap'); if (!free) { UI.hit('act'); UI.hit('jump'); UI.hit('whistle'); UI.hit('land'); UI.hit('med'); } }
+  hudButtons(free) { const on = free || this.flying; UI.setButtons({ jump: (on && !this.riding && !this.mode) || this.mode === 'play', flame: free && !this.riding && !this.mode && (this.anyFlame || this.fireOK()), kim: this.player.who === 'kim', whistle: free && this.canWhistle(), med: free && !this.riding && !this.mode && this.player.who === 'amber' && (this.S.hp ?? 3) < 3 && this.fireOK(), boost: this.riding && on, land: this.riding && free && !this.flying && this.canLand() }); UI.hit('flameTap'); UI.hit('boostTap'); if (!free) { UI.hit('act'); UI.hit('jump'); UI.hit('whistle'); UI.hit('land'); UI.hit('med'); } }
 }

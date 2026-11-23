@@ -11,7 +11,7 @@ export const WHO = { Amber: 'amber', Kim: 'kim', 'Kimbrûlée': 'kim', Ruby: 'ru
 const CAST = ['amber', 'kim', 'ruby', 'king', 'praline'];
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // Creatures the story mentions appear in the scene as it does: [what the line says, the picture].
-const CREATURES = [[/bonbon sprite|\bsprite\b/i, '/art/cut/creature-sprite.webp'], [/turtle/i, '/art/sprite/turtle.webp'], [/\bcat\b|\bkitten\b|purr/i, '/art/sprite/cat.webp'], [/\bfish\b/i, '/art/sprite/fish.webp'], [/butterfl/i, '/art/sprite/butterfly.webp']];
+const CREATURES = [[/bonbon sprite|\bsprite\b/i, '/art/cut/creature-sprite.webp'], [/turtle/i, '/art/sprite/turtle.webp'], [/\bcat\b|\bkitten\b|purr/i, '/art/cut/creature-cat.webp'], [/\bfish\b/i, '/art/sprite/fish.webp'], [/butterfl/i, '/art/sprite/butterfly.webp']];
 const creatureIn = (line) => CREATURES.find(([re]) => re.test(line))?.[1];
 // Amber's portraits follow what she is wearing (the cream coat), and Kim's follow her tiramisu outfit once she has it.
 const art = (c, mood, G) => `/art/cut/${c === 'amber' && G?.f?.coat && !G.f.coatOff ? 'amber-coat' : c === 'kim' && G?.S?.vis?.kimTira && G.S.opt.tira !== false ? 'kim-tira' : c}-${mood}.webp`;
@@ -37,7 +37,7 @@ export async function playCut(list, G) {
       if (typeof n === 'string' || Array.isArray(n)) {
         const who = Array.isArray(n) ? n[0] : '', line = Array.isArray(n) ? n[1] : n, k = WHO[who];
         for (const id of ['cutL', 'cutR']) { $(id).classList.toggle('talk', !!k && slot[id] === k); $(id).classList.toggle('dim', !!who && slot[id] !== k); }
-        { const cr = creatureIn(line); if (cr) { if (beast.dataset.src !== cr) { beast.dataset.src = cr; beast.src = cr; } beast.classList.remove('in'); void beast.offsetWidth; beast.classList.add('in'); beastN = 0; G.sound.sfx('boing'); } else if (beast.classList.contains('in') && ++beastN > 3) beast.classList.remove('in'); if (/\bTira\b/.test(line) && !tira.classList.contains('in')) setTira('happy'); }
+        { const cr = creatureIn(line); if (cr) { if (beast.dataset.src !== cr) { beast.dataset.src = cr; beast.src = cr; } beast.classList.remove('in'); void beast.offsetWidth; beast.classList.add('in'); beastN = 0; G.sound.sfx('boing'); } else if (beast.classList.contains('in') && ++beastN > 7) beast.classList.remove('in'); if (/\bTira\b/.test(line) && !tira.classList.contains('in')) setTira('happy'); }
         tira.classList.toggle('dim', !!who); box.classList.toggle('focusL', !!k && slot.cutL === k); box.classList.toggle('focusR', !!k && slot.cutR === k);
         name.textContent = who; text.classList.toggle('narr', !who); $('cutBox').classList.remove('hide'); G.sound.sfx('page'); if (who) G.voice(who, line);
         await new Promise((res) => { let i = 0; const fast = G.noRender; const done = () => { clearInterval(iv); typing = null; text.textContent = line; res(); }; typing = done; const iv = setInterval(() => { i += 2; text.textContent = line.slice(0, i); if (i >= line.length) done(); }, 22); if (fast) done(); });

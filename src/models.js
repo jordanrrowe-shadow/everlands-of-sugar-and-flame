@@ -118,6 +118,7 @@ export function sprite(name, size = 1) { const t = (sprTex[name] ||= (() => { co
 export function makeCritter(kind) {
   const g = new THREE.Group();
   if (kind === 'turtle') { g.add(sprite('turtle', 1.5)); return g; }
+  if (kind === 'sprite') { g.add(sprite('bonbon', 1.5)); return g; }
   if (kind === 'cat') { g.add(sprite('cat', 1.3)); return g; }
   if (kind === 'tira' && getHero('tira')) { const t = heroStatic('tira', 0.5); g.add(t); return g; }
   if (kind === 'tira') { g.add(part(GEO.sph, 0x6b4630, 0, 0.15, -0.02, 0.15, 0.14, 0.2), part(GEO.sph, 0xf3e3cf, 0, 0.11, 0.06, 0.11, 0.09, 0.13), part(GEO.sph, 0x6b4630, 0, 0.27, 0.15, 0.12, 0.11, 0.11), part(GEO.sph, 0xf3e3cf, 0, 0.245, 0.215, 0.075, 0.065, 0.06), part(GEO.cone, 0x6b4630, -0.075, 0.4, 0.13, 0.04, 0.11, 0.04), part(GEO.cone, 0x6b4630, 0.075, 0.4, 0.13, 0.04, 0.11, 0.04), part(GEO.sph, 0x1a1210, -0.045, 0.29, 0.245, 0.017, 0.02, 0.012), part(GEO.sph, 0x1a1210, 0.045, 0.29, 0.245, 0.017, 0.02, 0.012), part(GEO.sph, 0xf2a0b0, 0, 0.255, 0.272, 0.014, 0.011, 0.01), part(GEO.sph, 0x6b4630, 0, 0.2, -0.22, 0.05, 0.06, 0.07)); for (const [x, z] of [[-0.08, 0.1], [0.08, 0.1], [-0.09, -0.1], [0.09, -0.1]]) g.add(part(GEO.sph, 0xf3e3cf, x, 0.03, z, 0.04, 0.03, 0.05)); g.traverse((o) => { if (o.isMesh) o.castShadow = true; }); }
