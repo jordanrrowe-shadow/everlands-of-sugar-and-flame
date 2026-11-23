@@ -46,8 +46,8 @@ function makeSimple(L) {
   const h = (L.h || 1) * (L.style === 'child' ? 0.68 : 1); g.scale.setScalar(h); u.h = h;
   return g;
 }
-export function animPerson(p, dt, moving) {
-  if (p.userData.rig) return animRig(p, dt, moving);
+export function animPerson(p, dt, moving, slow) {
+  if (p.userData.rig) return animRig(p, dt, moving, slow);
   const u = p.userData; u.t += dt * (moving ? 10 : 2);
   const a = moving ? Math.sin(u.t) * 0.7 : Math.sin(u.t) * 0.04;
   if (u.armL) { u.armL.rotation.x = a; u.armR.rotation.x = -a; }

@@ -9,7 +9,7 @@ import { discover, drawMini } from './map.js';
 import { loadPack, WORLD_PACKS } from './assets.js';
 import { loadPeople } from './people.js';
 import { initGltf } from './gltf.js';
-import { INTERLUDES } from './story/interludes.js';
+import { INTERLUDES, KIM_CALLS } from './story/interludes.js';
 import { playCut, WHO as CUTWHO } from './cut.js';
 import { makeRoom, deckZone } from './rooms.js';
 const PLAYS = {
@@ -721,13 +721,13 @@ export class Game {
     if (st?.lead && !this.busy) { // Kim walks ahead to the next place and waits for you to catch up
       const p = this.player; if ((c0.lt = (c0.lt || 0) - dt) <= 0) { c0.lt = 1.5; const t = this.hintTarget(); c0.goal = t && !t.ruby ? t : null; c0.path = c0.goal ? this.findPath(c0.x, c0.z, t.x, t.z) : null; c0.pi = 1; }
       if (c0.goal && c0.path) { const dp = Math.hypot(p.x - c0.x, p.z - c0.z), dg = Math.hypot(c0.goal.x - c0.x, c0.goal.z - c0.z); let moving = false;
-        if (dg > 3.4 && dp < 10 && c0.pi < c0.path.length) { const [wx, wz] = c0.path[c0.pi], d = Math.hypot(wx - c0.x, wz - c0.z); if (d < 0.9) c0.pi++; else { const sp = (dp < 3 ? 6.2 : 4.6) * dt, [nx, nz] = this.collide(c0.x + (wx - c0.x) / d * sp, c0.z + (wz - c0.z) / d * sp, 0.3); c0.yaw += wrap(Math.atan2(nx - c0.x, nz - c0.z) - c0.yaw) * Math.min(1, dt * 10); c0.x = nx; c0.z = nz; moving = true; } }
-        else { c0.yaw += wrap(Math.atan2(p.x - c0.x, p.z - c0.z) - c0.yaw) * dt * 4; if (dp > 12 && dg > 3.4 && (c0.call = (c0.call || 0) - dt) <= 0) { c0.call = 9; this.bark(['This way!', 'Come on, slow feet!', 'Over here!', 'Keep up, Amber!'][Math.floor(Math.random() * 4)]); } if (dp > 40) { this.placeComp(); c0.lt = 0; } }
+        c0.go = c0.go ? dp < 11.5 : dp < 7.5; if (dg > 3.4 && c0.go && c0.pi < c0.path.length) { const [wx, wz] = c0.path[c0.pi], d = Math.hypot(wx - c0.x, wz - c0.z); if (d < 0.9) c0.pi++; else { const sp = (dp < 3 ? 6.2 : 4.6) * dt, [nx, nz] = this.collide(c0.x + (wx - c0.x) / d * sp, c0.z + (wz - c0.z) / d * sp, 0.3); c0.yaw += wrap(Math.atan2(nx - c0.x, nz - c0.z) - c0.yaw) * Math.min(1, dt * 10); c0.x = nx; c0.z = nz; moving = true; } }
+        else { c0.yaw += wrap(Math.atan2(p.x - c0.x, p.z - c0.z) - c0.yaw) * dt * 4; if (dp > 12 && dg > 3.4 && (c0.call = (c0.call || 0) - dt) <= 0) { c0.call = 9; const line = KIM_CALLS[Math.floor(Math.random() * KIM_CALLS.length)]; this.bark(['Kim', line]); this.voice('Kim', line); } if (dp > 40) { this.placeComp(); c0.lt = 0; } }
         c0.y = this.H(c0.x, c0.z); c0.model.position.set(c0.x, c0.y, c0.z); c0.model.rotation.y = c0.yaw; animPerson(c0.model, dt, moving); return; } }
     else if (c0.goal) c0.goal = null;
     const c = this.comp, p = this.player, tx = p.x - Math.sin(p.yaw) * 1.7 + Math.cos(p.yaw) * 1.1, tz = p.z - Math.cos(p.yaw) * 1.7 - Math.sin(p.yaw) * 1.1, d = Math.hypot(tx - c.x, tz - c.z); let moving = false;
-    if (d > 26) this.placeComp(); else if (d > 1.1) { const sp = Math.min(8.5, 2 + d * 2.2) * dt, [nx, nz] = this.collide(c.x + (tx - c.x) / d * sp, c.z + (tz - c.z) / d * sp, 0.3); if (Math.hypot(nx - c.x, nz - c.z) < sp * 0.3) { c.stuck = (c.stuck || 0) + dt; if (c.stuck > 1.5) { this.placeComp(); c.stuck = 0; } } else c.stuck = 0; c.yaw = Math.atan2(nx - c.x, nz - c.z); c.x = nx; c.z = nz; moving = true; } else c.yaw += wrap(Math.atan2(p.x - c.x, p.z - c.z) - c.yaw) * dt * 4;
-    c.y = this.H(c.x, c.z); c.model.position.set(c.x, c.y, c.z); c.model.rotation.y = c.yaw; animPerson(c.model, dt, moving);
+    c.fol = c.fol ? d > 0.8 : d > 1.9; let slow = true; if (d > 26) this.placeComp(); else if (c.fol) { const v = Math.min(8.5, 2 + d * 2.2), sp = Math.min(d, v * dt); slow = v < 5.2; const [nx, nz] = this.collide(c.x + (tx - c.x) / d * sp, c.z + (tz - c.z) / d * sp, 0.3); if (Math.hypot(nx - c.x, nz - c.z) < sp * 0.3) { c.stuck = (c.stuck || 0) + dt; if (c.stuck > 1.5) { this.placeComp(); c.stuck = 0; } } else c.stuck = 0; if (Math.hypot(nx - c.x, nz - c.z) > 1e-4) c.yaw += wrap(Math.atan2(nx - c.x, nz - c.z) - c.yaw) * Math.min(1, dt * 12); c.x = nx; c.z = nz; moving = true; } else c.yaw += wrap(Math.atan2(p.x - c.x, p.z - c.z) - c.yaw) * dt * 4;
+    c.y = this.H(c.x, c.z); c.model.position.set(c.x, c.y, c.z); c.model.rotation.y = c.yaw; animPerson(c.model, dt, moving, slow);
   }
   updateRide(dt, mx, my) {
     const r = this.ruby, W = this.W, inv = this.S.opt.invert ? -1 : 1; let turn = -mx * 1.25, pt = -my * 0.6 * inv;
@@ -774,6 +774,7 @@ export class Game {
   // ── going inside: houses have rooms, towers have tops ──
   nearDoor() { const p = this.player; let best = null, bd = 2.7; for (const d of this.W.doors || []) { const k = Math.hypot(p.x - d.x, p.z - d.z); if (k < bd) { bd = k; best = d; } } return best; }
   async enterDoor(d) {
+    if (d.to) { this.busy++; UI.setAct(null); this.sound.sfx('page'); await UI.fade(true); this.place(d.to[0], d.to[1]); if (this.comp) this.placeComp(); this.faceCam([d.to[0], d.to[1] + (d.to[1] < d.z ? -10 : 10)]); await UI.fade(false); this.busy--; return; }
     this.busy++; UI.setAct(null); this.sound.sfx('page'); await UI.fade(true); const p = this.player, Z = d.deck ? deckZone(d.deck) : makeRoom(this.W.name, d.seed, d.kind); Z.back = [d.x, d.z]; this.zone = Z;
     if (Z.group) this.scene.add(Z.group); if (Z.resident) { const L = { ...CAST[Z.resident.id] }; Z.npc = makePerson(L); Z.npc.position.set(Z.resident.x, Z.y, Z.resident.z); Z.npc.rotation.y = Math.atan2(Z.spawn[0] - Z.resident.x, Z.spawn[1] - Z.resident.z); this.scene.add(Z.npc); }
     p.x = Z.spawn[0]; p.z = Z.spawn[1]; p.y = Z.y; p.vy = 0; p.ground = true; p.yaw = p.tyaw = Z.room ? Math.PI : Math.atan2(Z.cx - p.x, Z.cz - p.z); this.camYaw = p.yaw; this.camSnap = 3; if (this.comp) this.placeComp();

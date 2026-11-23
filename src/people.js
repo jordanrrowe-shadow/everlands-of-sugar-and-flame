@@ -146,9 +146,10 @@ function makeMan(L) {
   const h = (L.h || 1) * (child ? 0.62 : 1); g.scale.setScalar(h); u.h = h; u.fast = child;
   return g;
 }
-export function animRig(p, dt, moving) {
-  const u = p.userData; if (u.busyT > 0) { u.busyT -= dt; if (u.busyT <= 0 && u.one) { u.one.fadeOut(0.2); if (u.cur && u.actions[u.cur]) u.actions[u.cur].setEffectiveWeight(1); } }
-  const A = u.A; if (u.fixedPose && A[u.fixedPose]) u.play(A[u.fixedPose]); else u.play(u.pose === 'sit' ? A.sit : u.pose === 'air' ? A.air : moving ? (u.fast ? A.jog : A.walk) : u.pose === 'talk' ? A.talk : A.idle);
+export function animRig(p, dt, moving, slow) {
+  const u = p.userData; // a change between moving and standing has to last a moment before the animation follows, so a walker never stutters
+  u.mvT = moving === u.mvWant ? (u.mvT || 0) + dt : 0; u.mvWant = moving; if (u.mv === undefined || u.mvT > 0.18) u.mv = moving; moving = u.mv; if (slow !== undefined) { u.slT = slow === u.slWant ? (u.slT || 0) + dt : 0; u.slWant = slow; if (u.sl === undefined || u.slT > 0.35) u.sl = slow; } if (u.busyT > 0) { u.busyT -= dt; if (u.busyT <= 0 && u.one) { u.one.fadeOut(0.2); if (u.cur && u.actions[u.cur]) u.actions[u.cur].setEffectiveWeight(1); } }
+  const A = u.A; if (u.fixedPose && A[u.fixedPose]) u.play(A[u.fixedPose]); else u.play(u.pose === 'sit' ? A.sit : u.pose === 'air' ? A.air : moving ? (u.fast && !u.sl ? A.jog : A.walk) : u.pose === 'talk' ? A.talk : A.idle);
   u.mixer.update(dt);
   if (u.sway) { u.st = (u.st || 0) + dt; for (const [g, amp] of u.sway) { const want = moving ? amp * (u.fast ? 1.5 : 1) * (1 + 0.28 * Math.sin(u.st * 7.5)) : amp * 0.1 * Math.sin(u.st * 1.4); g.rotation.x += (want - g.rotation.x) * Math.min(1, dt * 5); g.rotation.z = Math.sin(u.st * 3.1) * (moving ? 0.035 : 0.012); } }
 }

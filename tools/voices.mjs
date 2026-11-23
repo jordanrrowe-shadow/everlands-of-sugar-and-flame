@@ -6,7 +6,7 @@ import p1 from '../src/story/part1.js'; import p2 from '../src/story/part2.js'; 
 const hash = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return 'h' + (h >>> 0).toString(36); };
 const voices = Object.fromEntries(process.argv.slice(2).map((a) => a.split('=')));
 import { spokenLine } from '../src/story/speak.js';
-import { INTERLUDES } from '../src/story/interludes.js';
+import { INTERLUDES, KIM_CALLS } from '../src/story/interludes.js';
 const lines = new Map(); let who = 'Amber';
 const addLine = (sp) => { if (sp && voices[sp[0]] && /[A-Za-z]/.test(sp[1])) lines.set(hash(sp[0] + '|' + sp[1]), sp); };
 // Story functions branch on flags, so call each with every combination of the flags it reads.
@@ -17,7 +17,7 @@ const callAll = (fn) => { const seen = new Set(); const probe = (vals) => new Pr
 const walk = (n) => { if (!n) return; if (typeof n === 'function') return callAll(n);
   if (Array.isArray(n)) { if (n.length === 2 && typeof n[0] === 'string' && typeof n[1] === 'string') addLine(n); else if (n.length >= 2 && n.length <= 3 && typeof n[0] === 'string' && Array.isArray(n[1])) { addLine(spokenLine(n[0], who)); walk(n[1]); } else n.forEach(walk); return; }
   if (typeof n === 'object') { if (typeof n.n === 'number' && n.steps) who = n.n === 13 ? 'Kim' : 'Amber'; if (n.hub) { for (const t of n.hub) addLine(spokenLine(t.q, who)); addLine(spokenLine(n.exit || 'Goodbye.', who)); } for (const [k, v] of Object.entries(n)) if (k !== 'tick' && k !== 'canWhistle' && k !== 'companion' && k !== 'ruby' && k !== 'meter' && k !== 'as' && k !== 'if' && k !== 'need') walk(v); } };
-walk([p1, p2, p3]); walk(Object.values(INTERLUDES).map((i) => i.steps));
+walk([p1, p2, p3]); walk(Object.values(INTERLUDES).map((i) => i.steps)); walk(KIM_CALLS.map((t) => ['Kim', t]));
 const dir = new URL('../public/voice/', import.meta.url).pathname; fs.mkdirSync(dir, { recursive: true });
 console.log(lines.size, 'lines,', [...lines.values()].reduce((a, l) => a + l[1].length, 0), 'characters');
 if (process.env.DUMP) { fs.writeFileSync(process.env.DUMP, JSON.stringify([...lines])); process.exit(0); }
