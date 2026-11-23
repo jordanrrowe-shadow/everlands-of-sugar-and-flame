@@ -304,7 +304,7 @@ const ch3 = {
       'A small lake, perfectly still, and pink from shore to shore. It smells of strawberries. She dips a finger, tastes it and laughs aloud.',
       { ruby: 'at', at: 'lake_ruby' }, 'Ruby does not wait to be invited. When she lifts her head her chin is dripping pink.', { set: 'c3_lake' },
       { lead: 'Behind the strawberry lake the ground rises into a hill of pale rock. There may be shelter there.' }] },
-    { id: 'cave', at: 'cave', label: 'Dark cave', flame: 1, if: (f) => f.c3_lake && !f.c3_cave, script: [
+    { id: 'cave', at: 'cave', r: 9, label: 'Dark cave', if: (f) => f.c3_lake && !f.c3_cave, script: [
       'She goes in first with a flame cupped in her palm. Dry and deep, high enough for a dragon to turn around in, with a floor of soft sand. Striped trees screen its mouth.',
       [A, 'Here. You can sleep here and nobody will find you. And you’ve a whole lake for when you wake.'],
       { ruby: 'at', at: 'cave_ruby' }, 'Ruby looks at the cave, and then at Amber, and does not go in.',

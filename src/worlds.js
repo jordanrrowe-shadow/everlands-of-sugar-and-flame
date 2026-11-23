@@ -388,7 +388,6 @@ export function buildSugar() {
     let h = 1.3 * noise2(x * 0.035, z * 0.035) + 0.5 * noise2(x * 0.1, z * 0.1) - 0.5;
     h *= smooth(10, 40, Math.hypot(x, z - 20) - 20) * 0.8 + 0.2;
     h -= 2.6 * smooth(27, 16, Math.hypot(x + 116, z - 20));
-    h += 10 * smooth(20, 5, Math.hypot(x + 58, z - 154));
     const m = smooth(-100, -172, z) * 53 + smooth(-118, -160, z) * (noise2(x * 0.05, z * 0.05) - 0.4) * 14 * smooth(16, 44, Math.abs(x));
     h += m; h = lerp(h, 49.5, smooth(15, 8, Math.hypot(x, z + 160)));
     h -= smooth(160, 172, x) * 6 * (1 - smooth(4, 2, Math.abs(z - 100)) * (x < 168 ? 1 : 0));
