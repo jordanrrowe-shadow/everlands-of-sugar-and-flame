@@ -7,6 +7,8 @@ export function tex(name, srgb) {
   if (!cache[name]) { const t = loader.load('tex/' + name + '.jpg'); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; if (srgb) t.colorSpace = THREE.SRGBColorSpace; cache[name] = t; }
   return cache[name];
 }
+// Brick street laid over the ground: one pale herringbone tile, tinted per street.
+export function roadMaterial(tint) { const t = tex('painted_brick_d', true); return new THREE.MeshStandardMaterial({ map: t, color: tint, roughness: 0.9, metalness: 0, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }); }
 export const U = { time: { value: 0 } };
 const lin = (v) => Math.pow(v, 2.2);
 const MEAN = { painted_grass: [0.517, 0.676, 0.366], painted_ember: [0.474, 0.199, 0.112], painted_cobble: [0.700, 0.427, 0.276], painted_sugarpave: [0.945, 0.846, 0.800], burned_ground_01: [0.38, 0.33, 0.281], rock_06: [0.489, 0.378, 0.272], cobblestone_floor_04: [0.539, 0.49, 0.383], marble_tiles: [0.548, 0.505, 0.445], leafy_grass: [0.592, 0.515, 0.349], coast_sand_01: [0.51, 0.449, 0.36], snow_02: [0.649, 0.648, 0.657], patterned_paving: [0.346, 0.327, 0.304], white_plaster_rough_01: [0.488, 0.443, 0.341], clay_roof_tiles_02: [0.57, 0.312, 0.169], brown_planks_05: [0.603, 0.582, 0.534] };

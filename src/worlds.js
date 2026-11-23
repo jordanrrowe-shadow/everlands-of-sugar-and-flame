@@ -2,11 +2,11 @@
 import * as THREE from 'three';
 import { Kit, smooth, noise2, rnd } from './kit.js';
 import { makeDragon, animDragon, makeCritter, makePerson } from './models.js';
-import { terrainMaterial, waterMaterial } from './gfx.js';
+import { terrainMaterial, waterMaterial, roadMaterial } from './gfx.js';
 import { Scatter, hasModel } from './assets.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
-const BOATY = -2.9, SHIPY = { wardenship: -0.9, sugarship: -0.9, woodboat: -1.7 }; // how deep each hull sits below the waterline
+const BENCHF = 0, BOATY = -2.9, SHIPY = { wardenship: -0.9, sugarship: -0.9, woodboat: -1.7 }; // how deep each hull sits below the waterline
 const kb = (k) => { const m = k.build(); if (!k.sc) return m; const g = new THREE.Group(); g.add(m, k.sc.build()); return g; };
 const FRONT = { emberhouse3: 0, emberhouse4: 0, bakery: 0, forge: 0, glassworks: 0, candleshop: 0, emberinn: 0, wardenship: 0, sugarship: 0, woodboat: -Math.PI / 2, cakehouse1: 0, cakehouse2: 0, cakehouse3: 0, stall: 0, cave: 0, statue: 0 }; // yaw to add so each sculpted model's front faces +Z
 function terrain(w, size, seg, colorFn, splatFn, layers) {
@@ -20,6 +20,19 @@ function terrain(w, size, seg, colorFn, splatFn, layers) {
 }
 function water(x, z, r, y, color, opacity = 0.85, rough = 0.07) { const m = new THREE.Mesh(new THREE.CircleGeometry(r, 48), waterMaterial(color, opacity, rough)); m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.userData.ground = 1; return m; }
 function ocean(color, y, size = 1400, glint) { const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), waterMaterial(color, 1, 0.12, 1.4, glint)); m.rotation.x = -Math.PI / 2; m.position.y = y; m.userData.ground = 1; return m; }
+// A brick street: a ribbon that follows the ground along a smoothed line of points (or a ring), with a darker kerb either side.
+function street(g, w, pts, width, tint, kerb = 0x5a3a34, ring = 0) {
+  const P = [];
+  if (ring) { const n = Math.ceil(ring * 6.283 / 0.9); for (let i = 0; i <= n; i++) { const a = i / n * 6.283; P.push([pts[0] + Math.sin(a) * ring, pts[1] + Math.cos(a) * ring]); } }
+  else { const c = new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal', 0.5), n = Math.ceil(c.getLength() / 0.9); for (const v of c.getSpacedPoints(n)) P.push([v.x, v.z]); }
+  const strip = (wd, lift, col) => { const pos = [], uv = [], idx = [], C = 4;
+    P.forEach(([x, z], i) => { const a = P[Math.max(0, i - 1)], b = P[Math.min(P.length - 1, i + 1)], dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1, nx = -dz / l, nz = dx / l;
+      for (let j = 0; j <= C; j++) { const o = (j / C - 0.5) * wd, px = x + nx * o, pz = z + nz * o; pos.push(px, w.height(px, pz) + lift, pz); uv.push(px * 0.075, pz * 0.075); }
+      if (i) { const r = (i - 1) * (C + 1), q = i * (C + 1); for (let j = 0; j < C; j++) idx.push(r + j, r + j + 1, q + j, r + j + 1, q + j + 1, q + j); } });
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, roadMaterial(col)); m.material.side = THREE.DoubleSide; m.receiveShadow = true; m.userData.sh = 1; g.add(m); };
+  strip(width + 0.7, 0.035, kerb); strip(width, 0.06, tint);
+}
 function ship(k, x, y, z, hull, sail, ry = 0, lamp = 0xffc45a) {
   { const r = hull >> 16, gC = (hull >> 8) & 255, b = hull & 255, name = Math.abs(r - b) < 24 ? 'wardenship' : r > 220 && gC < 200 ? 'sugarship' : 'woodboat'; if (hasModel(name)) { const own = y === 1.6; (k.sc = k.sc || new Scatter()).add(name, x, (k.wl ?? y - 1.2) + (own ? BOATY : SHIPY[name]), z, ry + FRONT[name], own ? 14 : name === 'woodboat' ? 13 : 19); k.sculpted = 1; return; } }
   const c = Math.cos(ry), s = Math.sin(ry), T = (dx, dz) => [x + dx * c + dz * s, z - dx * s + dz * c];
@@ -111,7 +124,7 @@ export function buildEmber() {
   const house = (x, z, wd, dp, h, glassC) => { const y = H(x, z); k.box(x, y, z, wd, h, dp, 0x4a3a3a, { c2: 0x5c4848 }); k.box(x, y + h, z, wd + 0.8, 0.5, dp + 0.8, 0xb8483a, { roof: 1 }); k.cone(x, y + h + 0.5, z, Math.max(wd, dp) * 0.62, 2.4, 0xc8543e, { ry: Math.PI / 4, roof: 1 }, 4); k.box(x + wd * 0.1, y, z + dp / 2 + 0.06, 1.1, 2.1, 0.12, 0x5a3a26, { wood: 1 }); k.box(x - wd * 0.3, y + h + 1, z - dp * 0.2, 0.7, 2.2, 0.7, 0x5c4848); for (const s of [-1, 1]) { k.box(x + s * wd * 0.25, y + 1.4, z + dp / 2 + 0.05, 1, 1.5, 0.1, glassC, { glow: 1 }); k.box(x + (wd / 2 + 0.05) * s, y + 1.4, z, 0.1, 1.5, 1, glassC, { glow: 1 }); } box(x - wd / 2, x + wd / 2, z - dp / 2, z + dp / 2); w.doors.push({ x: x + wd * 0.1, z: z + dp / 2 + 1.4, seed: Math.abs(Math.round(x * 7 + z * 13)) }); };
   const brazier = (x, z) => { const y = H(x, z); if (hasModel('brazier')) { sc.add('brazier', x, y, z, 0, 1.5); w.circles.push([x, z, 0.6]); return; } k.cyl(x, y, z, 0.2, 0.35, 1.1, 0x5a4a44); k.cyl(x, y + 1.1, z, 0.75, 0.3, 0.4, GOLD); w.circles.push([x, z, 0.6]); };
   const torch = (x, z) => { const y = H(x, z); k.cyl(x, y, z, 0.08, 0.1, 2.3, 0x5a4030); k.cyl(x, y + 2.3, z, 0.2, 0.1, 0.25, GOLD); };
-  const lamp = (x, z, c = 0xffb84a) => { const y = H(x, z); k.cyl(x, y, z, 0.07, 0.1, 2.8, 0x4a3a34); k.sph(x, y + 3, z, 0.32, c, { glow: 1 }); };
+  const lamp = (x, z, c = 0xffb84a) => { const y = H(x, z); if (hasModel('emberlamp')) { sc.add('emberlamp', x, y - 0.03, z, 0, 0.63); w.circles.push([x, z, 0.3]); return; } k.cyl(x, y, z, 0.07, 0.1, 2.8, 0x4a3a34); k.sph(x, y + 3, z, 0.32, c, { glow: 1 }); };
 
   // market
   stall(P.orin[0] - 2.2, P.orin[1], 0xe9a23b, Math.PI / 2); stall(P.glass[0] + 2.2, P.glass[1], 0xd94c6a, Math.PI / 2); stall(P.metal[0] + 2.2, P.metal[1], 0x8a8a92, Math.PI / 2); stall(P.candle[0] - 2.2, P.candle[1], 0x8a5ad0, Math.PI / 2);
@@ -147,7 +160,19 @@ export function buildEmber() {
   const glassCols = [0xff9a3a, 0xff5a7a, 0xffd24a, 0xff7ad0, 0x7ad0ff, 0xb48aff];
   for (let i = 0; i < 26; i++) { const side = i % 2 ? 1 : -1, row = Math.floor(i / 2), x = side * (34 + (row % 3) * 15 + R() * 3), z = 52 + Math.floor(row / 3) * 14 + R() * 3; if (side > 0 && z < 44) continue; const r1 = R(), r2 = R(), r3 = R(); if (KIT) { const big = i % 3 === 0; kitHouse(sc, k, w, x, z, big ? 8 : 6, big ? 8 : i % 2 ? 8 : 6, side > 0 ? -Math.PI / 2 : Math.PI / 2, glassCols[i % 6], { 0: 'bakery', 1: 'glassworks', 7: 'forge', 6: 'candleshop' }[i]); } else house(x, z, 7 + r1 * 3, 6 + r2 * 3, 4 + r3 * 3, glassCols[i % 6]); }
   if (KIT) { for (const [x, z, r] of [[-20, 54, 0.4], [-21.4, 55.6, 1.2], [23, 62, 0.2], [-22, 80, 2], [24, 86, 1], [25.3, 84.6, 0.3], [116, 46, 0.5], [117.4, 47.2, 1.4], [134, 22, 0]]) { sc.add('Prop_Crate', x, H(x, z), z, r, 0.95); w.circles.push([x, z, 0.7]); } sc.add('Prop_Wagon', 26, H(26, 76), 76, 0.3); w.circles.push([26, 75, 1.6]); sc.add('Prop_Wagon', 106, H(106, 44), 44, 1.9); w.circles.push([106, 44, 1.6]); for (let i = 0; i < 8; i++) sc.add('Prop_WoodenFence_Single', -31, H(-31, 50 + i * 2.06), 50 + i * 2.06, Math.PI / 2); }
-  for (let z = 50; z < 104; z += 12) { lamp(-7, z); lamp(7, z + 6); }
+  // streets of coloured brick inside the pale cobbles: the royal avenue from the palace stair to the Fire Square, the ring round it,
+  // gold lanes to the shops, and a blue-grey road to the harbour
+  { const ROYAL = 0xb8323a, SHOP = 0xe0a23e, PORT = 0x6f7f9a, KERB = 0x4a2e2a, GK = 0xf0d9a0;
+    street(g, w, [[0, 2], [0, 16], [0, 30], [0, 44], [0, 54], [0, 65.4]], 6, ROYAL, GK);
+    street(g, w, [0, 86], 2.8, ROYAL, GK, 19.6);
+    street(g, w, [[0, 106.6], [0, 116], [0, 128]], 5, ROYAL, GK);
+    for (const s of [-1, 1]) street(g, w, [[s * 3.7, 62.6], [s * 14, 62.6], [s * 27.2, 62.6]], 3.2, SHOP, KERB);
+    for (const s of [-1, 1]) street(g, w, [[s * 28.5, 49], [s * 28.5, 62], [s * 28.5, 76], [s * 28.5, 92]], 2.6, SHOP, KERB);
+    street(g, w, [[3.7, 49], [20, 48.4], [38, 42.5], [52, 36.5], [70, 34], [103, 34]], 4.6, PORT, KERB);
+    street(g, w, [[-3.7, 3], [-12, 0.4], [-28, -0.6], [-53.4, -1.5], [-64, 5], [-74, 12]], 3, SHOP, KERB);
+    street(g, w, [[3.7, 3], [12, 2.4], [24, 4.4], [45.7, 9.7], [54, 20], [60, 31.8]], 3, PORT, KERB);
+    if (hasModel('emberbench')) for (const [x, z, ry] of [[-4.9, 51.5, 1.571], [4.9, 51.5, -1.571], [-4.9, 58.5, 1.571], [4.9, 58.5, -1.571], [-5, 18, 1.571], [5, 18, -1.571], [65, 30.3, 0], [93, 30.3, 0], [-10, 59.9, 0], [10, 59.9, 0],
+      ...[45, 135, 225, 315].map((d) => { const a = d * Math.PI / 180; return [Math.sin(a) * 22.9, 86 + Math.cos(a) * 22.9, a + Math.PI]; })]) { if (w.circles.some((c) => Math.hypot(c[0] - x, c[1] - z) < c[2] + 1.1) || w.boxes.some((q) => x > q[0] - 1 && x < q[1] + 1 && z > q[2] - 1 && z < q[3] + 1)) continue; sc.add('emberbench', x, H(x, z) - 0.02, z, ry + BENCHF, 2.2); w.circles.push([x, z, 0.95]); } }
   // great stair + plateau rim
   for (let i = 0; i < 12; i++) k.box(0, PL.h * (1 - (i + 1) / 12) - 0.2, 32.5 + i * 1.15, 14 - i * 0.2, 0.55, 1.2, IV);
   for (const s of [-1, 1]) { pillar(s * 8, 31, 7, 0.6); k.sph(s * 8, PL.h + 7.9, 31, 0.5, LAVA, { glow: 1 }); }
@@ -338,9 +363,13 @@ export function buildEmber() {
   ship(k, 175, 0, 0, 0x5a5a62, 0x8b8b92); ship(k, 182, 0, 60, 0x5a5a62, 0x8b8b92, 0.3); ship(k, 190, 0, -55, 0x5a5a62, 0x8b8b92, -0.2);
   for (let i = 0; i < 5; i++) { if (KIT) kitHouse(sc, k, w, 96 + i * 10.5, 64 + (i % 2) * 5, 6, i % 2 ? 6 : 8, Math.PI, glassCols[i]); else house(98 + i * 9, 62 + (i % 2) * 6, 7, 6, 4 + i % 3, glassCols[i]); }
   // standing torches Amber can light after dark: down the market lane, round the Fire Square, across the court, along the harbour road
-  w.torches = [[-9, 46], [9, 46], [-9, 56], [9, 62], [-9, 68], [-19, 80], [19, 80], [-19, 92], [19, 92], [-8, 104], [8, 104], [-12, 24], [12, 24], [-22, 10], [22, 10], [-30, -2], [30, 2], [-9, -3], [9, -3], [-40, 20], [44, 22], [60, 30], [96, 36], [112, 40], [-70, 6], [-90, 16], [-14, -70], [20, -70], [-6, -84], [6, -84]]
+  // lamp posts in ordered pairs along every street; each can be lit after dark
+  w.torches = [...[47.5, 55.5].flatMap((z) => [[-4.3, z], [4.3, z]]), ...[12, 22].flatMap((x) => [[-x, 65.2], [x, 65.2]]), ...[52, 72, 88].flatMap((z) => [[-26.5, z], [26.5, z]]),
+    ...[...Array(8)].map((_, i) => { const a = (22.5 + i * 45) * Math.PI / 180; return [Math.sin(a) * 22.6, 86 + Math.cos(a) * 22.6]; }), ...[110, 120].flatMap((z) => [[-3.6, z], [3.6, z]]),
+    ...[58, 72, 86, 100].flatMap((x) => [[x, 30.6], [x, 37.4]]), ...[24, 12].flatMap((z) => [[-4.4, z], [4.4, z]]), [-9, -3], [9, -3], ...[-22, -38].flatMap((x) => [[x, -3.4], [x, 1.8]]), [22, 1], [22, 7.4], [36, 4.2], [36, 10.6],
+    [-70, 6], [-90, 16], [-14, -70], [14, -70], [-6, -84], [6, -84]]
     .filter(([x, z]) => !w.circles.some((c) => Math.hypot(c[0] - x, c[1] - z) < c[2] + 0.6) && !w.boxes.some((q) => x > q[0] - 0.6 && x < q[1] + 0.6 && z > q[2] - 0.6 && z < q[3] + 0.6))
-    .map(([x, z]) => { const y = H(x, z); k.cyl(x, y, z, 0.28, 0.34, 0.3, 0x5a4a44, {}, 8); k.cyl(x, y + 0.3, z, 0.08, 0.1, 2.3, 0x4a3226, {}, 6); k.cyl(x, y + 2.6, z, 0.3, 0.14, 0.4, GOLD, {}, 8); k.torus(x, y + 2.95, z, 0.3, 0.035, 0x3a2a24, { rx: Math.PI / 2 }); w.circles.push([x, z, 0.35]); return { x, z, y: y + 3.0, lit: false }; });
+    .map(([x, z]) => { const y = H(x, z); if (hasModel('emberlamp')) { sc.add('emberlamp', x, y - 0.03, z, 0, 0.63); w.circles.push([x, z, 0.3]); return { x, z, y: y + 2.95, lit: false }; } k.cyl(x, y, z, 0.28, 0.34, 0.3, 0x5a4a44, {}, 8); k.cyl(x, y + 0.3, z, 0.08, 0.1, 2.3, 0x4a3226, {}, 6); k.cyl(x, y + 2.6, z, 0.3, 0.14, 0.4, GOLD, {}, 8); k.torus(x, y + 2.95, z, 0.3, 0.035, 0x3a2a24, { rx: Math.PI / 2 }); w.circles.push([x, z, 0.35]); return { x, z, y: y + 3.0, lit: false }; });
   g.add(kb(k)); g.add(sc.build());
   // visiting Sugarland ship (ch16+)
   const k2 = new Kit(); k2.wl = -1.2; ship(k2, 149, 0, 36, 0xf7a8c8, 0xfff1d6, 0, 0xff8ab8); if (!hasModel('sugarship')) k2.box(146, 2, 36, 5.4, 0.5, 16.4, 0xffffff); const visitor = kb(k2); g.add(visitor);
@@ -488,7 +517,7 @@ export function buildSugar() {
     for (let i = 0, n = 0; n < 16 && i < 300; i++) { const x = -140 + R2() * 290, z = -95 + R2() * 260; if (!free(x, z, 2)) continue; sc.add(['Rock_Medium_1', 'Rock_Medium_2', 'Rock_Medium_3'][n % 3], x, H(x, z) - 0.2, z, R2() * 6, 0.5 + R2() * 0.5); w.circles.push([x, z, 0.9]); n++; } }
   w.torches = [[-5, 52], [5, 58], [-5, 70], [5, 82], [-5, 94], [-8, 4], [8, -2], [-16, 18], [16, 14], [-30, 40], [30, 46], [20, 2], [46, -6], [58, -4], [-6, 108], [6, 122], [-12, 136], [-30, 136], [-60, 30], [-80, 34], [60, 20], [84, 30], [0, -40], [0, -70]]
     .filter(([x, z]) => !w.circles.some((c) => Math.hypot(c[0] - x, c[1] - z) < c[2] + 0.6) && !w.boxes.some((q) => x > q[0] - 0.6 && x < q[1] + 0.6 && z > q[2] - 0.6 && z < q[3] + 0.6))
-    .map(([x, z], i) => { const y = H(x, z); k.cyl(x, y, z, 0.26, 0.3, 0.25, 0xffffff, {}, 8); k.cyl(x, y + 0.25, z, 0.07, 0.09, 2.3, 0xffffff, {}, 6); for (let j = 0; j < 3; j++) k.cyl(x, y + 0.6 + j * 0.7, z, 0.1, 0.1, 0.25, 0xe8344a, {}, 6); k.cyl(x, y + 2.55, z, 0.32, 0.16, 0.35, [0xff9ec0, 0xa8d8f5, 0xfff3a8][i % 3], {}, 8); w.circles.push([x, z, 0.35]); return { x, z, y: y + 2.9, lit: false, pink: 1 }; });
+    .map(([x, z], i) => { const y = H(x, z); if (hasModel('sugarlamp')) { sc.add('sugarlamp', x, y - 0.03, z, i * 1.3, 1.02); w.circles.push([x, z, 0.35]); return { x, z, y: y + 2.75, lit: false, pink: 1 }; } k.cyl(x, y, z, 0.26, 0.3, 0.25, 0xffffff, {}, 8); k.cyl(x, y + 0.25, z, 0.07, 0.09, 2.3, 0xffffff, {}, 6); for (let j = 0; j < 3; j++) k.cyl(x, y + 0.6 + j * 0.7, z, 0.1, 0.1, 0.25, 0xe8344a, {}, 6); k.cyl(x, y + 2.55, z, 0.32, 0.16, 0.35, [0xff9ec0, 0xa8d8f5, 0xfff3a8][i % 3], {}, 8); w.circles.push([x, z, 0.35]); return { x, z, y: y + 2.9, lit: false, pink: 1 }; });
   g.add(kb(k)); g.add(sc.build());
   const sprite = makeCritter('sprite'); sprite.scale.setScalar(1.6); g.add(sprite);
   w.tick = (t, dt, G) => { foam.forEach((m, i) => { const k = 0.5 + 0.5 * Math.sin(t * 0.9 + i * 2); m.scale.setScalar(1 - k * 0.025); m.material.opacity = 0.22 + 0.3 * k; }); balloons.forEach((b, i) => { if (b !== w.balloon || !w.balloonHold) b.position.y = b.userData.y + Math.sin(t * 0.5 + i) * (i ? 3 : 0.3); }); const m = w.bouncers[4]; sprite.position.set(m[0] + Math.sin(t * 2) * 1.4, base(m[0], m[1]) + m[3] + 0.3 + Math.abs(Math.sin(t * 4)) * 1.6, m[1] + Math.cos(t * 2) * 1.4); sprite.rotation.y = t * 3; sprite.visible = !G.f.c5_meadow || G.S.ch !== 5; };
