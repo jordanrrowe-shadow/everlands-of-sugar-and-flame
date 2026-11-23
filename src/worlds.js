@@ -161,6 +161,8 @@ export function buildEmber() {
   const glassCols = [0xff9a3a, 0xff5a7a, 0xffd24a, 0xff7ad0, 0x7ad0ff, 0xb48aff];
   for (let i = 0; i < 26; i++) { const side = i % 2 ? 1 : -1, row = Math.floor(i / 2), x = side * (34 + (row % 3) * 15 + R() * 3), z = 52 + Math.floor(row / 3) * 14 + R() * 3; if (side > 0 && z < 44) continue; const r1 = R(), r2 = R(), r3 = R(); if (KIT) { const big = i % 3 === 0; kitHouse(sc, k, w, x, z, big ? 8 : 6, big ? 8 : i % 2 ? 8 : 6, side > 0 ? -Math.PI / 2 : Math.PI / 2, glassCols[i % 6], { 0: 'bakery', 1: 'glassworks', 7: 'forge', 6: 'candleshop' }[i]); } else house(x, z, 7 + r1 * 3, 6 + r2 * 3, 4 + r3 * 3, glassCols[i % 6]); }
   if (KIT) { for (const [x, z, r] of [[-20, 54, 0.4], [-21.4, 55.6, 1.2], [23, 62, 0.2], [-22, 80, 2], [24, 86, 1], [25.3, 84.6, 0.3], [116, 46, 0.5], [117.4, 47.2, 1.4], [134, 22, 0]]) { sc.add('Prop_Crate', x, H(x, z), z, r, 0.95); w.circles.push([x, z, 0.7]); } sc.add('Prop_Wagon', 26, H(26, 76), 76, 0.3); w.circles.push([26, 75, 1.6]); sc.add('Prop_Wagon', 106, H(106, 44), 44, 1.9); w.circles.push([106, 44, 1.6]); for (let i = 0; i < 8; i++) sc.add('Prop_WoodenFence_Single', -31, H(-31, 50 + i * 2.06), 50 + i * 2.06, Math.PI / 2); }
+  { const x = -14.5, z = 63.6, y = H(x, z); for (const dx of [-1.6, 1.6]) { k.cyl(x + dx, y, z, 0.07, 0.09, 2.1, 0x6b4a36, {}, 8); k.sph(x + dx, y + 2.15, z, 0.12, GOLD); } k.box(x, y + 2, z, 3.3, 0.07, 0.07, GOLD);
+    [0xa3182c, 0xe2b24a, 0x3f8a4a, 0x2f5fb0, 0x7a2f9a].forEach((c, i) => { const gx = x - 1.3 + i * 0.65; k.cone(gx, y + 0.55, z, 0.34, 1.15, c, {}, 10); k.sph(gx, y + 1.7, z, 0.2, c, { s: [1.3, 0.7, 0.8] }); k.box(gx, y + 1.9, z, 0.03, 0.14, 0.03, 0x4a3226); }); w.boxes.push([x - 1.8, x + 1.8, z - 0.35, z + 0.35]); }
   // streets of coloured brick inside the pale cobbles: the royal avenue from the palace stair to the Fire Square, the ring round it,
   // gold lanes to the shops, and a blue-grey road to the harbour
   { const ROYAL = 0xb8323a, SHOP = 0xe0a23e, PORT = 0x6f7f9a, KERB = 0x4a2e2a, GK = 0xf0d9a0;
@@ -588,6 +590,8 @@ export function buildSugar() {
     { const cr = makeCradle(); cr.position.set(38, y + 1.2, -30.6); g.add(cr); w.cradle = cr; (w.glows ||= []).push([38, y + 1.2, -30.6, 0xffb060, 1]); }
     k.cyl(64, y + 0.06, -28.6, 2.3, 2.3, 0.04, 0x9a2a36, {}, 28); k.cyl(64, y + 0.08, -28.6, 1.9, 1.9, 0.04, 0xe9c98a, {}, 28); k.cyl(64, y + 0.1, -28.6, 1.3, 1.3, 0.04, 0xb8404a, {}, 28); circ([64, -28.6, 2.1]);
     for (let i = 0; i < 10; i++) { const x = 73 + R() * 4, z = -19 + R() * 6; k.cone(x, H(x, z) + 0.2, z, 0.2, 0.5, 0x7fc98a); k.sph(x, H(x, z) + 0.6, z, 0.1, 0xbfa0e8); } } }
+  { const x = -15.2, z = 39.2, y = H(x, z); for (const dz of [-1.5, 1.5]) { k.cyl(x, y, z + dz, 0.07, 0.09, 2.1, 0xffffff, {}, 8); k.sph(x, y + 2.15, z + dz, 0.12, 0xf5c84a); } k.box(x, y + 2, z, 0.07, 0.07, 3.1, 0xf5c84a);
+    [0xf58ab5, 0xf5d24a, 0x8fe08a, 0x8ac8f5, 0xc9a0f0].forEach((c, i) => { const gz = z - 1.2 + i * 0.6; k.cone(x, y + 0.55, gz, 0.34, 1.15, c, {}, 10); k.sph(x, y + 1.7, gz, 0.2, c, { s: [0.8, 0.7, 1.3] }); k.box(x, y + 1.9, gz, 0.03, 0.14, 0.03, 0x8a6a4a); }); w.boxes.push([x - 0.35, x + 0.35, z - 1.7, z + 1.7]); }
   // marshmallow meadows
   w.bouncers.forEach(([x, z, r, top], i) => { const y = base(x, z), c = [0xffffff, 0xffe0ec, 0xfff6d0][i % 3]; k.cyl(x, y - 0.5, z, r, r, top + 0.2, c, {}, 16); k.sph(x, y + top - 0.3, z, r * 0.98, c, { s: [1, 0.22, 1] }); });
   // licorice lift + mountain dressing

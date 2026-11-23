@@ -12,11 +12,21 @@ import { initGltf } from './gltf.js';
 import { INTERLUDES, KIM_CALLS, TIRA_CALLS, KIM_BACK } from './story/interludes.js';
 import { playCut, WHO as CUTWHO } from './cut.js';
 import { makeRoom, deckZone } from './rooms.js';
+// Gowns to earn: paid for with cinders (won in mini games, torches and fire bending). Each is the heroine's own gown dyed a new colour.
+// dye: [turn of the colour wheel, the cloth's own hue, how wide a band of hue counts as cloth, least saturation, darkening, most saturation]
+const WARDROBE = {
+  amber: { who: 'Amber', keeper: 'The seamstress', base: 'the crimson gown', gowns: [
+    { id: 'sunfire', name: 'Sunfire gold', cost: 6, dye: [0.12, 0.985, 0.03, 0.55, 1] }, { id: 'emerald', name: 'Emberwood green', cost: 10, dye: [0.33, 0.985, 0.03, 0.55, 1] },
+    { id: 'sapphire', name: 'Harbour sapphire', cost: 14, dye: [0.62, 0.985, 0.03, 0.55, 1] }, { id: 'amethyst', name: 'Twilight amethyst', cost: 18, dye: [0.8, 0.985, 0.03, 0.55, 0.85] }] },
+  kim: { who: 'Kim', keeper: 'Madame Praline', base: 'the pink dress', gowns: [
+    { id: 'lemon', name: 'Lemon drop', cost: 6, dye: [0.14, 0.95, 0.06, 0.1, 1, 0.5] }, { id: 'mint', name: 'Peppermint', cost: 10, dye: [0.3, 0.95, 0.06, 0.1, 1, 0.5] },
+    { id: 'sky', name: 'Blueberry cream', cost: 14, dye: [0.62, 0.95, 0.06, 0.1, 1, 0.5] }, { id: 'lilac', name: 'Sugared violet', cost: 18, dye: [0.8, 0.95, 0.06, 0.1, 1, 0.5] }] },
+};
 const PLAYS = {
   sugar: [{ id: 'stars', at: [95, 43], label: 'Star-hop the Marshmallow Meadows' }, { id: 'bounce', at: [93, 28], label: 'Bounce-off with Kim' }, { id: 'turtles', at: [-90, 33], label: 'Turtle round-up' }, { id: 'sled', at: [-5.5, -89], label: 'Sled the Ice Cream Mountain' },
-    { id: 'tira', at: [-7, 14], label: 'Tira’s crumb hunt' }, { id: 'outfit', at: [-11, 48], label: 'Madame Praline’s secret order' }, { id: 'kim', at: [19, 6], label: 'Kim’s delivery round' }, { id: 'rubyfish', at: [-22, 141], label: 'Meanwhile, Ruby…', rings: [[-32, 8, 124], [-8, 12, 112], [22, 14, 126], [30, 12, 150], [5, 10, 162], [-26, 12, 156], [-52, 17, 166], [-32, 8, 124]] },
+    { id: 'tira', at: [-7, 14], label: 'Tira’s crumb hunt' }, { id: 'outfit', at: [-11, 48], label: 'Madame Praline’s secret order' }, { id: 'wardrobe', at: [-13.5, 40.5], label: 'Madame Praline’s dressmaking', who: 'kim' }, { id: 'kim', at: [19, 6], label: 'Kim’s delivery round' }, { id: 'rubyfish', at: [-22, 141], label: 'Meanwhile, Ruby…', rings: [[-32, 8, 124], [-8, 12, 112], [22, 14, 126], [30, 12, 150], [5, 10, 162], [-26, 12, 156], [-52, 17, 166], [-32, 8, 124]] },
     { id: 'rings', at: [14, 132], label: 'Ring flight with Ruby', ruby: 1, rings: [[0, 34, 100], [-38, 44, 30], [-60, 52, -40], [0, 66, -96], [42, 62, -70], [86, 44, -62], [108, 48, 10], [40, 36, 90]] }],
-  ember: [{ id: 'lanterns', at: [11, 47], label: 'Lantern dash' }, { id: 'seafish', at: [127, 42], label: 'Ruby goes fishing', ruby: 1 },
+  ember: [{ id: 'lanterns', at: [11, 47], label: 'Lantern dash' }, { id: 'wardrobe', at: [-13, 63], label: 'The palace seamstress', who: 'amber' }, { id: 'seafish', at: [127, 42], label: 'Ruby goes fishing', ruby: 1 },
     { id: 'rings', at: [-22, 16], label: 'Ring flight with Ruby', ruby: 1, rings: [[-58, 40, -8], [-52, 48, -52], [-34, 56, -78], [0, 64, -112], [34, 56, -78], [52, 50, -58], [58, 42, -6], [0, 34, 34]] }],
 };
 import { spokenLine } from './story/speak.js';
@@ -97,7 +107,7 @@ export class Game {
   // ───────── start / chapters ─────────
   async begin(fresh) {
     this.sound.unlock();
-    if (!fresh && this.load()) { this.started = true; this.sound.setOn(this.S.opt.sound); await this.enterWorld(this.S.world, this.S.time); this.lastStep = this.curStep(); const sp = this.S.pos || this.W.P[this.chapter.spawn] || [0, 0]; this.place(sp[0], sp[1]); if (sp[2] !== undefined) this.camYaw = sp[2]; this.refresh(); UI.playUI(true); this.paused = false; this.showGoal(); await UI.fade(false); this.interlude(this.S.ch - 1, true); }
+    if (!fresh && this.load()) { this.started = true; this.sound.setOn(this.S.opt.sound); await this.enterWorld(this.S.world, this.S.time); this.lastStep = this.curStep(); const sp = this.S.pos || this.W.P[this.chapter.spawn] || [0, 0]; this.place(sp[0], sp[1]); if (sp[2] !== undefined) this.camYaw = sp[2]; this.refresh(); UI.playUI(true); this.paused = false; this.showGoal(); await UI.fade(false); await this.interlude(this.S.ch - 1, true); if (!this.S.vis.wardrobeSeen && (this.S.sparks || 0) >= 6) { this.S.vis.wardrobeSeen = 1; UI.tip(this.S.world === 'sugar' ? 'You have sweets enough for a new dress. Madame Praline is taking orders outside her shop.' : 'You have cinders enough for a new gown. The palace seamstress has set up in the market, by Master Orin.', 9); } }
     else { const opt = this.S.opt; this.S = this.blank(); this.S.opt = opt; this.started = true; await this.startChapter(1); }
   }
   baseline(n) { const f = {}, it = {}; if (n >= 3) it.whistle = 1; if (n === 3) it.spyglass = 1; if (n >= 11 && n <= 14) it.stillbloom = 1; if (n >= 3) f.cape = 1; if (n >= 5 && n <= 12) f.coat = 1; if (n >= 13) f.coatOff = 1; if (n >= 8 && n <= 10) f.rideSugar = 1; return [f, it]; }
@@ -157,6 +167,7 @@ export class Game {
   look(id) {
     const f = this.f, L = { ...CAST[id] };
     if (id === 'kim' && this.S.vis.kimTira && this.S.opt.tira !== false) L.tiraFit = 1;
+    { const wd = WARDROBE[id], g = wd && wd.gowns.find((x) => x.id === this.S.vis.worn?.[id]); if (g && !L.tiraFit && !L.collar) L.dye = g.dye; }
     if (id === 'amber') { if (f.coat && !f.coatOff) Object.assign(L, { top: 0xfff1d6, skirt: 0xfbe6c2, trim: 0xe9b949, collar: 0xffffff, cape: 0, sleeve: 0xfff1d6 }); if (!f.cape || f.c17_cape || this.S.opt.cape === false) L.cape = 0; }
     if (id === 'kim') { L.tira = 1; if (f.c17_cape) L.cape = 0xa3182c; }
     return L;
@@ -412,7 +423,7 @@ export class Game {
     const tr = this.trail; tr.t = 16; tr.target = t; tr.re = 0; this.scene.add(tr.m, tr.beam); this.sound.sfx('chime');
   }
   // ── Activities: optional, replayable games at marked spots (a striped pole with a gold star) ──
-  nearPlay() { const p = this.player; if (this.riding || !p.ground) return null; for (const s of PLAYS[this.W.name] || []) if (Math.hypot(p.x - s.at[0], p.z - s.at[1]) < 3.4 && (!s.ruby || (this.S.items.whistle && p.who === 'amber'))) return s; return null; }
+  nearPlay() { const p = this.player; if (this.riding || !p.ground) return null; for (const s of PLAYS[this.W.name] || []) if (Math.hypot(p.x - s.at[0], p.z - s.at[1]) < 3.4 && (!s.ruby || (this.S.items.whistle && p.who === 'amber')) && (!s.who || s.who === p.who || this.comp?.id === s.who)) return s; return null; }
   markPlays() { const W = this.W; if (W.playMarks) return; W.playMarks = new THREE.Group(); for (const s of PLAYS[W.name] || []) { const [x, z] = s.at, y = W.height(x, z), g = new THREE.Group(); g.add(part(GEO.cyl, 0xffffff, 0, 1.5, 0, 0.09, 3, 0.09)); for (let i = 0; i < 4; i++) g.add(part(GEO.cyl, i % 2 ? 0xe8344a : 0xf5c84a, 0, 0.5 + i * 0.7, 0, 0.1, 0.3, 0.1)); const st = part(GEO.sph, 0xffd24a, 0, 3.35, 0, 0.42, 0.42, 0.16, true); g.add(st, part(GEO.cyl, 0xf3e6cf, 0, 0.06, 0, 1.5, 0.12, 1.5)); g.position.set(x, y, z); g.userData.star = st; W.playMarks.add(g); W.circles.push([x, z, 0.3]); } W.group.add(W.playMarks); }
   async play(s) {
     UI.closeDialog(); const res = await this['play_' + s.id](s), best = (this.S.best ||= {}); this.mode = null; this.playS = null; UI.setTimer(null); UI.controlsVisible(false);
@@ -463,6 +474,15 @@ export class Game {
     this.asOverride = null; this.refresh(); this.place(s.at[0], s.at[1] + 2);
     return { score: r.got * 100 + Math.round(Math.max(0, r.left)), cinders: r.got / 2, fmt: (v) => Math.floor(v / 100) + ' doorsteps', text: r.got >= 8 ? `All eight delivered warm, with ${Math.round(r.left)} seconds in hand.` : `${r.got} of 8 boxes delivered.` }; }
   // A side quest: gather the finishing touches for the tiramisu dress Madame Praline has made to match Tira. Kim keeps the outfit.
+  // The dressmaker: spend cinders on a gown in a new colour, or change into one you own.
+  async play_wardrobe(s) { const Wd = WARDROBE[s.who], V = this.S.vis, own = (V.gowns ||= {}), worn = (V.worn ||= {}), K = Wd.keeper, word = this.W.name === 'sugar' ? 'sweets' : 'cinders';
+    V.wardrobeSeen = 1; await UI.say(K, s.who === 'kim' ? 'A dress in every flavour, dear. Bring me cinders from your games and I shall cut the cloth myself.' : 'Highness. I have bolts in every colour the dye-houses make. A few cinders from your flame, and one is yours.');
+    for (;;) { const n = this.S.sparks || 0, opts = [{ t: `Wear ${Wd.base}` + (!worn[s.who] ? ' (wearing)' : '') }, ...Wd.gowns.map((g) => ({ t: own[g.id] ? `Wear ${g.name}` + (worn[s.who] === g.id ? ' (wearing)' : '') : `${g.name} · ${g.cost} ${word}` + (n < g.cost ? ' (not yet)' : '') })), { t: 'That is all, thank you.', cls: 'exit' }];
+      const i = await UI.choose(opts, `${Wd.who}’s wardrobe · you have ${n} ${word}`); if (i === opts.length - 1) break;
+      if (i === 0) { delete worn[s.who]; this.refresh(); this.sound.sfx('page'); continue; } const g = Wd.gowns[i - 1];
+      if (!own[g.id]) { if (n < g.cost) { await UI.say(K, `${g.name} wants ${g.cost}, and you have ${n}. Play a game or two and come back.`); continue; } this.S.sparks = n - g.cost; own[g.id] = 1; this.sound.sfx('chapter'); await UI.say(K, s.who === 'kim' ? 'Arms out. There! It might have been made for you. It was.' : 'It becomes you, Highness. Turn. Yes.'); }
+      worn[s.who] = g.id; this.refresh(); this.sound.sfx('ring'); }
+    UI.closeDialog(); this.save(); return null; }
   async play_outfit(s) { const W = this.W, V = this.S.vis, P = 'Madame Praline', pts = [[-7, 30], [9, 42], [-13, 7], [24, 3], [5, 33], [-2, 22]];
     if (V.kimTira) { await UI.say(P, 'It suits her, and I do not say that lightly. Wear it or do not, dear; a good dress keeps.'); this.S.opt.tira = this.S.opt.tira === false; this.refresh(); await UI.say('', this.S.opt.tira === false ? 'Kim changes back into her pink dress.' : 'Kim puts the tiramisu dress back on.'); this.save(); return null; }
     await UI.say(P, 'Not a word to anyone. I have made Kimbrûlée a dress to match that creature of hers: cream ruffles, a dusting of cocoa, and a hat like a caramel flower.');
