@@ -8,7 +8,7 @@ const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder), store = {}, m
 export const PACKS = {
   village: ['Wall_UnevenBrick_Straight', 'Wall_UnevenBrick_Window_Wide_Round', 'Wall_UnevenBrick_Door_Round', 'Wall_Plaster_Straight', 'Wall_Plaster_Window_Wide_Round', 'Corner_Exterior_Brick', 'Roof_RoundTiles_6x6', 'Roof_RoundTiles_6x8', 'Roof_RoundTiles_8x8', 'Roof_Front_Brick6', 'Roof_Front_Brick8', 'Prop_Chimney', 'Prop_Crate', 'Prop_Wagon', 'Door_1_Round', 'DoorFrame_Round_Brick', 'Window_Wide_Round1', 'WindowShutters_Wide_Round_Open', 'Prop_WoodenFence_Single', 'Prop_Vine1', 'Roof_Tower_RoundTiles'],
   // sculpted scenery (generated with Meshy from concept paintings); each is normalised to stand on y = 0 with a footprint 1 unit wide
-  props: ['cakehouse1', 'cakehouse2', 'cakehouse3', 'candytree', 'lollytree', 'fountain', 'statue', 'cave', 'stall', 'emberhouse1', 'emberhouse2', 'brazier', 'firefest', 'arch'],
+  props: ['cakehouse1', 'cakehouse2', 'cakehouse3', 'candytree', 'lollytree', 'fountain', 'statue', 'cave', 'stall', 'emberhouse1', 'emberhouse2', 'brazier', 'firefest', 'arch', 'firecolumn', 'heartharch', 'bannerpole', 'stonebench', 'lilyplanter'],
   nature: ['CommonTree_1', 'CommonTree_2', 'CommonTree_3', 'TwistedTree_2', 'DeadTree_1', 'DeadTree_2', 'Rock_Medium_1', 'Rock_Medium_2', 'Rock_Medium_3', 'Bush_Common', 'Bush_Common_Flowers', 'Flower_3_Group', 'Flower_4_Group', 'Mushroom_Common', 'Fern_1', 'Plant_7_Big', 'Pebble_Round_1'],
 };
 export const WORLD_PACKS = { ember: ['village', 'nature', 'props'], sugar: ['nature', 'props'], sea: [] };
