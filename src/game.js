@@ -325,7 +325,7 @@ export class Game {
     for (let i = 0; i < this.rings.length; i++) { const a = i ? o.rings[i - 1] : [r.x, r.y, r.z], b = o.rings[i]; this.rings[i].rotation.y = Math.atan2(b[0] - a[0], b[2] - a[2]); }
     this.ringI = 0; const f0 = o.fog ?? this.fogOverride ?? this.baseFog, f1 = o.fogTo ?? o.fog ?? f0; this.fogOverride = f0;
     const done = new Promise((res) => { this.flyDone = (i) => { this.sound.sfx('ring'); const b = o.barks?.[i]; if (b) this.bark(b); this.fogOverride = lerp(f0, f1, (i + 1) / o.rings.length); if (i + 1 >= o.rings.length) res(); }; });
-    UI.controlsVisible(true); this.flying = true; if (o.world) await UI.fade(false);
+    UI.closeDialog(); UI.controlsVisible(true); this.flying = true; if (o.world) await UI.fade(false);
     await done;
     this.flying = false; UI.controlsVisible(false); this.clearRings();
     if (o.land) { await UI.fade(true); this.unride(o.land); this.faceCam(); this.refresh(); await UI.fade(false); }
@@ -434,7 +434,11 @@ export class Game {
   }
   // ── Activities: optional, replayable games at marked spots (a striped pole with a gold star) ──
   nearPlay() { const p = this.player; if (this.riding || !p.ground) return null; for (const s of PLAYS[this.W.name] || []) if (Math.hypot(p.x - s.at[0], p.z - s.at[1]) < 3.4 && (!s.ruby || (this.S.items.whistle && p.who === 'amber')) && (!s.who || s.who === p.who || this.comp?.id === s.who)) return s; return null; }
-  markPlays() { const W = this.W; if (W.playMarks) return; W.playMarks = new THREE.Group(); for (const s of PLAYS[W.name] || []) { const [x, z] = s.at, y = W.height(x, z), g = new THREE.Group(); g.add(part(GEO.cyl, 0xffffff, 0, 1.5, 0, 0.09, 3, 0.09)); for (let i = 0; i < 4; i++) g.add(part(GEO.cyl, i % 2 ? 0xe8344a : 0xf5c84a, 0, 0.5 + i * 0.7, 0, 0.1, 0.3, 0.1)); const st = part(GEO.sph, 0xffd24a, 0, 3.35, 0, 0.42, 0.42, 0.16, true); g.add(st, part(GEO.cyl, 0xf3e6cf, 0, 0.06, 0, 1.5, 0.12, 1.5)); g.position.set(x, y, z); g.userData.star = st; W.playMarks.add(g); W.circles.push([x, z, 0.3]); } W.group.add(W.playMarks); }
+  markPlays() { const W = this.W; if (W.playMarks) return; W.playMarks = new THREE.Group(); for (const s of PLAYS[W.name] || []) { const [x, z] = s.at, y = W.height(x, z), g = new THREE.Group(), gold = new THREE.MeshStandardMaterial({ color: 0xffd24a, emissive: 0xffa820, emissiveIntensity: 0.9, metalness: 0.6, roughness: 0.3 }), st = new THREE.Group();
+      { const sh = new THREE.Shape(); for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 + Math.PI / 2, r = i % 2 ? 0.34 : 0.8; sh[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r); } sh.closePath(); const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.16, bevelEnabled: true, bevelThickness: 0.07, bevelSize: 0.07, bevelSegments: 2 }); geo.translate(0, 0, -0.08); st.add(new THREE.Mesh(geo, gold));
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.softTex(), color: new THREE.Color(0xffc040).multiplyScalar(1.3), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); halo.scale.setScalar(3.4); st.add(halo); st.position.y = 2.7; }
+      g.add(st, part(GEO.cyl, 0xf5c84a, 0, 0, 0, 0.5, 0.12, 0.5), part(GEO.cyl, 0xfff1d6, 0, 0.12, 0, 0.07, 1.6, 0.07), part(GEO.sph, 0xf5c84a, 0, 1.75, 0, 0.13, 0.13, 0.13)); for (const sx of [-1, 1]) { const rb = part(GEO.box, s.ruby ? 0xe8344a : 0xff8ab0, sx * 0.2, 1.3, 0, 0.36, 0.5, 0.03); rb.rotation.z = sx * 0.5; g.add(rb); }
+      { const ring = new THREE.Mesh(new THREE.RingGeometry(1.25, 1.5, 40), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd24a).multiplyScalar(1.6), transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.09; g.add(ring); g.userData.ring = ring; } g.position.set(x, y, z); g.userData.star = st; W.playMarks.add(g); W.circles.push([x, z, 0.3]); } W.group.add(W.playMarks); }
   async play(s) {
     UI.closeDialog(); const res = await this['play_' + s.id](s), best = (this.S.best ||= {}); this.mode = null; this.playS = null; UI.setTimer(null); UI.controlsVisible(false);
     if (!res) return; const old = best[s.id], better = old === undefined || res.score > old; if (better) best[s.id] = res.score; const gain = Math.max(1, Math.round(res.cinders || 1)); this.S.sparks = (this.S.sparks || 0) + gain; this.sound.sfx('chapter');
@@ -446,7 +450,7 @@ export class Game {
     if (!keepMode) this.mode = 'play'; UI.controlsVisible(true); return new Promise((res) => { this.playS = { ms, got: 0, t: time, time, label, reach, onGet, end: (why) => { for (const m of ms) this.scene.remove(m); this.playS = null; res({ got: this.playGot, left: this.playLeft, why }); } }; this.playGot = 0; this.playLeft = time; });
   }
   updatePlay(dt) {
-    const S = this.playS, p = this.riding ? { x: this.ruby.x, y: this.ruby.y - 1, z: this.ruby.z } : this.player; S.t -= dt; this.playLeft = S.t; if (S.tick) S.tick(dt);
+    const S = this.playS, p = this.riding ? { x: this.ruby.x, y: this.ruby.y - 1, z: this.ruby.z } : this.player; if (!S.began) { S.began = 1; UI.closeDialog(); } S.t -= dt; this.playLeft = S.t; if (S.tick) S.tick(dt);
     if (S.ms) { for (const m of S.ms) { if (!m.visible) continue; m.rotation.y += dt * 4; if (Math.hypot(m.position.x - p.x, m.position.y - p.y - 1, m.position.z - p.z) < S.reach) { m.visible = false; S.got++; this.playGot = S.got; this.sound.sfx('ring'); this.puff(m.position.x, m.position.y, m.position.z, 0xffe08a, 16, 0.8, 2, 0.9); S.onGet?.(m); } }
       UI.setTimer(S.text ? S.text() : S.quiet ? (S.ms.length > 1 ? `${S.got}/${S.ms.length} · ` : '') + S.quiet : `${S.label} ${S.got}/${S.ms.length}`, S.noClock ? 1 : S.t / S.time); if (S.got >= S.ms.length) return S.end('all'); }
     if (S.t <= 0 && !S.noClock) S.end('time');
@@ -594,6 +598,7 @@ export class Game {
         for (let i = 0; i < 9; i++) L.fl.push({ s: add(sprite('butterfly', 0.5)), ph: i * 1.9, ox: Math.cos(i * 2.4) * (6 + i), oz: Math.sin(i * 2.4) * (6 + i) }); }
       else for (let i = 0; i < 8; i++) L.fl.push({ s: add(sprite('ember', 0.55)), ph: i * 1.9, ox: Math.cos(i * 2.4) * (5 + i * 1.5), oz: Math.sin(i * 2.4) * (5 + i * 1.5), ember: 1 }); }
     const L = W.life, p = this.player; L.g.visible = !this.zone;
+    if (W.playMarks) for (const g of W.playMarks.children) { const st = g.userData.star; st.rotation.y = t * 1.6 + g.position.x; st.position.y = 2.7 + Math.sin(t * 2 + g.position.z) * 0.18; g.userData.ring.scale.setScalar(1 + 0.12 * Math.sin(t * 3 + g.position.x)); g.userData.ring.material.opacity = 0.55 + 0.25 * Math.sin(t * 3 + g.position.x); }
     if (W.cradle) W.cradle.userData.flames.forEach((m, i) => { m.scale.y = m.userData.sy * (1 + 0.14 * Math.sin(t * 9 + i * 1.7)); });
     if (W.shell) { const b = W.shell.box, q = this.player, inside = q.x > b[0] && q.x < b[1] && q.z > b[2] && q.z < b[3] + (W.shell.mesh.visible ? 0 : 0.8); W.shell.mesh.visible = !inside; }
     for (const q of L.hounds || []) { q.a += dt * q.sp * (0.5 + 0.5 * Math.sin(t * 0.5 + q.ph)); const rr = q.r * (0.5 + 0.5 * Math.sin(q.a * 0.31 + q.ph)), x = q.cx + Math.cos(q.a) * rr, z = q.cz + Math.sin(q.a * 1.2) * rr; this.faceSprite(q.s, x - q.s.position.x, z - q.s.position.z); q.s.position.set(x, W.height(x, z) + Math.abs(Math.sin(t * 9 + q.ph)) * 0.12, z); }
