@@ -282,7 +282,7 @@ const ch11 = {
   companion: () => 'kim',
   ruby: (f) => !f.c11_plan ? 'clearing_ruby' : null,
   steps: [
-    { goal: '“Let them see what we make.” Gather Sugarland’s gifts.', hint: 'Word has got around. A boy with honey and a very small girl are near the fountain; the cider seller is in the market; Madame Praline has a flat box; and two young candy cane trees wait at the forest’s edge.', until: 'c11_gifts' },
+    { goal: '“Let them see what we make.” Gather Sugarland’s gifts.', hint: 'Word has got around. A boy with honey and a very small girl are near the fountain; the cider seller is in the market; Madame Praline has a flat box; and two young candy cane trees wait at the forest’s edge.', until: 'c11_gifts', count: ['g_honey', 'g_draw', 'g_cider', 'g_rug', 'g_trees'] },
     { goal: 'Show Ruby the collection.', hint: 'The forest clearing, south.', until: 'c11_plan' },
     { goal: 'First light. Sail from the coast.', hint: 'The dock is on the eastern shore, south-east of the meadows.', until: 'c11_sail' },
     { goal: 'Home is on the far side of the fog.', hint: 'Stand at the bow.', until: 'c11_fog' },

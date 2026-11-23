@@ -352,7 +352,7 @@ const ch4 = {
     { goal: 'Follow the path north out of the forest.', hint: 'The vanilla flowers lead toward pale rooftops.', until: 'c4_town' },
     { goal: 'You are shivering. Keep moving.', hint: 'Walk on into the town. A shop window full of coats stands on the west side of the lane.', until: 'coat' },
     { goal: 'Go back to the lollipop signpost and try again.', hint: 'The signpost stands where the forest path meets the town.', until: 'c4_kim' },
-    { goal: 'Let Kim show you the Confectioners’ Market.', hint: 'Try a tart, see the fountain that smells of strawberry syrup, and look in on the balloon meadow. Kim will talk if you ask her.', until: 'c4_tour', lead: 1 },
+    { goal: 'Let Kim show you the Confectioners’ Market.', hint: 'Try a tart, see the fountain that smells of strawberry syrup, and look in on the balloon meadow. Kim will talk if you ask her.', until: 'c4_tour', lead: 1, count: ['c4_tart', 'c4_fountain', 'c4_gate'] },
     { goal: 'Sunset. Say good night to Kim.', hint: 'She is right beside you.', until: 'c4_night' },
     { goal: 'Ruby has been alone all afternoon.', hint: 'Not the inn. South, down the forest path, to the cave behind the pink lake.', until: 'c4_end' },
   ],
@@ -442,7 +442,7 @@ const ch5 = {
   ruby: (f) => f.c5_night ? 'cave_ruby' : null,
   steps: [
     { goal: 'Meet Kim at the lollipop signpost.', hint: 'She is waiting with Tira.', until: 'c5_start' },
-    { goal: 'Three expeditions, in any order: the Meadows, the Mountains, Sweetlake.', hint: 'Meadows: east of town, where the ground bounces; hop up to the sprite. Mountains: north; ride the licorice basket. Sweetlake: north-east; the walnut boats. Ask Kim.', until: 'c5_three', lead: 1, via: ['meadow', 'sprite', 'lift', 'boat'] },
+    { goal: 'Three expeditions, in any order: the Meadows, the Mountains, Sweetlake.', hint: 'Meadows: east of town, where the ground bounces; hop up to the sprite. Mountains: north; ride the licorice basket. Sweetlake: north-east; the walnut boats. Ask Kim.', until: 'c5_three', lead: 1, via: ['meadow', 'sprite', 'lift', 'boat'], count: ['c5_meadow', 'c5_sled', 'c5_lake'] },
     { goal: 'The best day: the balloon flight.', hint: 'The balloonist waits in the meadow west of the market.', until: 'c5_balloon', lead: 1 },
     { goal: 'Kim is bringing you home for supper.', hint: 'The house stands behind the family workshop, east of the market: the roof with the crooked chimney.', until: 'c5_supper', lead: 1 },
     { goal: 'Walk back to the signpost and say good night.', hint: 'South of the market.', until: 'c5_night' },

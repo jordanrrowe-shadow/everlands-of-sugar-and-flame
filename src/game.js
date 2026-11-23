@@ -113,7 +113,8 @@ export class Game {
     this.sound.unlock(); UI.playUI(true); this.busy--; this.paused = false; this.showGoal(true); this.save(); await UI.fade(false);
   }
   curStep() { const st = this.chapter.steps; for (const s of st) if (!this.f[s.until]) return s; return null; }
-  showGoal(pulse) { const st = this.curStep(), n = this.S.ch; UI.setGoal(n > 17 ? 'Epilogue' : `Chapter ${n} · ${this.chapter.title}`, st ? st.goal : '', pulse); }
+  // A step that gathers several things carries `count`: the flags to tick off. The goal then reads "… · 2 of 5".
+  showGoal(pulse) { const st = this.curStep(), n = this.S.ch, c = st?.count, got = c ? c.filter((k) => this.f[k]).length : 0; UI.setGoal(n > 17 ? 'Epilogue' : `Chapter ${n} · ${this.chapter.title}`, st ? st.goal + (c ? ` · ${got} of ${c.length}` : '') : '', pulse); }
   async checkStep() {
     const st = this.curStep(); if (st === this.lastStep) return; this.lastStep = st;
     if (!st) { if (this.S.ch >= this.chapters.length) return; await wait(0.6); if (this.S.ch === 17) await this.ending(); await this.interlude(this.S.ch); return this.startChapter(this.S.ch + 1); }
@@ -236,7 +237,7 @@ export class Game {
       if (n.cut) { UI.closeDialog(); this.inCut = true; const mood0 = this.sound.mood; if (n.cut.filter(Array.isArray).length >= 4) this.sound.mood = 'heart'; try { await playCut(n.cut, this); } finally { this.inCut = false; this.sound.mood = mood0; } continue; }
       if (n.hub) { await this.hub(n); continue; }
       if (n.if !== undefined && (n.then || n.else)) { await this.exec(this.cond(n.if) ? n.then || [] : n.else || []); continue; }
-      if (n.set) { for (const k of [].concat(n.set)) this.f[k] = 1; this.refresh(); }
+      if (n.set) { const c = this.curStep()?.count, before = c ? c.filter((k) => this.f[k]).length : 0; for (const k of [].concat(n.set)) this.f[k] = 1; this.refresh(); if (c) { const got = c.filter((k) => this.f[k]).length; if (got > before) { this.showGoal(true); if (got < c.length) this.toast(`${got} of ${c.length}`); } } }
       if (n.lead && !this.S.leads.includes(n.lead)) { this.S.leads.push(n.lead); UI.tip('✎ Noted in your journal.', 3); }
       if (n.give) { this.S.items[n.give] = 1; }
       if (n.take) { delete this.S.items[n.take]; }
