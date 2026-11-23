@@ -26,7 +26,7 @@ export async function playCut(list, G) {
   const layout = () => box.classList.toggle('solo', !!slot.cutL !== !!slot.cutR);
   const show = (c, mood) => { // Amber keeps the left; whoever she is talking to takes the right
     let id = where(c); if (!mood) { if (id) { $(id).classList.remove('in'); slot[id] = null; } return layout(); }
-    if (!id) { const pref = c === 'amber' ? 'cutL' : 'cutR', other = pref === 'cutL' ? 'cutR' : 'cutL'; id = !slot[pref] ? pref : !slot[other] && c !== 'amber' ? other : pref; slot[id] = c; }
+    if (c === 'ruby' && !id) G.sound.grunt(0.6); if (!id) { const pref = c === 'amber' ? 'cutL' : 'cutR', other = pref === 'cutL' ? 'cutR' : 'cutL'; id = !slot[pref] ? pref : !slot[other] && c !== 'amber' ? other : pref; slot[id] = c; }
     const el = $(id), src = art(c, mood, G); if (el.dataset.src !== src) { el.dataset.src = src; el.src = src; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); } el.classList.add('in'); el.classList.toggle('flip', id === 'cutL' ? c !== 'amber' : c === 'amber'); layout(); };
   box.classList.remove('hide'); await wait(30); box.classList.add('on');
   const advance = (e) => { e?.preventDefault?.(); if (typing) { typing(); return; } const n = next; next = null; n?.(); };
@@ -40,7 +40,8 @@ export async function playCut(list, G) {
         const who = Array.isArray(n) ? n[0] : '', line = Array.isArray(n) ? n[1] : n, k = WHO[who];
         for (const id of ['cutL', 'cutR']) { $(id).classList.toggle('talk', !!k && slot[id] === k); $(id).classList.toggle('dim', !!who && slot[id] !== k); }
         { const hit = creatureIn(line), isRuby = hit && hit[1] === 'ruby', cr = !hit || (isRuby && (where('ruby') || !(slot.cutL && slot.cutR))) ? null : isRuby ? `/art/cut/ruby-${rubyMood(line)}.webp` : hit[1]; if (isRuby && !cr && !where('ruby') && !slot.cutR) show('ruby', rubyMood(line));
-          if (cr) { if (beast.dataset.src !== cr) { beast.dataset.src = cr; beast.src = cr; } beast.classList.remove('in'); void beast.offsetWidth; beast.className = 'in ' + (hit[2] || ''); beastN = 0; G.sound.sfx(hit[2] === 'item' ? 'chime' : hit[2] === 'big' ? 'roar' : 'boing'); } else if (beast.classList.contains('in') && ++beastN > 7) beast.classList.remove('in'); if (/\bTira\b/.test(line) && !tira.classList.contains('in')) setTira('happy'); }
+          if (cr) { if (beast.dataset.src !== cr) { beast.dataset.src = cr; beast.src = cr; } beast.classList.remove('in'); void beast.offsetWidth; beast.className = 'in ' + (hit[2] || ''); beastN = 0; if (hit[2] === 'big') G.sound.grunt(0.6, /happy/.test(cr) ? 3 : /curious/.test(cr) ? 2 : 1); else G.sound.sfx(hit[2] === 'item' ? 'chime' : 'boing'); }
+          else if (isRuby && (where('ruby') || beast.classList.contains('big'))) G.sound.grunt(0.5); else if (beast.classList.contains('in') && ++beastN > 7) beast.classList.remove('in'); if (/\bTira\b/.test(line) && !tira.classList.contains('in')) setTira('happy'); }
         tira.classList.toggle('dim', !!who); box.classList.toggle('focusL', !!k && slot.cutL === k); box.classList.toggle('focusR', !!k && slot.cutR === k);
         name.textContent = who; text.classList.toggle('narr', !who); $('cutBox').classList.remove('hide'); G.sound.sfx('page'); if (who) G.voice(who, line);
         await new Promise((res) => { let i = 0; const fast = G.noRender; const done = () => { clearInterval(iv); typing = null; text.textContent = line; res(); }; typing = done; const iv = setInterval(() => { i += 2; text.textContent = line.slice(0, i); if (i >= line.length) done(); }, 22); if (fast) done(); });

@@ -44,6 +44,10 @@ export class Sound {
     else if (n === 'chapter') [392, 523.3, 659.3, 784].forEach((f, i) => this.tone(f, 1.2, 'triangle', 0.12, 0, i * 0.18));
   }
   // continuous beds of wind, water and fire, mixed by the game from where you are standing
+  // Ruby's voice: recorded grunts, chuffs and rumbles (public/sfx/ruby1-4.mp3), never the same one twice running.
+  grunt(vol = 0.5, pick) { if (!this.ctx || !this.on) return; const now = this.ctx.currentTime; if (now - (this.gruntT || -9) < 1.6) return; this.gruntT = now; let i = pick || 1 + Math.floor(Math.random() * 4); if (!pick && i === this.gruntI) i = 1 + (i % 4); this.gruntI = i;
+    const bufs = (this.gbufs ||= {}); (bufs[i] ||= fetch(`sfx/ruby${i}.mp3`).then((r) => r.arrayBuffer()).then((b) => new Promise((res, rej) => this.ctx.decodeAudioData(b, res, rej))))
+      .then((buf) => { const s = this.ctx.createBufferSource(), g = this.ctx.createGain(); s.buffer = buf; s.playbackRate.value = 0.92 + Math.random() * 0.16; g.gain.value = vol; s.connect(g); g.connect(this.master); s.start(); }).catch(() => {}); }
   ambient(name, vol) {
     if (!this.ctx) return; const A = (this.amb ||= {}); let a = A[name];
     if (!a) { if (vol < 0.01) return; const ctx = this.ctx, n = ctx.sampleRate * 2, b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0); let last = 0; for (let i = 0; i < n; i++) { const w = Math.random() * 2 - 1; last = name === 'fire' ? w : last * 0.96 + w * 0.04; d[i] = name === 'fire' ? (Math.random() < 0.002 ? w * 3 : w * 0.12) : last * 4; }

@@ -230,7 +230,7 @@ export class Game {
     list = this.cutify(list);
     for (const n of list) {
       if (!n) continue;
-      if (typeof n === 'string') { this.sound.sfx('page'); await UI.say('', n); continue; }
+      if (typeof n === 'string') { this.sound.sfx('page'); if (/\bRuby\b/.test(n) && this.ruby?.model.visible && !this.W.sea && Math.hypot(this.ruby.x - this.player.x, this.ruby.z - this.player.z) < 40) this.sound.grunt(0.5); await UI.say('', n); continue; }
       if (Array.isArray(n)) { this.sound.sfx('page'); this.speaker(n[0]); this.voice(n[0], n[1]); await UI.say(n[0], n[1]); this.voiceEl?.pause(); continue; }
       if (n.c) { for (;;) { const i = await UI.choose(n.c.map((o) => ({ t: o[0] }))); const o = n.c[i]; await this.speakChoice(o[0]); if (o[1]?.length) await this.exec(o[1]); if (!n.retry || o[2]) break; } continue; }
       if (n.cut) { UI.closeDialog(); this.inCut = true; const mood0 = this.sound.mood; if (n.cut.filter(Array.isArray).length >= 4) this.sound.mood = 'heart'; try { await playCut(n.cut, this); } finally { this.inCut = false; this.sound.mood = mood0; } continue; }
