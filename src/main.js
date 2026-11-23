@@ -16,6 +16,9 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
 const q = new URLSearchParams(location.search);
 if (q.get('ch')) { $('title').classList.add('hide'); G.started = true; G.sound.setOn(false); G.startChapter(+q.get('ch')); }
 
-// Fill the whole screen when launched from the home screen (see style.css).
-{ const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches, fit = () => { if (!standalone) return; const land = innerWidth > innerHeight, sh = land ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height), h = Math.max(innerHeight, document.documentElement.clientHeight, sh - innerHeight < 60 ? sh : 0); document.documentElement.style.setProperty('--fullh', h + 'px'); document.documentElement.classList.add('fullh'); dispatchEvent(new Event('fullh')); };
-  fit(); addEventListener('resize', fit); addEventListener('orientationchange', () => setTimeout(fit, 300)); setTimeout(fit, 600); }
+// Fill the whole screen on phones and tablets. A home-screen launch reports a window shorter than the screen, so the full-screen
+// layers are sized from the largest height the device admits to, and drawn a little past the bottom edge for good measure.
+{ const touch = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 1, probe = document.createElement('div'); probe.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:100vh;height:100lvh;visibility:hidden;pointer-events:none'; document.documentElement.appendChild(probe);
+  const fit = () => { if (!touch) return; const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches, land = innerWidth > innerHeight, sh = land ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
+    const h = Math.max(innerHeight, document.documentElement.clientHeight, probe.getBoundingClientRect().height || 0, standalone ? sh : 0); document.documentElement.style.setProperty('--fullh', Math.ceil(h) + 'px'); document.documentElement.classList.add('fullh'); dispatchEvent(new Event('fullh')); };
+  fit(); addEventListener('resize', fit); addEventListener('orientationchange', () => { setTimeout(fit, 300); setTimeout(fit, 900); }); setTimeout(fit, 600); setTimeout(fit, 2000); }
