@@ -533,6 +533,7 @@ export class Game {
         for (let i = 0; i < 9; i++) L.fl.push({ s: add(sprite('butterfly', 0.5)), ph: i * 1.9, ox: Math.cos(i * 2.4) * (6 + i), oz: Math.sin(i * 2.4) * (6 + i) }); }
       else for (let i = 0; i < 8; i++) L.fl.push({ s: add(sprite('ember', 0.55)), ph: i * 1.9, ox: Math.cos(i * 2.4) * (5 + i * 1.5), oz: Math.sin(i * 2.4) * (5 + i * 1.5), ember: 1 }); }
     const L = W.life, p = this.player; L.g.visible = !this.zone;
+    if (W.cradle) W.cradle.userData.flames.forEach((m, i) => { m.scale.y = m.userData.sy * (1 + 0.14 * Math.sin(t * 9 + i * 1.7)); });
     if (W.shell) { const b = W.shell.box, q = this.player, inside = q.x > b[0] && q.x < b[1] && q.z > b[2] && q.z < b[3] + (W.shell.mesh.visible ? 0 : 0.8); W.shell.mesh.visible = !inside; }
     for (const q of L.hounds || []) { q.a += dt * q.sp * (0.5 + 0.5 * Math.sin(t * 0.5 + q.ph)); const rr = q.r * (0.5 + 0.5 * Math.sin(q.a * 0.31 + q.ph)), x = q.cx + Math.cos(q.a) * rr, z = q.cz + Math.sin(q.a * 1.2) * rr; this.faceSprite(q.s, x - q.s.position.x, z - q.s.position.z); q.s.position.set(x, W.height(x, z) + Math.abs(Math.sin(t * 9 + q.ph)) * 0.12, z); }
     for (const q of L.bon) { q.a += dt * q.sp * (0.6 + 0.4 * Math.sin(t * 0.7 + q.ph)); const rr = q.r * (0.55 + 0.45 * Math.sin(q.a * 0.37 + q.ph)), x = q.cx + Math.cos(q.a) * rr, z = q.cz + Math.sin(q.a * 1.3) * rr; this.faceSprite(q.s, x - q.s.position.x, z - q.s.position.z); q.s.position.set(x, W.height(x, z) + 0.5 + Math.abs(Math.sin(t * 3.2 + q.ph)) * 1.1, z); }
@@ -637,6 +638,15 @@ export class Game {
       await UI.say('Kim', got >= 8 ? `${got}. So close! I did ten. Again, and bend your knees this time.` : `${got}. I did ten! Again. A different marshmallow every time, remember.`); time += 8; } }
   async play_bounce() { await UI.say('Kim', 'Bounce-off! Forty seconds. I always get ten, so there is your number to beat.'); const got = await this.bounceRound(40);
     return { score: got, cinders: got / 4, fmt: (v) => v + ' bounces', text: got > 10 ? `${got} bounces to Kim’s ten. She demands a rematch.` : `${got} bounces. Kim got ten, and is being unbearable about it.` }; }
+  // Hailing the Cinderwardens: three calls across the water, and no answer to any of them. There is no winning it.
+  async mini_hail(n) { const W = this.W, ships = W.wardens, p = this.player; if (ships) ships.position.set(0, 0, 0); if (navigator.webdriver && !window.__playHail) return;
+    const after = ['Only the creak of rigging answers. The lamps keep coming.', 'The lamps swing toward them. Still no voice. Something splashes, short of the bow.', 'A flat crack rolls across the water.'];
+    for (let i = 0; i < n.lines.length; i++) { UI.closeDialog(); UI.tip(i ? 'No answer. Call again, louder.' : 'Call out to the ships.', 5);
+      await new Promise((res) => { this.mode = 'play'; UI.controlsVisible(true); this.playS = { t: 9, time: 9, end: () => { this.playS = null; res(); }, tick: () => { UI.setAct('Call out to the ships'); UI.setTimer(`No answer · call ${i + 1} of ${n.lines.length}`, this.playS.t / 9); if (UI.hit('act')) this.playS.end(); } }; this.playLeft = 9; });
+      this.mode = null; UI.setTimer(null); UI.setAct(null); UI.controlsVisible(false); this.sound.sfx('page'); this.voice('Amber', n.lines[i]); await UI.say('Amber', n.lines[i]); this.voiceEl?.pause(); UI.closeDialog();
+      this.sound.tone(98, 1.6, 'sawtooth', 0.07, 82); for (let t = 0; t < 1; t += 0.04) { if (ships) ships.position.z += 0.36; await wait(0.03); }
+      if (i === 1) { this.sound.sfx('hit'); this.shake = 0.3; this.puff(p.x + 5, 0.6, p.z - 12, 0xffffff, 26, 2.4, 5); }
+      await UI.say('', after[i] || after[2]); } UI.closeDialog(); }
   async mini_sled() {
     const p = this.player, W = this.W; this.place(0, -156); this.mode = 'sled'; this.sledV = 4; this.camYaw = 0; UI.controlsVisible(true); UI.tip('Lean with the left thumb. The mountain decides the rest.', 5);
     await new Promise((res) => (this.sledDone = res)); this.mode = null; UI.controlsVisible(false); this.sound.sfx('hit'); this.shake = 0.6; this.puff(p.x, p.y + 1, p.z, 0xffffff, 30); await wait(0.8);

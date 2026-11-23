@@ -4,6 +4,7 @@ import { Kit, smooth, noise2, rnd } from './kit.js';
 import { makeDragon, animDragon, makeCritter, makePerson } from './models.js';
 import { terrainMaterial, waterMaterial, roadMaterial } from './gfx.js';
 import { Scatter, hasModel } from './assets.js';
+import { makeCradle } from './cradle.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const BENCHF = 0, BOATY = -2.9, SHIPY = { wardenship: -0.9, sugarship: -2.0, woodboat: -1.7 }; // how deep each hull sits below the waterline
@@ -531,7 +532,8 @@ export function buildSugar() {
     for (let i = 0; i < 5; i++) k.sph(51.4 + i * 0.4, y + 0.98, -27.9 + (i % 2) * 0.5, 0.2, cols[i], { s: [1, 0.3, 1] });
     k.box(55, y, -30.6, 1.5, 0.9, 0.9, 0xff9ec0); k.box(55, y + 0.9, -30.6, 1.6, 0.12, 1, CR); k.sph(55, y + 1.3, -30.6, 0.24, 0xffe08a, { glow: 1 }); k.cyl(55, y + 1.02, -30.6, 0.1, 0.14, 0.2, 0xc98a5a, {}, 8); box(54.2, 55.8, -31.1, -30.1);
     for (let i = 0; i < 5; i++) { const a = i * 1.257; k.box(64 + Math.cos(a) * 0.5, y + 3.2, -28.6 + Math.sin(a) * 0.5, 0.02, 1.1, 0.02, 0xffffff); k.sph(64 + Math.cos(a) * 0.5, y + 3.1, -28.6 + Math.sin(a) * 0.5, 0.14, cols[i], { glow: 1 }); } k.torus(64, y + 4.3, -28.6, 0.5, 0.03, 0xffffff, { rx: Math.PI / 2 });
-    k.sph(64, y + 0.75, -28.6, 0.8, 0xf2c14a, { s: [1.5, 0.8, 0.9], glow: 1 }); k.sph(64, y + 1.1, -28.6, 0.75, 0xffe08a, { s: [1.4, 0.7, 0.85] }); k.cone(64, y + 1.6, -28.6, 0.14, 0.4, 0xffb23a, { glow: 1 }); k.box(64, y, -28.6, 1.6, 0.3, 1, 0xc98a5a); circ([64, -28.8, 1.1]);
+    { const cr = makeCradle(); cr.position.set(38, y + 1.2, -30.6); g.add(cr); w.cradle = cr; (w.glows ||= []).push([38, y + 1.2, -30.6, 0xffb060, 1]); }
+    k.cyl(64, y + 0.06, -28.6, 2.3, 2.3, 0.04, 0x9a2a36, {}, 28); k.cyl(64, y + 0.08, -28.6, 1.9, 1.9, 0.04, 0xe9c98a, {}, 28); k.cyl(64, y + 0.1, -28.6, 1.3, 1.3, 0.04, 0xb8404a, {}, 28); circ([64, -28.6, 2.1]);
     for (let i = 0; i < 10; i++) { const x = 73 + R() * 4, z = -19 + R() * 6; k.cone(x, H(x, z) + 0.2, z, 0.2, 0.5, 0x7fc98a); k.sph(x, H(x, z) + 0.6, z, 0.1, 0xbfa0e8); } } }
   // marshmallow meadows
   w.bouncers.forEach(([x, z, r, top], i) => { const y = base(x, z), c = [0xffffff, 0xffe0ec, 0xfff6d0][i % 3]; k.cyl(x, y - 0.5, z, r, r, top + 0.2, c, {}, 16); k.sph(x, y + top - 0.3, z, r * 0.98, c, { s: [1, 0.22, 1] }); });

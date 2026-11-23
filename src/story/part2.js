@@ -323,7 +323,7 @@ const ch11 = {
       [K, 'No wonder nobody ever found you.'],
       { fx: 'ships' }, 'Dark shapes grow out of the fog ahead, tall and close, with lamps burning at their bows.',
       [A, 'The Cinderwardens. They can guide us in.'],
-      { c: [['“I am Princess Amber! I’m returning home!”', []], ['“You have my name. Send word to the palace!”', []]] },
+      { mini: 'hail', lines: ['I am Princess Amber! I’m returning home!', 'You have my name! Send word to the palace!', 'Hold your fire! We carry no weapons!'] },
       'No answer comes. The nearest vessel changes course, cutting across their path. A second ship closes from the other side.',
       { fx: 'hit' }, 'A projectile strikes the water beside their hull. Another shatters the rail. Kim falls to her knees as the deck lurches.',
       [K, 'They’re attacking us.'], [A, 'They can’t be. They know who I am.'],
