@@ -116,7 +116,7 @@ export class Game {
   baseline(n) { const f = {}, it = {}; if (n >= 3) it.whistle = 1; if (n === 3) it.spyglass = 1; if (n >= 11 && n <= 14) it.stillbloom = 1; if (n >= 3) f.cape = 1; if (n >= 5 && n <= 12) f.coat = 1; if (n >= 13) f.coatOff = 1; if (n >= 8 && n <= 10) f.rideSugar = 1; return [f, it]; }
   async startChapter(n) {
     this.busy++; this.paused = true; await UI.fade(true); UI.closeDialog();
-    const S = this.S, ch = this.chapters[n - 1]; S.ch = n; S.max = Math.max(S.max, n); [S.flags, S.items] = this.baseline(n); S.leads = []; S.vis = {}; S.hp = 3; this.tmp = {}; this.inside.clear(); this.mode = null; this.inv = 0;
+    const S = this.S, ch = this.chapters[n - 1]; S.ch = n; S.max = Math.max(S.max, n); [S.flags, S.items] = this.baseline(n); S.leads = []; { const keep = {}; for (const k of Object.keys(S.vis || {})) if (/^(gowns|worn|kimTira|wardrobeSeen|wisps|cinderMet|il\d+)$/.test(k)) keep[k] = S.vis[k]; S.vis = keep; } S.hp = 3; this.tmp = {}; this.inside.clear(); this.mode = null; this.inv = 0;
     if (this.riding) this.unride(null, true); this.ruby.state = 'hidden'; this.ruby.model.visible = false; this.meterV = 1; this.clearRings(); this.clearFx(); this.fogOverride = null; this.rubyAt = null;
     await this.enterWorld(ch.world, ch.time); this.lastStep = this.curStep();
     const who = this.whoNow(); const sp = this.W.P[who === 'kim' && ch.spawnKim ? ch.spawnKim : ch.spawn]; this.place(sp[0], sp[1]); this.faceCam();
@@ -136,7 +136,8 @@ export class Game {
   async ending() { this.busy++; await UI.fade(true, 'The End'); await wait(2.4); UI.playUI(false); await UI.card('THE EVERLANDS', 'Of Sugar and Flame', 'From the book by Elisa Espinosa Ruiz.\n\nBoth kingdoms are yours to wander now. Whistle for Ruby anywhere.'); this.busy--; }
 
   // ───────── world / sky ─────────
-  async enterWorld(name, time) {
+  async enterWorld(name, time) { window.__loading = (window.__loading || 0) + 1; try { return await this.enterWorld0(name, time); } finally { window.__loading--; } }
+  async enterWorld0(name, time) {
     await loadPeople(name, this.S.ch);
     if (!this.rubySwapped) { this.rubySwapped = true; const m = makeDragon(); if (m.userData.heroRuby) { const old = this.ruby.model; m.visible = old.visible; m.rotation.order = old.rotation.order; old.parent?.add(m); old.parent?.remove(old); this.ruby.model = m; } if (this.tira) { this.scene.remove(this.tira.m); this.tira = null; } }
     if (!this.worlds[name]) { await Promise.all((WORLD_PACKS[name] || []).map(loadPack)); this.worlds[name] = BUILD[name](); await wait(0); }
