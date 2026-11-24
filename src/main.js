@@ -7,7 +7,9 @@ $('loading').classList.add('hide');
 if (G.hasSave()) $('tContinue').classList.remove('hide');
 const go = async (fresh) => {
   if (fresh && G.hasSave() && !confirm('Start a new story? Your saved progress will be replaced.')) return;
-  $('title').classList.add('hide'); await G.begin(fresh);
+  // the title stays up, saying so, until the world is actually ready; a blank screen looks broken
+  $('titleBtns').classList.add('hide'); const ld = $('loading'); ld.textContent = fresh ? 'Opening the book…' : 'Finding your place…'; ld.classList.remove('hide'); const hide = () => $('title').classList.add('hide');
+  try { if (fresh) { hide(); await G.begin(true); } else await G.begin(false, hide); } catch (e) { window.__oops?.('start: ' + (e?.message || e)); throw e; } finally { hide(); }
 };
 $('tContinue').addEventListener('click', () => go(false));
 $('tNew').addEventListener('click', () => go(true));
@@ -21,11 +23,7 @@ if (q.get('ch')) { $('title').classList.add('hide'); G.started = true; G.sound.s
     el.textContent = `win ${innerWidth}x${innerHeight} · doc ${document.documentElement.clientWidth}x${document.documentElement.clientHeight} · vv ${Math.round(visualViewport?.width || 0)}x${Math.round(visualViewport?.height || 0)}@${(visualViewport?.scale || 1).toFixed(2)} · scr ${screen.width}x${screen.height} · safe ${n(c.paddingTop)}/${n(c.paddingRight)}/${n(c.paddingBottom)}/${n(c.paddingLeft)} · app ${navigator.standalone ? 1 : 0}`; sa.remove(); };
   setTimeout(diag, 800); setTimeout(diag, 3000); addEventListener('resize', diag); }
 
-// Coming back to the app, iOS can hand a home-screen web app a window shorter than the one it left with, leaving a dark band along
-// the bottom. Remember the tallest window seen in each orientation; if the window comes back shorter, nudge iOS to lay the page out
-// again, and meanwhile keep the painted layers at the remembered height.
-{ const best = {}, key = () => (innerWidth > innerHeight ? 'l' : 'p'), layers = () => ['c', 'title', 'fade', 'card'].map((id) => document.getElementById(id)).filter(Boolean);
-  const apply = () => { const k = key(); best[k] = Math.max(best[k] || 0, innerHeight); const short = innerHeight < best[k] - 8; for (const el of layers()) el.style.minHeight = short ? best[k] + 'px' : ''; return short; };
-  const nudge = () => { if (navigator.webdriver || !(matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 1)) return; let n = 0; const go = () => { scrollTo(0, 0); const h = document.documentElement; h.style.transform = n % 2 ? '' : 'translateZ(0)'; void h.offsetHeight; dispatchEvent(new Event('resize')); if (apply() && ++n < 12) setTimeout(go, 150); else { h.style.transform = ''; dispatchEvent(new Event('resize')); } }; go(); };
-  apply(); addEventListener('resize', apply); addEventListener('orientationchange', () => setTimeout(apply, 400));
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { nudge(); setTimeout(nudge, 700); } }); addEventListener('pageshow', nudge); addEventListener('focus', nudge); }
+// If anything goes wrong, say so on screen instead of leaving a blank page (a photo of this text is enough to fix it from).
+{ const show = (t) => { let el = document.getElementById('oops'); if (!el) { el = document.createElement('div'); el.id = 'oops'; el.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:99;background:#2a1018ee;color:#ffe9c8;font:12px/1.4 ui-monospace,Menlo,monospace;padding:10px 12px;border-radius:10px;white-space:pre-wrap;max-height:40%;overflow:auto'; document.body.appendChild(el); } if (el.textContent.length < 1200) el.textContent += (el.textContent ? '\n' : 'Something went wrong (build ' + (document.getElementById('buildTag')?.textContent || '') + '):\n') + t; };
+  addEventListener('error', (e) => show(String(e.message || e.error || 'error') + (e.filename ? ' @ ' + e.filename.split('/').pop() + ':' + e.lineno : '')));
+  addEventListener('unhandledrejection', (e) => show('promise: ' + String(e.reason?.message || e.reason).slice(0, 300))); window.__oops = show; }

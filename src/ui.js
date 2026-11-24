@@ -77,7 +77,8 @@ export function bark(name, text, secs) {
 }
 let tipT = 0;
 export function tip(text, secs = 7) { const t = $('tip'); t.textContent = text; show(t); clearTimeout(tipT); tipT = setTimeout(() => show(t, false), secs * 1000); }
-export function fade(on, text = '', white = false) { const f = $('fade'); f.classList.toggle('white', white); $('fadeText').textContent = text; f.classList.toggle('on', on); return new Promise((r) => setTimeout(r, 650)); }
+let fadeGuard = 0;
+export function fade(on, text = '', white = false) { const f = $('fade'); f.classList.toggle('white', white); $('fadeText').textContent = text; f.classList.toggle('on', on); clearTimeout(fadeGuard); if (on) fadeGuard = setTimeout(() => { f.classList.remove('on'); window.__oops?.('A scene change did not finish (' + (text || 'no caption') + '). The game has carried on.'); }, 20000); return new Promise((r) => setTimeout(r, 650)); }
 export function card(num, title, quote, tapText) {
   return new Promise((res) => { const c = $('card'); $('cardNum').textContent = num; $('cardTitle').textContent = title; $('cardQuote').textContent = quote || ''; show(c); const done = () => { c.removeEventListener('click', done); show(c, false); res(); }; setTimeout(() => c.addEventListener('click', done), 500); const poll = () => { if (c.classList.contains('hide')) return; if (hit('tap')) return done(); requestAnimationFrame(poll); }; setTimeout(() => { input.pressed.delete('tap'); poll(); }, 600); });
 }
